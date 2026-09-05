@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BT-7274 // VANGUARD NEURAL LINK v7.4.2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nova+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@700;900&display=swap');
+
+:root {
+  --teal:   #00CFC4;
+  --teal2:  #008F8A;
+  --amber:  #FF7A00;
+  --red:    #FF3535;
+  --green:  #4DFF91;
+  --blue:   #00A8FF;
+  --bg:     #06100e;
+  --bg2:    #0b1714;
+  --bg3:    #101f1c;
+  --text:   #5a8a84;
+  --bright: #aec8c4;
+  --bdT:    rgba(0,207,196,.16);
+  --bdA:    rgba(255,122,0,.16);
+  --gT: 0 0 8px rgba(0,207,196,.7), 0 0 22px rgba(0,207,196,.25);
+  --gA: 0 0 8px rgba(255,122,0,.7), 0 0 22px rgba(255,122,0,.25);
+  --gR: 0 0 8px rgba(255,53,53,.7), 0 0 22px rgba(255,53,53,.25);
+  --gG: 0 0 8px rgba(77,255,145,.7), 0 0 16px rgba(77,255,145,.2);
+}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Nova Mono',monospace;}
+body{animation:body-flicker 18s infinite;}
+@keyframes body-flicker{0%,94%,100%{opacity:1;}95%{opacity:.97;}96%{opacity:1;}98%{opacity:.96;}99%{opacity:1;}}
+
+#scanlines{position:fixed;inset:0;pointer-events:none;z-index:9000;
+  background:repeating-linear-gradient(to bottom,transparent 0px,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px);
+  animation:scan-scroll 18s linear infinite;}
+@keyframes scan-scroll{to{background-position:0 300px;}}
+
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:8999;
+  background:radial-gradient(ellipse 110% 105% at 50% 50%,transparent 48%,rgba(2,8,7,.88) 100%);}
+
+#hexCanvas{position:fixed;inset:0;pointer-events:none;z-index:0;}
+
+.edge-top{position:fixed;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent 0%,var(--teal) 20%,var(--amber) 50%,var(--teal) 80%,transparent 100%);
+  opacity:.35;z-index:9001;animation:edge-pulse 4s ease-in-out infinite;}
+@keyframes edge-pulse{0%,100%{opacity:.35;}50%{opacity:.6;}}
+
+#app{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;padding:6px;gap:5px;}
+
+#hdr{
+  flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg2);
+  border:1px solid var(--bdT);border-top:2px solid var(--teal);
+  padding:8px 16px;position:relative;overflow:hidden;
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%);
+}
+#hdr::after{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 14px 14px 0;border-color:transparent var(--bg) transparent transparent;}
+#hdr::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,207,196,.04) 0%,transparent 60%);pointer-events:none;}
+
+.hdr-brand{font-family:'Orbitron',monospace;font-size:15px;font-weight:900;color:var(--teal);text-shadow:var(--gT);letter-spacing:3px;animation:brand-breathe 5s ease-in-out infinite;}
+@keyframes brand-breathe{0%,100%{text-shadow:var(--gT);}50%{text-shadow:0 0 16px rgba(0,207,196,1),0 0 32px rgba(0,207,196,.5);}}
+
+.hdr-meta{display:flex;gap:18px;font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:.5px;}
+.hdr-meta span{display:flex;align-items:center;gap:5px;}
+.hm-lbl{color:var(--text);}
+.hm-val{color:var(--teal);}
+.hm-val.amb{color:var(--amber);text-shadow:var(--gA);}
+.hm-val.red{color:var(--red);text-shadow:var(--gR);}
+
+.hdr-conn{display:flex;align-items:center;gap:7px;font-size:10px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;}
+.dot{width:7px;height:7px;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);animation:dot-pulse 1.9s ease-in-out infinite;}
+.dot.t{background:var(--teal);box-shadow:var(--gT);}
+.dot.a{background:var(--amber);box-shadow:var(--gA);animation-duration:.5s;}
+.dot.r{background:var(--red);box-shadow:var(--gR);animation-duration:.35s;}
+@keyframes dot-pulse{0%,100%{opacity:1;transform:scale(1) rotate(0deg);}50%{opacity:.35;transform:scale(.7) rotate(45deg);}}
+
+.div{height:1px;flex-shrink:0;background:linear-gradient(90deg,transparent,var(--teal),var(--amber),var(--teal),transparent);opacity:.18;}
+
+#body{display:grid;grid-template-columns:260px 1fr 280px;gap:5px;flex:1;min-height:0;}
+
+#sidebar{display:flex;flex-direction:column;gap:5px;overflow-y:auto;}
+#sidebar::-webkit-scrollbar{width:2px;}
+#sidebar::-webkit-scrollbar-thumb{background:var(--teal);}
+
+.panel{background:var(--bg2);border:1px solid var(--bdT);border-top:2px solid var(--teal);padding:10px 10px 10px 12px;position:relative;flex-shrink:0;clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%);}
+.panel::after{content:'◢';position:absolute;bottom:0;right:1px;font-size:8px;color:var(--teal);opacity:.5;line-height:1;}
+.panel.amb{border-top-color:var(--amber);}
+.panel.amb::after{color:var(--amber);}
+
+.ptitle{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--teal);text-shadow:var(--gT);margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid rgba(0,207,196,.12);display:flex;align-items:center;gap:5px;}
+.ptitle::before{content:'▶';font-size:7px;opacity:.7;}
+.ptitle.amb{color:var(--amber);text-shadow:var(--gA);}
+.ptitle.amb::before{color:var(--amber);}
+
+.stat{margin-bottom:7px;}
+.stat:last-child{margin-bottom:0;}
+.slbl{display:flex;justify-content:space-between;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;margin-bottom:3px;letter-spacing:.5px;}
+.sv{color:var(--teal);}
+.sv.a{color:var(--amber);}
+.sv.r{color:var(--red);}
+.pbar{height:4px;background:rgba(0,207,196,.05);border:1px solid rgba(0,207,196,.1);overflow:hidden;}
+.pfill{height:100%;position:relative;transition:width .8s ease;}
+.pfill::after{content:'';position:absolute;top:0;right:0;width:24px;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.45));animation:shim 2.2s ease-in-out infinite;}
+@keyframes shim{0%{right:100%;}100%{right:-24px;}}
+.pfill.t{background:linear-gradient(90deg,var(--teal),#005f5c);box-shadow:0 0 6px rgba(0,207,196,.5);}
+.pfill.a{background:linear-gradient(90deg,var(--amber),#6b3300);box-shadow:0 0 6px rgba(255,122,0,.5);}
+.pfill.r{background:linear-gradient(90deg,var(--red),#7a0000);box-shadow:0 0 6px rgba(255,53,53,.5);}
+.pfill.g{background:linear-gradient(90deg,var(--green),#007a30);box-shadow:0 0 6px rgba(77,255,145,.5);}
+
+.abil{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid rgba(0,207,196,.05);font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;letter-spacing:.5px;}
+.abil:last-child{border:none;}
+.aico{width:18px;height:18px;border:1px solid rgba(0,207,196,.3);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--teal);flex-shrink:0;clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);}
+.anam{color:var(--bright);flex:1;text-transform:uppercase;font-size:10px;}
+.ast{font-size:8px;padding:1px 5px;letter-spacing:1px;}
+.ast.ready{color:var(--green);border:1px solid var(--green);text-shadow:var(--gG);}
+.ast.cd{color:var(--amber);border:1px solid var(--amber);}
+.ast.dep{color:var(--red);border:1px solid var(--red);}
+.ast.pulse{animation:core-pulse .8s ease-in-out infinite;}
+@keyframes core-pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+.trow{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(0,207,196,.05);font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;letter-spacing:.5px;}
+.trow:last-child{border:none;}
+.tzone{color:var(--text);}
+.tcnt{color:var(--amber);}
+.tcnt.r{color:var(--red);text-shadow:var(--gR);}
+.tcnt.g{color:var(--green);}
+
+.bh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.btimer{font-family:'Orbitron',monospace;font-size:20px;color:var(--amber);text-shadow:var(--gA);line-height:1;}
+#battMatrix{display:grid;gap:2px;margin-bottom:8px;}
+.bcell{height:19px;display:flex;align-items:center;justify-content:center;font-size:10px;font-family:'Nova Mono',monospace;border:1px solid rgba(0,207,196,.15);cursor:pointer;color:var(--teal);background:rgba(0,207,196,.02);transition:all .07s;user-select:none;clip-path:polygon(3px 0,100% 0,100% calc(100% - 3px),calc(100% - 3px) 100%,0 100%,0 3px);}
+.bcell:hover{background:rgba(0,207,196,.13);border-color:var(--teal);color:#fff;text-shadow:var(--gT);}
+.bcell.sel{background:rgba(255,122,0,.15);border-color:var(--amber);color:var(--amber);text-shadow:var(--gA);}
+.bcell.used{background:rgba(0,207,196,.03);border-color:rgba(0,207,196,.07);color:rgba(0,207,196,.25);cursor:default;}
+.bcell.hi{background:rgba(0,207,196,.07);border-color:rgba(0,207,196,.45);}
+.bseq{display:flex;gap:3px;margin-bottom:5px;flex-wrap:wrap;}
+.bslot{width:28px;height:19px;border:1px solid rgba(255,122,0,.2);display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,122,0,.3);background:rgba(255,122,0,.02);clip-path:polygon(3px 0,100% 0,100% calc(100% - 3px),calc(100% - 3px) 100%,0 100%,0 3px);}
+.bslot.f{color:var(--amber);border-color:var(--amber);background:rgba(255,122,0,.1);text-shadow:var(--gA);}
+.bbtn{width:100%;padding:4px;background:transparent;border:1px solid rgba(0,207,196,.28);color:var(--teal);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:10px;cursor:pointer;letter-spacing:2px;text-transform:uppercase;transition:all .15s;clip-path:polygon(3px 0,100% 0,100% calc(100% - 3px),calc(100% - 3px) 100%,0 100%,0 3px);}
+.bbtn:hover{background:rgba(0,207,196,.1);border-color:var(--teal);text-shadow:var(--gT);}
+
+#term{display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--bdT);border-top:2px solid var(--amber);position:relative;overflow:hidden;min-height:0;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));}
+#term::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(255,122,0,.012) 0%,transparent 7%);}
+
+.tbar{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:1px solid var(--bdT);background:var(--bg3);flex-shrink:0;}
+.ttitle{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;color:var(--amber);text-shadow:var(--gA);}
+.tctrl{display:flex;gap:14px;font-size:9px;color:var(--teal);opacity:.5;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:1px;}
+
+#out{flex:1;overflow-y:auto;padding:10px 12px;font-size:11.5px;line-height:1.65;min-height:0;scroll-behavior:smooth;}
+#out::-webkit-scrollbar{width:2px;}
+#out::-webkit-scrollbar-thumb{background:var(--amber);}
+
+.ln{margin-bottom:1px;animation:ln-in .14s ease;word-break:break-all;}
+@keyframes ln-in{from{opacity:0;transform:translateX(-4px);}to{opacity:1;transform:none;}}
+.ts{color:rgba(0,207,196,.28);font-size:9px;margin-right:6px;}
+.sys{color:var(--teal);}
+.ok{color:var(--green);}
+.wrn{color:var(--amber);}
+.err{color:var(--red);}
+.dim{color:rgba(90,138,132,.32);}
+.brt{color:var(--bright);}
+.cmd{color:var(--amber);text-shadow:var(--gA);}
+.mag{color:var(--blue);}
+.asc{color:var(--teal);opacity:.45;font-size:9px;line-height:1.15;white-space:pre;text-shadow:0 0 8px rgba(0,207,196,.25);}
+
+.tin{display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--bdT);background:var(--bg3);flex-shrink:0;}
+.prompt{color:var(--teal);text-shadow:var(--gT);font-size:11px;white-space:nowrap;flex-shrink:0;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;}
+#cmdinput{flex:1;background:transparent;border:none;outline:none;color:var(--amber);font-family:'Nova Mono',monospace;font-size:12px;caret-color:var(--amber);text-shadow:var(--gA);}
+#cmdinput::selection{background:rgba(255,122,0,.2);}
+#cmdinput:disabled{opacity:.4;}
+
+#foot{display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border:1px solid var(--bdT);padding:3px 12px;font-size:8.5px;color:rgba(90,138,132,.55);flex-shrink:0;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:.5px;}
+#foot .a{color:var(--teal);}
+
+/* ── INFO BUTTON ────────────────────────────────────── */
+.info-btn{background:transparent;border:1px solid rgba(0,207,196,.4);color:var(--teal);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;padding:3px 11px;cursor:pointer;text-transform:uppercase;clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);transition:all .15s;}
+.info-btn:hover{background:rgba(0,207,196,.12);border-color:var(--teal);text-shadow:var(--gT);}
+
+/* ── INFO MODAL ─────────────────────────────────────── */
+#infoModal{position:fixed;inset:0;z-index:10000;background:rgba(2,10,8,.94);display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+#infoModal.open{display:flex;}
+.info-inner{width:min(820px,95vw);max-height:88vh;background:var(--bg2);border:1px solid var(--bdT);border-top:2px solid var(--teal);overflow-y:auto;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));}
+.info-inner::-webkit-scrollbar{width:2px;}
+.info-inner::-webkit-scrollbar-thumb{background:var(--teal);}
+.info-hdr{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--bdT);background:var(--bg3);}
+.info-title{font-family:'Orbitron',monospace;font-size:12px;font-weight:900;color:var(--teal);text-shadow:var(--gT);letter-spacing:3px;}
+.info-close-btn{background:transparent;border:1px solid rgba(255,53,53,.45);color:var(--red);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;padding:3px 10px;cursor:pointer;text-transform:uppercase;transition:all .15s;clip-path:polygon(3px 0,100% 0,100% calc(100% - 3px),calc(100% - 3px) 100%,0 100%,0 3px);}
+.info-close-btn:hover{background:rgba(255,53,53,.15);}
+.info-body{padding:18px 22px;display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.info-col{}
+.info-sec{margin-bottom:18px;}
+.info-sec:last-child{margin-bottom:0;}
+.info-sec-h{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--amber);text-shadow:var(--gA);border-bottom:1px solid rgba(255,122,0,.15);padding-bottom:5px;margin-bottom:9px;display:flex;align-items:center;gap:5px;}
+.info-sec-h::before{content:'▶';font-size:7px;}
+.ir{display:flex;gap:10px;margin-bottom:5px;font-size:10px;font-family:'Nova Mono',monospace;align-items:baseline;}
+.ir-cmd{color:var(--green);min-width:110px;flex-shrink:0;}
+.ir-desc{color:var(--text);font-size:9px;line-height:1.4;}
+.iwave{display:flex;gap:8px;margin-bottom:6px;padding:5px 8px;border:1px solid rgba(0,207,196,.08);background:rgba(0,207,196,.02);font-size:9px;clip-path:polygon(3px 0,100% 0,100% calc(100% - 3px),calc(100% - 3px) 100%,0 100%,0 3px);}
+.iwave-n{color:var(--amber);font-family:'Rajdhani',sans-serif;font-weight:700;min-width:18px;}
+.iwave-t{color:var(--bright);font-family:'Rajdhani',sans-serif;font-weight:600;font-size:9px;flex:1;}
+.iwave-m{color:var(--red);font-family:'Nova Mono',monospace;font-size:8px;}
+.itip{font-size:9px;font-family:'Nova Mono',monospace;color:var(--text);margin-bottom:5px;padding-left:10px;border-left:2px solid rgba(0,207,196,.2);line-height:1.5;}
+.itip span{color:var(--teal);}
+
+/* ── VISUAL PANEL ───────────────────────────────────── */
+#visual{display:flex;flex-direction:column;gap:5px;min-height:0;overflow-y:auto;}
+#visual::-webkit-scrollbar{width:2px;}
+#visual::-webkit-scrollbar-thumb{background:var(--teal);}
+.vpanel{background:var(--bg2);border:1px solid var(--bdT);border-top:2px solid var(--teal);padding:10px 10px 10px 12px;position:relative;flex-shrink:0;clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%);}
+.vpanel::after{content:'◢';position:absolute;bottom:0;right:1px;font-size:8px;color:var(--teal);opacity:.5;line-height:1;}
+.vpanel.amb{border-top-color:var(--amber);}
+.vpanel.amb::after{color:var(--amber);}
+.vptitle{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--teal);text-shadow:var(--gT);margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid rgba(0,207,196,.12);display:flex;align-items:center;gap:5px;}
+.vptitle::before{content:'▶';font-size:7px;opacity:.7;}
+.vptitle.amb{color:var(--amber);text-shadow:var(--gA);}
+.vptitle.amb::before{color:var(--amber);}
+
+/* wave strip */
+.wstrip{padding:5px 8px;margin-bottom:8px;background:rgba(255,122,0,.04);border:1px solid rgba(255,122,0,.14);clip-path:polygon(3px 0,100% 0,100% calc(100% - 3px),calc(100% - 3px) 100%,0 100%,0 3px);}
+.ws-title{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--amber);margin-bottom:2px;}
+.ws-mod{font-family:'Rajdhani',sans-serif;font-size:8px;font-weight:600;letter-spacing:.5px;color:var(--text);}
+.ws-mod span{color:var(--red);}
+
+/* enemy cards */
+.ec-grid{display:flex;flex-direction:column;gap:4px;}
+.ec{border:1px solid rgba(0,207,196,.2);background:rgba(0,207,196,.02);padding:6px 8px;clip-path:polygon(3px 0,100% 0,100% calc(100% - 3px),calc(100% - 3px) 100%,0 100%,0 3px);transition:opacity .5s,border-color .3s;}
+.ec.dead{opacity:.22;border-color:rgba(0,207,196,.05);background:transparent;}
+.ec.boss-ec{border-color:rgba(255,53,53,.4);background:rgba(255,53,53,.03);}
+.ec.boss-ec:not(.dead){animation:boss-pulse 2.2s ease-in-out infinite;}
+@keyframes boss-pulse{0%,100%{border-color:rgba(255,53,53,.4);}50%{border-color:rgba(255,53,53,.75);box-shadow:0 0 10px rgba(255,53,53,.18);}}
+.ec-hit{animation:ec-flash .4s ease!important;}
+@keyframes ec-flash{0%{background:rgba(255,122,0,.3);border-color:var(--amber);}100%{background:rgba(0,207,196,.02);}}
+.ec-top{display:flex;align-items:center;gap:5px;margin-bottom:5px;}
+.ec-ico{width:14px;height:14px;border:1px solid rgba(0,207,196,.35);display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--teal);flex-shrink:0;clip-path:polygon(2px 0,100% 0,100% calc(100% - 2px),calc(100% - 2px) 100%,0 100%,0 2px);}
+.ec-ico.boss-ico{border-color:rgba(255,53,53,.6);color:var(--red);}
+.ec-num{font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;color:var(--amber);min-width:18px;flex-shrink:0;}
+.ec-name{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:.3px;color:var(--bright);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ec-name.boss-nm{color:var(--red);text-shadow:0 0 6px rgba(255,53,53,.5);}
+.ec-bar{height:3px;background:rgba(0,207,196,.06);border:1px solid rgba(0,207,196,.08);overflow:hidden;margin-bottom:4px;}
+.ec-fill{height:100%;transition:width .6s ease;}
+.ec-fill.hi{background:linear-gradient(90deg,var(--green),#007a30);}
+.ec-fill.md{background:linear-gradient(90deg,var(--amber),#6b3300);}
+.ec-fill.lo{background:linear-gradient(90deg,var(--red),#7a0000);}
+.ec-foot{display:flex;justify-content:space-between;align-items:center;}
+.ec-hp{font-family:'Nova Mono',monospace;font-size:8px;color:var(--text);}
+.ec-st{font-family:'Rajdhani',sans-serif;font-size:7px;font-weight:700;letter-spacing:1px;padding:1px 4px;clip-path:polygon(2px 0,100% 0,100% calc(100% - 2px),calc(100% - 2px) 100%,0 100%,0 2px);}
+.ec-st.alive{color:var(--green);border:1px solid rgba(77,255,145,.3);}
+.ec-st.dmg{color:var(--amber);border:1px solid rgba(255,122,0,.3);}
+.ec-st.crit{color:var(--red);border:1px solid rgba(255,53,53,.3);animation:stat-blink .65s ease-in-out infinite;}
+.ec-st.dead{color:rgba(90,138,132,.25);border:1px solid rgba(90,138,132,.08);}
+@keyframes stat-blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+/* combat feed */
+.cfeed{max-height:110px;overflow-y:auto;}
+.cfeed::-webkit-scrollbar{width:2px;}
+.cfeed::-webkit-scrollbar-thumb{background:var(--amber);}
+.cfe{font-family:'Nova Mono',monospace;font-size:9px;margin-bottom:2px;display:flex;gap:4px;animation:ln-in .12s ease;}
+.cfe-ts{color:rgba(0,207,196,.22);flex-shrink:0;}
+.cfe.ok .cfe-txt{color:var(--green);}
+.cfe.err .cfe-txt{color:var(--red);}
+.cfe.wrn .cfe-txt{color:var(--amber);}
+.cfe.sys .cfe-txt{color:var(--teal);}
+.cfe.brt .cfe-txt{color:var(--bright);}
+.cfe.dim .cfe-txt{color:rgba(90,138,132,.4);}
+</style>
+</head>
+<body>
+<div class="edge-top"></div>
+<canvas id="hexCanvas"></canvas>
+<div id="scanlines"></div>
+<div id="vignette"></div>
+
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="hdr">
+    <div class="hdr-brand">BT-7274 // VANGUARD NEURAL LINK</div>
+    <div class="hdr-meta">
+      <span><span class="hm-lbl">PILOT:</span><span class="hm-val">JACK COOPER</span></span>
+      <span><span class="hm-lbl">BOND:</span><span class="hm-val" id="hBond">ACTIVE</span></span>
+      <span><span class="hm-lbl">WAVE:</span><span class="hm-val amb" id="hWave">—</span></span>
+      <span><span class="hm-lbl">THREATS:</span><span class="hm-val red" id="hImc">—</span></span>
+      <span><span class="hm-lbl">SCORE:</span><span class="hm-val" id="hScore">0</span></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="hdr-conn">
+        <div class="dot t" id="connDot"></div>
+        <span style="font-size:10px;color:var(--teal);font-family:'Rajdhani',sans-serif;font-weight:700" id="connTxt">SECURE LINK</span>
+      </div>
+      <button class="info-btn" onclick="openInfo()">[ INFO ]</button>
+    </div>
+  </div>
+
+  <div class="div"></div>
+
+  <div id="body">
+
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+
+      <!-- Titan Status -->
+      <div class="panel">
+        <div class="ptitle">Titan Status</div>
+        <div class="stat">
+          <div class="slbl"><span>HULL INTEGRITY</span><span class="sv" id="sHull">100%</span></div>
+          <div class="pbar"><div class="pfill t" style="width:100%" id="bHull"></div></div>
+        </div>
+        <div class="stat">
+          <div class="slbl"><span>SHIELD</span><span class="sv a" id="sShield">65%</span></div>
+          <div class="pbar"><div class="pfill a" style="width:65%" id="bShield"></div></div>
+        </div>
+        <div class="stat">
+          <div class="slbl"><span>BATTERY</span><span class="sv" id="sBatt">88%</span></div>
+          <div class="pbar"><div class="pfill t" style="width:88%" id="bBatt"></div></div>
+        </div>
+        <div class="stat">
+          <div class="slbl"><span>CORE CHARGE</span><span class="sv" id="sCore">0%</span></div>
+          <div class="pbar"><div class="pfill g" style="width:0%" id="bCore"></div></div>
+        </div>
+      </div>
+
+      <!-- Pilot Abilities -->
+      <div class="panel">
+        <div class="ptitle">Pilot Systems</div>
+        <div class="abil">
+          <div class="aico">⊕</div>
+          <span class="anam">Grapple</span>
+          <span class="ast ready" id="aGrapple">READY</span>
+        </div>
+        <div class="abil">
+          <div class="aico">⚡</div>
+          <span class="anam">Stim</span>
+          <span class="ast ready" id="aStim">3×CHG</span>
+        </div>
+        <div class="abil">
+          <div class="aico">◈</div>
+          <span class="anam">Stealth</span>
+          <span class="ast ready" id="aStealth">READY</span>
+        </div>
+        <div class="abil">
+          <div class="aico">⊞</div>
+          <span class="anam">Deploy BT</span>
+          <span class="ast ready" id="aDeploy">READY</span>
+        </div>
+        <div class="abil">
+          <div class="aico">◎</div>
+          <span class="anam">Arc Wave</span>
+          <span class="ast cd" id="aCore">BUILD</span>
+        </div>
+      </div>
+
+      <!-- IMC Threat Grid -->
+      <div class="panel">
+        <div class="ptitle">IMC Threat Grid</div>
+        <div class="trow"><span class="tzone">TITANS</span><span class="tcnt" id="tTitans">—</span></div>
+        <div class="trow"><span class="tzone">REAPERS</span><span class="tcnt" id="tReapers">—</span></div>
+        <div class="trow"><span class="tzone">SPECTRES</span><span class="tcnt" id="tSpectres">—</span></div>
+        <div class="trow"><span class="tzone">INFANTRY</span><span class="tcnt" id="tInfantry">—</span></div>
+        <div class="trow"><span class="tzone">WAVE</span><span class="tcnt" id="tWave">—</span></div>
+      </div>
+
+      <!-- Battery Reroute -->
+      <div class="panel amb">
+        <div class="ptitle amb">Battery Reroute <span style="color:var(--teal);font-size:8px">[±BATTERY]</span></div>
+        <div class="bh">
+          <span style="font-size:9px;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:1px">MODE: <span id="bMode" style="color:var(--teal)">ROW</span></span>
+          <div class="btimer" id="bTimer">00:00</div>
+        </div>
+        <div id="battMatrix"></div>
+        <div style="font-size:9px;color:var(--amber);opacity:.65;margin-bottom:4px;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:1px">▶ TARGET SEQUENCE:</div>
+        <div class="bseq" id="bSeq"></div>
+        <div style="font-size:9px;color:var(--teal);opacity:.55;margin-bottom:5px;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:1px">▶ ROUTED:</div>
+        <div class="bseq" id="bInput"></div>
+        <button class="bbtn" onclick="resetBatt()">[ RESET SEQUENCE ]</button>
+      </div>
+
+    </div>
+
+    <!-- TERMINAL -->
+    <div id="term">
+      <div class="tbar">
+        <div class="ttitle">▶ PILOT INTERFACE // COMBAT NET // PROTOCOL 3</div>
+        <div class="tctrl">
+          <span>[ENCRYPT: VANGUARD]</span>
+          <span id="tPhase">[INITIALIZING]</span>
+          <span id="tClock">00:00:00</span>
+        </div>
+      </div>
+
+      <div id="out"></div>
+
+      <div class="tin">
+        <span class="prompt">BT-7274&nbsp;[COOPER]&gt;</span>
+        <input id="cmdinput" type="text" autocomplete="off" spellcheck="false" autofocus>
+      </div>
+    </div>
+
+    <!-- VISUAL PANEL -->
+    <div id="visual">
+
+      <!-- Tactical Display -->
+      <div class="vpanel">
+        <div class="vptitle">Tactical Display</div>
+        <div id="vpWaveStrip"></div>
+        <div class="ec-grid" id="vpEnemies">
+          <div style="color:rgba(90,138,132,.35);font-size:9px;font-family:'Rajdhani',sans-serif;padding:4px 0">Awaiting deployment...</div>
+        </div>
+      </div>
+
+      <!-- Combat Feed -->
+      <div class="vpanel amb" style="flex:1;min-height:0;display:flex;flex-direction:column;">
+        <div class="vptitle amb">Combat Feed</div>
+        <div class="cfeed" id="vpFeed">
+          <div style="color:rgba(90,138,132,.3);font-size:9px;font-family:'Rajdhani',sans-serif">No events yet.</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="div"></div>
+
+  <div id="foot">
+    <span><span class="a">NODE:</span> TYPHON-RELAY-07</span>
+    <span><span class="a">ENCRYPT:</span> VANGUARD-AES-512</span>
+    <span><span class="a">THREAT:</span> <span id="fThreat" style="color:var(--red)">INITIALIZING</span></span>
+    <span><span class="a">TURN:</span> <span id="fTurn">—</span></span>
+    <span>FRONTIER MILITIA // IMC INTERCEPT NET</span>
+  </div>
+
+</div>
+
+<!-- INFO MODAL -->
+<div id="infoModal">
+  <div class="info-inner">
+    <div class="info-hdr">
+      <div class="info-title">BT-7274 // COMBAT BRIEFING</div>
+      <button class="info-close-btn" onclick="closeInfo()">[ CLOSE ]</button>
+    </div>
+    <div class="info-body">
+      <div class="info-col">
+        <div class="info-sec">
+          <div class="info-sec-h">How To Play</div>
+          <div class="itip">You are Pilot <span>Jack Cooper</span>, bonded to Vanguard Titan <span>BT-7274</span>. Fight through infinite waves of IMC forces — the deeper you go, the harder it gets.</div>
+          <div class="itip" style="margin-top:6px">Each turn: type a <span>combat command</span> → see the result → enemy responds. Manage your <span>hull, shield, battery</span> and <span>core charge</span> to survive.</div>
+          <div class="itip" style="margin-top:6px">The <span>Battery Reroute</span> sidebar minigame gives ±battery each round — complete it for an edge in combat.</div>
+        </div>
+        <div class="info-sec">
+          <div class="info-sec-h">Attack Commands</div>
+          <div class="ir"><span class="ir-cmd">fire [#]</span><span class="ir-desc">Shoot enemy by number. Targets lowest HP if no # given. Costs 8 battery.</span></div>
+          <div class="ir"><span class="ir-cmd">volley</span><span class="ir-desc">Suppressive burst — hits ALL enemies for moderate damage. Costs 25 battery.</span></div>
+          <div class="ir"><span class="ir-cmd">rodeo [#]</span><span class="ir-desc">Rip enemy battery — massive damage on Titans &amp; Reapers. 35% fail chance.</span></div>
+          <div class="ir"><span class="ir-cmd">core</span><span class="ir-desc">BT Arc Wave — devastating AoE. Requires 80%+ core charge.</span></div>
+        </div>
+        <div class="info-sec">
+          <div class="info-sec-h">Defense Commands</div>
+          <div class="ir"><span class="ir-cmd">defend</span><span class="ir-desc">Particle wall — 60% damage reduction + 12 shield this turn. Free.</span></div>
+          <div class="ir"><span class="ir-cmd">stealth</span><span class="ir-desc">Optical cloak — enemy attacks miss entirely. 20 battery, 4-turn cooldown.</span></div>
+          <div class="ir"><span class="ir-cmd">grapple</span><span class="ir-desc">Reposition — 65% chance to evade all incoming hits. 8 battery, 2-turn cooldown.</span></div>
+          <div class="ir"><span class="ir-cmd">eject</span><span class="ir-desc">Emergency eject — skips enemy attack but drops 35 shield.</span></div>
+        </div>
+        <div class="info-sec">
+          <div class="info-sec-h">Support Commands</div>
+          <div class="ir"><span class="ir-cmd">stim</span><span class="ir-desc">+15 attack bonus &amp; hull regen for 2 turns. 15 battery, 3 charges total.</span></div>
+          <div class="ir"><span class="ir-cmd">repair</span><span class="ir-desc">Spend 30 battery to restore 20 hull.</span></div>
+          <div class="ir"><span class="ir-cmd">deploy</span><span class="ir-desc">Call BT support drop — +25 hull, +25 shield. Once per wave.</span></div>
+          <div class="ir"><span class="ir-cmd">charge</span><span class="ir-desc">Skip attack: gain +20 battery, +15 core. Enemy still acts.</span></div>
+        </div>
+      </div>
+      <div class="info-col">
+        <div class="info-sec">
+          <div class="info-sec-h">Wave Progression (∞)</div>
+          <div class="iwave"><span class="iwave-n">W1</span><span class="iwave-t">Infantry only, baseline stats</span><span class="iwave-m">—</span></div>
+          <div class="iwave"><span class="iwave-n">W2+</span><span class="iwave-t">Spectres unlock, modifiers begin</span><span class="iwave-m">ELITE DBL</span></div>
+          <div class="iwave"><span class="iwave-n">W4+</span><span class="iwave-t">Reapers join, AP rounds possible</span><span class="iwave-m">REINFORCE</span></div>
+          <div class="iwave"><span class="iwave-n">W5</span><span class="iwave-t">BOSS WAVE — Apex Predator</span><span class="iwave-m">PIERCE + ENRAGE</span></div>
+          <div class="iwave"><span class="iwave-n">W6+</span><span class="iwave-t">Titans join the fight</span><span class="iwave-m">AP ROUNDS</span></div>
+          <div class="iwave"><span class="iwave-n">W10+</span><span class="iwave-t">Boss arrives with elite guard</span><span class="iwave-m">GUARDS</span></div>
+        </div>
+        <div class="info-sec">
+          <div class="info-sec-h">Wave Modifiers</div>
+          <div class="ir"><span class="ir-cmd" style="color:var(--red)">ELITE DOUBLE</span><span class="ir-desc">Spectres always attack twice per turn.</span></div>
+          <div class="ir"><span class="ir-cmd" style="color:var(--red)">REINFORCE</span><span class="ir-desc">45% chance a spectre spawns each time you kill any enemy.</span></div>
+          <div class="ir"><span class="ir-cmd" style="color:var(--red)">SHIELD PIERCE</span><span class="ir-desc">35% of enemy attacks bypass your shield and hit hull directly.</span></div>
+          <div class="ir"><span class="ir-cmd" style="color:var(--red)">ENRAGE</span><span class="ir-desc">Boss deals 1.6× damage when below 50% HP.</span></div>
+        </div>
+        <div class="info-sec">
+          <div class="info-sec-h">Resources</div>
+          <div class="ir"><span class="ir-cmd" style="color:var(--teal)">Hull</span><span class="ir-desc">Your HP. Reaches 0 → mission failed. Regens with stim only.</span></div>
+          <div class="ir"><span class="ir-cmd" style="color:var(--amber)">Shield</span><span class="ir-desc">Absorbs damage before hull. Regens 6–12 per turn automatically.</span></div>
+          <div class="ir"><span class="ir-cmd" style="color:var(--teal)">Battery</span><span class="ir-desc">Powers abilities. Regens 5/turn. Reroute minigame gives ±10–20.</span></div>
+          <div class="ir"><span class="ir-cmd" style="color:var(--green)">Core</span><span class="ir-desc">Builds 8–12/turn. Kills add 10 core; boss kill adds 40. Spend 80+ on Arc Wave.</span></div>
+        </div>
+        <div class="info-sec">
+          <div class="info-sec-h">Pro Tips</div>
+          <div class="itip"><span>stealth</span> is your panic button — use it when hull is critical.</div>
+          <div class="itip" style="margin-top:4px">Every <span>kill</span> reduces stealth &amp; grapple cooldown by 1 turn. Every <span>3 kills</span> recharges a stim.</div>
+          <div class="itip" style="margin-top:4px"><span>Boss kills</span> fully recharge ALL pilot systems — fight aggressively on boss waves.</div>
+          <div class="itip" style="margin-top:4px"><span>rodeo</span> on titans deals 50–90 dmg — faster than chip damage with fire.</div>
+          <div class="itip" style="margin-top:4px">Save <span>core</span> for reinforce waves or titan clusters — it clears whole squads.</div>
+          <div class="itip" style="margin-top:4px">Between waves: hull/shield restore. Spend battery freely at end of each wave.</div>
+          <div class="itip" style="margin-top:4px">Use arrow keys ↑↓ to cycle through command history.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   HEX CANVAS
+══════════════════════════════════════════════════════ */
+(function(){
+  const cv = document.getElementById('hexCanvas');
+  const cx = cv.getContext('2d');
+  let pulseHexes = [];
+  function resize(){ cv.width=innerWidth; cv.height=innerHeight; buildPulse(); }
+  resize(); addEventListener('resize', resize);
+  function hexPts(x,y,r){ const p=[]; for(let i=0;i<6;i++){const a=(Math.PI/3)*i-Math.PI/6; p.push([x+r*Math.cos(a),y+r*Math.sin(a)]);} return p; }
+  function buildPulse(){
+    pulseHexes=[];
+    const size=28,w=size*Math.sqrt(3),h=size*1.5;
+    const cols=Math.ceil(cv.width/w)+2, rows=Math.ceil(cv.height/h)+2;
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++)
+      if(Math.random()>0.92){ const x=c*w+(r%2===0?0:w/2),y=r*h*0.75; pulseHexes.push({x,y,size,phase:Math.random()*Math.PI*2,speed:0.4+Math.random()*0.8}); }
+  }
+  function drawHex(x,y,r,alpha){
+    const p=hexPts(x,y,r); cx.beginPath(); cx.moveTo(p[0][0],p[0][1]);
+    for(let i=1;i<6;i++) cx.lineTo(p[i][0],p[i][1]); cx.closePath();
+    cx.strokeStyle=`rgba(0,207,196,${alpha})`; cx.lineWidth=0.5; cx.stroke();
+  }
+  let t=0;
+  function frame(){
+    t+=0.008; cx.clearRect(0,0,cv.width,cv.height);
+    const size=28,w=size*Math.sqrt(3),h=size*1.5;
+    const cols=Math.ceil(cv.width/w)+2, rows=Math.ceil(cv.height/h)+2;
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const x=c*w+(r%2===0?0:w/2),y=r*h*0.75; drawHex(x,y,size-1,0.038);
+    }
+    pulseHexes.forEach(h=>{
+      const a=(Math.sin(t*h.speed+h.phase)*0.5+0.5)*0.14; drawHex(h.x,h.y,h.size-1,a);
+      if(a>0.1){ const p=hexPts(h.x,h.y,h.size-1); cx.beginPath(); cx.moveTo(p[0][0],p[0][1]); for(let i=1;i<6;i++) cx.lineTo(p[i][0],p[i][1]); cx.closePath(); cx.fillStyle=`rgba(0,207,196,${(a-0.1)*0.15})`; cx.fill(); }
+    });
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+
+/* ══════════════════════════════════════════════════════
+   TIMERS
+══════════════════════════════════════════════════════ */
+function pad(n){ return String(n).padStart(2,'0'); }
+function hms(s){ return pad(~~(s/3600))+':'+pad(~~(s%3600/60))+':'+pad(s%60); }
+let sessSec=0;
+setInterval(()=>{ sessSec++; }, 1000);
+function tickClock(){ document.getElementById('tClock').textContent=new Date().toLocaleTimeString('en-US',{hour12:false}); }
+tickClock(); setInterval(tickClock,1000);
+
+/* ══════════════════════════════════════════════════════
+   GAME STATE
+══════════════════════════════════════════════════════ */
+const G = {
+  hull:100, maxHull:100,
+  shield:65, maxShield:100,
+  battery:88, maxBattery:100,
+  core:0, maxCore:100,
+
+  stimmed:0,       // turns of stim remaining
+  cloaked:false,   // skip incoming attacks this turn
+  defending:false, // 60% damage reduction this turn
+  grappled:false,  // 65% dodge chance this turn
+  cloakCd:0,       // turns until stealth ready
+  grappleCd:0,     // turns until grapple ready
+  stimCharges:3,
+  deployUsed:false,
+  killStreak:0,    // kills since last stim recharge (every 3 = +1 charge)
+
+  wave:0,
+  enemies:[],
+  score:0,
+  turn:0,
+  phase:'boot',
+  bossEnraged:false,
+};
+
+/* ══════════════════════════════════════════════════════
+   INFINITE WAVE GENERATOR
+══════════════════════════════════════════════════════ */
+const ENEMY_TEMPLATES = {
+  infantry:{names:['EFEC TROOPER','GRUNT INFANTRY','IMC HEAVY','VANGUARD SOLDIER','APEX GRUNT','ELITE HEAVY'],       baseHp:20, minDmg:5,  maxDmg:12, xpBase:10},
+  spectre: {names:['IMC SPECTRE','SPECTRE ELITE','SPECTRE MK2','ASSAULT SPECTRE','SPECTRE VANGUARD','OMEGA SPECTRE'],baseHp:35, minDmg:8,  maxDmg:18, xpBase:20},
+  reaper:  {names:['IMC REAPER','ASSAULT REAPER','REAPER CMD','REAPER ELITE','APEX REAPER'],                         baseHp:85, minDmg:16, maxDmg:30, xpBase:60},
+  titan:   {names:['TITAN: ION','TITAN: TONE','TITAN: NORTHSTAR','TITAN: SCORCH','TITAN: RONIN','TITAN: LEGION'],    baseHp:130,minDmg:18, maxDmg:38, xpBase:100},
+};
+
+const BOSS_LIST = [
+  {name:'SLONE',   title:'APEX PREDATOR',   desc:'Phase Shift capable — she will dodge your first big hit'},
+  {name:'VIPER',   title:'NORTHSTAR ACE',   desc:'Aerial supremacy — faster than anything you have fought'},
+  {name:'RICHTER', title:'SHOCK TROOPER',   desc:'Suppression specialist — every attack disrupts your systems'},
+  {name:'KANE',    title:'NETWORK GHOST',   desc:'Electronic warfare — your battery is her weapon against you'},
+  {name:'ASH',     title:'RONIN PILOT',     desc:'Blade specialist — she closes distance before you can react'},
+  {name:'BLISK',   title:'APEX COMMANDER',  desc:'Full tactical suite — he has seen everything you will try'},
+];
+
+const WAVE_DESCS = [
+  'VANGUARD PATROL','SUPPRESSION FORCE','STRIKE ELEMENT','ASSAULT WAVE',
+  'HEAVY DETACHMENT','RAPID RESPONSE','SIEGE PROTOCOL','BLITZ OPERATION',
+  'SHOCK FORCE','ANNIHILATION RUN','OVERWHELMING SURGE','TERMINAL PUSH',
+  'APEX RESPONSE','TOTAL LOCKDOWN','FINAL ASSAULT',
+];
+
+const waveCache = [];
+
+function makeEnemy(type, wn, hpM, dmgM, nameOverride){
+  const t = ENEMY_TEMPLATES[type];
+  const nameIdx = Math.floor(wn / 3) % t.names.length;
+  const hp = Math.round(t.baseHp * hpM);
+  return {
+    name: nameOverride || t.names[nameIdx],
+    type,
+    hp, max: hp,
+    dmg: [Math.round(t.minDmg * dmgM), Math.round(t.maxDmg * dmgM)],
+    xp:  Math.round(t.xpBase * (1 + wn * 0.12)),
+  };
+}
+
+function generateWave(wn) {
+  // wn = 1-indexed wave number
+  const isBoss = wn % 5 === 0;
+  const hpM    = Math.min(1 + (wn-1) * 0.18, 6.0);
+  const dmgM   = Math.min(1 + (wn-1) * 0.11, 4.5);
+
+  if(isBoss){
+    const bossIdx = (Math.floor(wn/5) - 1) % BOSS_LIST.length;
+    const boss    = BOSS_LIST[bossIdx];
+    const bossHp  = Math.round(280 * hpM);
+    const spawn   = [];
+    // Guards scale in at higher boss waves
+    if(wn >= 10){ spawn.push(makeEnemy('spectre', wn, hpM*0.7, dmgM*0.8, 'APEX GUARD')); }
+    if(wn >= 15){ spawn.push(makeEnemy('reaper',  wn, hpM*0.6, dmgM*0.7, 'APEX REAPER')); }
+    spawn.push({
+      name:`${boss.name} [${boss.title}]`, type:'boss',
+      hp:bossHp, max:bossHp,
+      dmg:[Math.round(28*dmgM), Math.round(55*dmgM)],
+      xp: Math.round(600 * (1 + wn*0.08)),
+    });
+    return {
+      title:`WAVE ${wn} — BOSS: ${boss.name}`,
+      note:`CRITICAL: ${boss.desc}. Killing boss recharges ALL pilot systems.`,
+      shieldPierce:true,
+      spawn,
+    };
+  }
+
+  // Build modifier pool (unlock progressively, max 2)
+  const mods = {};
+  if(wn >= 2 && Math.random() < Math.min(0.25+(wn-2)*0.06, 0.85)) mods.eliteDouble     = true;
+  if(wn >= 3 && Math.random() < Math.min(0.15+(wn-3)*0.05, 0.70)) mods.reinforceOnKill = true;
+  if(wn >= 4 && Math.random() < Math.min(0.15+(wn-4)*0.05, 0.65)) mods.shieldPierce    = true;
+  // Cap at 2 modifiers for sanity
+  const modKeys = Object.keys(mods);
+  if(modKeys.length > 2) delete mods[modKeys[ri(0, modKeys.length-1)]];
+
+  // Unlock enemy types gradually
+  const typePool = ['infantry'];
+  if(wn >= 2) typePool.push('spectre');
+  if(wn >= 4) typePool.push('reaper');
+  if(wn >= 6) typePool.push('titan');
+
+  // Count ramps 3 → 8 max
+  const count = Math.min(3 + Math.floor(wn * 0.55), 8);
+
+  const spawn = [];
+  for(let i=0; i<count; i++){
+    // Bias toward harder types as waves increase
+    const bias = Math.min(Math.floor(wn/3), typePool.length-1);
+    const idx  = clamp(ri(0, typePool.length-1) + (Math.random()<0.5?1:0)*bias - (typePool.length>2?1:0), 0, typePool.length-1);
+    spawn.push(makeEnemy(typePool[idx], wn, hpM, dmgM));
+  }
+
+  const descWord = WAVE_DESCS[(wn-1) % WAVE_DESCS.length];
+  const modNames = {eliteDouble:'ELITE DOUBLE ATTACK',reinforceOnKill:'IMC REINFORCE ON KILL',shieldPierce:'ARMOR-PIERCING ROUNDS'};
+  const modNote  = modKeys.length ? 'WARNING: '+modKeys.map(k=>modNames[k]).join(' + ') : null;
+
+  return { title:`WAVE ${wn} — IMC ${descWord}`, note:modNote, ...mods, spawn };
+}
+
+function getWave(n){
+  if(!waveCache[n]) waveCache[n] = generateWave(n+1); // n is 0-indexed
+  return waveCache[n];
+}
+
+/* ══════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════ */
+function ri(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function clamp(v,mn,mx){ return Math.max(mn,Math.min(mx,v)); }
+function hpBar(hp,max,w=12){ const f=Math.round(clamp(hp/max,0,1)*w); return '█'.repeat(f)+'░'.repeat(w-f); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+function onEnemyKilled(e, silent=false){
+  const isBoss = e.type === 'boss';
+  const coreGain = isBoss ? 40 : 10;
+  G.score += e.xp;
+  G.core = clamp(G.core + coreGain, 0, G.maxCore);
+  if(e.type==='infantry') G.battery = clamp(G.battery+3, 0, G.maxBattery);
+  if(!silent) line('  +'+e.xp+' score | core +'+coreGain+'%','dim');
+
+  // Kill recharge — each kill ticks ability cooldowns
+  if(G.cloakCd > 0){ G.cloakCd = Math.max(0, G.cloakCd - 1); }
+  if(G.grappleCd > 0){ G.grappleCd = Math.max(0, G.grappleCd - 1); }
+  G.killStreak++;
+  if(G.killStreak % 3 === 0 && G.stimCharges < 3){
+    G.stimCharges = Math.min(3, G.stimCharges + 1);
+    if(!silent) line('  ⚡ KILL STREAK — stim recharged! ('+G.stimCharges+' charges)','ok');
+  }
+
+  // Boss kill: full recharge of all pilot systems
+  if(isBoss){
+    G.cloakCd = 0; G.grappleCd = 0; G.stimCharges = 3; G.deployUsed = false;
+    line('  ★ APEX PREDATOR ELIMINATED — ALL PILOT SYSTEMS RECHARGED','ok');
+    pushFeed('★ BOSS KILL — ALL SYSTEMS RECHARGED','ok');
+  }
+
+  const wv = G.phase !== 'boot' ? getWave(G.wave) : null;
+  if(wv && wv.reinforceOnKill && e.xp > 0 && Math.random() < 0.45){
+    setTimeout(()=>{
+      if(G.phase==='gameover'||G.phase==='won') return;
+      const spec={name:'IMC SPECTRE',type:'spectre',hp:40,max:40,dmg:[9,18],xp:0};
+      G.enemies.push(spec);
+      line('  ⚠ IMC REINFORCEMENT — spectre unit inbound!','err');
+      updateThreatGrid();
+    }, 300);
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   TERMINAL ENGINE
+══════════════════════════════════════════════════════ */
+const out = document.getElementById('out');
+const ci  = document.getElementById('cmdinput');
+let cmdHistory=[], histIdx=-1;
+
+function ts(){ const n=new Date(); return pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds()); }
+function esc(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function line(text, cls='', stamp=true){
+  const d=document.createElement('div');
+  d.className='ln'+(cls?' '+cls:'');
+  d.innerHTML=(stamp?`<span class="ts">[${ts()}]</span>`:'')+esc(text);
+  out.appendChild(d); scroll();
+}
+function html(markup){
+  const d=document.createElement('div'); d.className='ln'; d.innerHTML=markup; out.appendChild(d); scroll();
+}
+function blank(){ const d=document.createElement('div'); d.style.height='5px'; out.appendChild(d); scroll(); }
+function scroll(){ out.scrollTop=out.scrollHeight; }
+
+/* ══════════════════════════════════════════════════════
+   SIDEBAR UPDATERS
+══════════════════════════════════════════════════════ */
+function setStat(valId, barId, val, max){
+  const pct = clamp((val/max)*100, 0, 100);
+  document.getElementById(valId).textContent = Math.round(pct)+'%';
+  document.getElementById(barId).style.width = pct+'%';
+}
+
+function updateSidebar(){
+  // Hull color: red <25, amber <50, teal otherwise
+  const hullPct = (G.hull/G.maxHull)*100;
+  const hullBar = document.getElementById('bHull');
+  hullBar.className = hullPct < 25 ? 'pfill r' : hullPct < 50 ? 'pfill a' : 'pfill t';
+  setStat('sHull','bHull', G.hull, G.maxHull);
+  setStat('sShield','bShield', G.shield, G.maxShield);
+  setStat('sBatt','bBatt', G.battery, G.maxBattery);
+  setStat('sCore','bCore', G.core, G.maxCore);
+
+  // Header
+  document.getElementById('hScore').textContent = G.score;
+  document.getElementById('fTurn').textContent = G.turn;
+
+  updateAbilities();
+  updateThreatGrid();
+  updateVisualPanel();
+}
+
+function updateAbilities(){
+  // Grapple: 2-turn cooldown
+  const grappleEl = document.getElementById('aGrapple');
+  if(G.grappleCd > 0){
+    grappleEl.textContent = G.grappleCd+'cd';
+    grappleEl.className = 'ast cd';
+  } else {
+    grappleEl.textContent = G.battery >= 8 ? 'READY' : 'LOW PWR';
+    grappleEl.className = 'ast '+(G.battery >= 8 ? 'ready' : 'cd');
+  }
+
+  // Stim
+  const stimEl = document.getElementById('aStim');
+  if(G.stimmed > 0){
+    stimEl.textContent = 'ACTIVE:'+G.stimmed+'t';
+    stimEl.className = 'ast ready';
+  } else if(G.stimCharges > 0){
+    stimEl.textContent = G.stimCharges+'×CHG';
+    stimEl.className = 'ast ready';
+  } else {
+    stimEl.textContent = 'DEPLETED';
+    stimEl.className = 'ast dep';
+  }
+
+  // Stealth
+  const stealthEl = document.getElementById('aStealth');
+  if(G.cloakCd > 0){
+    stealthEl.textContent = G.cloakCd+'cd';
+    stealthEl.className = 'ast cd';
+  } else {
+    stealthEl.textContent = G.battery >= 20 ? 'READY' : 'LOW PWR';
+    stealthEl.className = 'ast '+(G.battery >= 20 ? 'ready' : 'cd');
+  }
+
+  // Deploy
+  const deployEl = document.getElementById('aDeploy');
+  deployEl.textContent = G.deployUsed ? 'USED' : 'READY';
+  deployEl.className = 'ast '+(G.deployUsed ? 'dep' : 'ready');
+
+  // Arc Wave (Core)
+  const coreEl = document.getElementById('aCore');
+  if(G.core >= 80){
+    coreEl.textContent = 'READY';
+    coreEl.className = 'ast ready pulse';
+  } else {
+    coreEl.textContent = Math.round(G.core)+'%';
+    coreEl.className = 'ast cd';
+  }
+}
+
+function updateThreatGrid(){
+  const alive = G.enemies.filter(e=>e.hp>0);
+  const titans   = alive.filter(e=>e.type==='titan'||e.type==='boss').length;
+  const reapers  = alive.filter(e=>e.type==='reaper').length;
+  const spectres = alive.filter(e=>e.type==='spectre').length;
+  const infantry = alive.filter(e=>e.type==='infantry').length;
+
+  function setRow(id, val, danger){
+    const el=document.getElementById(id);
+    el.textContent=val;
+    el.className='tcnt'+(danger?' r':val==='CLEAR'?' g':'');
+  }
+
+  setRow('tTitans',   titans>0   ? titans+' HOSTILE'  : 'CLEAR', titans>0);
+  setRow('tReapers',  reapers>0  ? reapers+' CLOSING' : 'CLEAR', reapers>0);
+  setRow('tSpectres', spectres>0 ? spectres+' ACTIVE' : 'CLEAR', false);
+  setRow('tInfantry', infantry>0 ? infantry+' DETECTED':'CLEAR', false);
+
+  const waveEl = document.getElementById('tWave');
+  if(G.phase === 'boot'){
+    waveEl.textContent = '—';
+    waveEl.className = 'tcnt';
+  } else {
+    waveEl.textContent = 'WAVE '+(G.wave+1);
+    waveEl.className = 'tcnt';
+  }
+
+  document.getElementById('hWave').textContent = G.phase==='boot' ? '—' : 'W'+(G.wave+1);
+  document.getElementById('hImc').textContent = alive.length > 0 ? alive.length+' ALIVE' : 'CLEAR';
+
+  const dot=document.getElementById('connDot');
+  const txt=document.getElementById('connTxt');
+  if(alive.filter(e=>e.type==='titan'||e.type==='boss').length > 0){
+    dot.className='dot r'; txt.style.color='var(--red)'; txt.textContent='LINK DEGRADED';
+    document.getElementById('fThreat').textContent='CRITICAL';
+  } else if(alive.filter(e=>e.type==='reaper').length > 0){
+    dot.className='dot a'; txt.style.color='var(--amber)'; txt.textContent='IMC JAMMING';
+    document.getElementById('fThreat').textContent='HIGH';
+  } else if(alive.length > 0){
+    dot.className='dot t'; txt.style.color='var(--teal)'; txt.textContent='SECURE LINK';
+    document.getElementById('fThreat').textContent='ELEVATED';
+  } else {
+    dot.className='dot t'; txt.style.color='var(--green)'; txt.textContent='SECTOR CLEAR';
+    document.getElementById('fThreat').textContent='MINIMAL';
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   GAME ENGINE
+══════════════════════════════════════════════════════ */
+function setPhaseDisplay(txt){
+  document.getElementById('tPhase').textContent = '['+txt+']';
+}
+
+function requirePlayerPhase(){
+  if(G.phase==='gameover'){
+    line('MISSION FAILED. Type "restart" to try again.','err'); return false;
+  }
+  if(G.phase==='won'){
+    line('MISSION COMPLETE. Type "restart" to play again.','ok'); return false;
+  }
+  if(G.phase!=='player'){
+    line('Waiting for turn...','wrn'); return false;
+  }
+  return true;
+}
+
+function applyDamage(dmg, source, shieldPierce=false){
+  if(G.cloaked){
+    line('  '+source+' — MISSED [CLOAK ACTIVE]','ok'); return;
+  }
+  if(G.grappled && Math.random()<0.65){
+    line('  '+source+' — EVADED [GRAPPLE REPOSITION]','ok'); return;
+  }
+  let d = G.defending ? Math.floor(dmg*0.4) : dmg;
+  if(G.defending && d < dmg) line('  [PARTICLE WALL] Damage reduced: '+dmg+' → '+d,'sys');
+
+  if(shieldPierce){
+    line('  [AP ROUND] Shield bypassed — direct hull impact!','err');
+  } else if(G.shield > 0){
+    const abs = Math.min(G.shield, d);
+    G.shield -= abs; d -= abs;
+    if(abs > 0 && d > 0) line('  '+source+' — shield absorbed '+abs+', hull takes '+d,'wrn');
+    else if(abs > 0)      line('  '+source+' — '+dmg+' dmg absorbed by shield','sys');
+  }
+  if(d > 0){
+    G.hull = Math.max(0, G.hull-d);
+    line('  HULL BREACH — '+d+' damage [hull: '+Math.round(G.hull)+'%]','err');
+  }
+  G.shield = Math.max(0, G.shield);
+  updateSidebar();
+  if(G.hull <= 20 && G.hull > 0) line('"Cooper — hull integrity critical. Recommend evasion."','brt');
+}
+
+function enemyTurn(){
+  if(G.phase==='gameover'||G.phase==='won') return;
+  setPhaseDisplay('ENEMY PHASE');
+  ci.disabled = true;
+
+  const alive = G.enemies.filter(e=>e.hp>0);
+  if(alive.length===0){ endTurnCleanup(); return; }
+
+  blank();
+  line('─── ENEMY PHASE ──────────────────────────────','dim');
+
+  const waveData = getWave(G.wave);
+  const attacker = alive[Math.floor(Math.random()*alive.length)];
+  const isBoss   = attacker.type==='boss';
+
+  // Boss enrage check
+  if(isBoss && !G.bossEnraged && attacker.hp <= attacker.max * 0.5){
+    G.bossEnraged = true;
+    const bossNm = attacker.name.split(' [')[0];
+    line('⚠ '+bossNm+' ENRAGE — Phase Shift engaged! Damage amplified!','err');
+    line('"You\'re more trouble than expected, Cooper."','brt');
+    pushFeed('⚠ '+bossNm+' ENRAGED — 1.6× DMG','err');
+    updateVisualPanel();
+  }
+
+  // Determine attack count
+  const spectreDouble = attacker.type==='spectre' &&
+    (waveData.eliteDouble ? true : Math.random()<0.35);
+  const attacks = isBoss ? 2 : (spectreDouble ? 2 : 1);
+
+  let delay = 0;
+  for(let i=0; i<attacks; i++){
+    let d = ri(attacker.dmg[0], attacker.dmg[1]);
+    if(isBoss && G.bossEnraged) d = Math.floor(d * 1.6);
+    const pierce = waveData.shieldPierce && Math.random() < 0.35;
+    const label = i===0
+      ? '▶ '+attacker.name+(G.bossEnraged?' [ENRAGED]':'')+' attacks!'
+      : '▶ '+attacker.name+' attacks again!';
+    const dmgCopy = d, pierceCopy = pierce;
+    setTimeout(()=>{
+      if(G.phase==='gameover') return;
+      line(label,'err');
+      applyDamage(dmgCopy, attacker.name, pierceCopy);
+      pushFeed('← '+attacker.name+' -'+dmgCopy+(pierceCopy?' [PIERCE]':''),'err');
+      if(checkGameOver()) return;
+    }, delay);
+    delay += 650;
+  }
+
+  // Boss: 15% chance to call a spectre
+  if(isBoss && Math.random()<0.15){
+    setTimeout(()=>{
+      if(G.phase==='gameover') return;
+      const bossNm2 = attacker.name.split(' [')[0];
+      const spec={name:bossNm2+' GUARD',type:'spectre',hp:40,max:40,dmg:[10,18],xp:0};
+      G.enemies.push(spec);
+      line(bossNm2+' deploys personal guard — SPECTRE INBOUND','err');
+      updateThreatGrid();
+    }, delay);
+    delay += 300;
+  }
+
+  setTimeout(()=>{
+    if(G.phase!=='gameover'&&G.phase!=='won') endTurnCleanup();
+  }, delay+100);
+}
+
+function endTurnCleanup(){
+  if(G.phase==='gameover'||G.phase==='won') return;
+  G.turn++;
+
+  // Reset per-turn flags
+  G.cloaked=false; G.defending=false; G.grappled=false;
+
+  // Passive regen
+  G.shield  = clamp(G.shield  + ri(6,12), 0, G.maxShield);
+  G.battery = clamp(G.battery + 5,        0, G.maxBattery);
+  G.core    = clamp(G.core    + ri(8,12), 0, G.maxCore);
+
+  if(G.stimmed>0){
+    G.stimmed--;
+    G.hull = clamp(G.hull+8, 0, G.maxHull);
+    if(G.stimmed===0) line('Stim effect fading.','wrn');
+  }
+  if(G.cloakCd>0) G.cloakCd--;
+  if(G.grappleCd>0) G.grappleCd--;
+
+  updateSidebar();
+  document.getElementById('fTurn').textContent = G.turn;
+
+  if(!checkWaveEnd()){
+    blank();
+    const alive=G.enemies.filter(e=>e.hp>0);
+    line('══ TURN '+(G.turn+1)+' ══  ['+alive.length+' enemies remain — battery: '+Math.round(G.battery)+'%]','dim');
+    G.phase='player';
+    setPhaseDisplay('PLAYER TURN');
+    ci.disabled=false;
+    ci.focus();
+  }
+}
+
+function checkGameOver(){
+  if(G.hull<=0){
+    G.phase='gameover';
+    ci.disabled=true;
+    setPhaseDisplay('PILOT KIA');
+    blank();
+    html(`<span class="err">╔══════════════════════════════════════════════════╗</span>`);
+    html(`<span class="err">║   PILOT JACK COOPER — KIA                        ║</span>`);
+    html(`<span class="err">║   Hull integrity: 0%                             ║</span>`);
+    html(`<span class="err">║   Wave: ${String('WAVE '+(G.wave+1)+' (∞)').padEnd(41)}║</span>`);
+    html(`<span class="err">║   Score: ${String(G.score).padEnd(40)}║</span>`);
+    html(`<span class="err">║   "Pilot down. Protocol 3 failed."               ║</span>`);
+    html(`<span class="err">║   Type "restart" to try again.                   ║</span>`);
+    html(`<span class="err">╚══════════════════════════════════════════════════╝</span>`);
+    ci.disabled=false;
+    return true;
+  }
+  return false;
+}
+
+function checkWaveEnd(){
+  if(G.phase==='gameover'||G.phase==='won') return true;
+  if(G.enemies.filter(e=>e.hp>0).length===0){
+    waveComplete(); return true;
+  }
+  return false;
+}
+
+async function waveComplete(){
+  G.phase='transition';
+  ci.disabled=true;
+  setPhaseDisplay('WAVE CLEAR');
+  blank();
+  line('ALL HOSTILES NEUTRALIZED — SECTOR CLEAR','ok');
+  line('"Well done, Cooper. Proceeding to next objective."','brt');
+  pushFeed('WAVE '+(G.wave+1)+' CLEARED','ok');
+
+  await sleep(500);
+  const hRestore=15, sRestore=30;
+  G.hull    = clamp(G.hull+hRestore,    0, G.maxHull);
+  G.shield  = clamp(G.shield+sRestore,  0, G.maxShield);
+  G.deployUsed=false;
+  line('Hull +'+hRestore+'%  |  Shield +'+sRestore+'%  |  Deploy reset','ok');
+  line('Score: '+G.score,'sys');
+  updateSidebar();
+
+  await sleep(1000);
+
+  G.wave++;
+  await sleep(400);
+  startWave(G.wave);
+}
+
+function winGame(){
+  G.phase='won';
+  setPhaseDisplay('MISSION COMPLETE');
+  blank();
+  html(`<span class="ok">╔══════════════════════════════════════════════════╗</span>`);
+  html(`<span class="ok">║   MISSION COMPLETE                               ║</span>`);
+  html(`<span class="ok">║   Fold Weapon neutralized. Slone eliminated.     ║</span>`);
+  html(`<span class="ok">║   Score: ${String(G.score).padEnd(40)}║</span>`);
+  html(`<span class="ok">║   "Protocol 3: Complete. It was an honor,        ║</span>`);
+  html(`<span class="ok">║    Cooper."  — BT-7274                           ║</span>`);
+  html(`<span class="ok">║   Type "restart" to play again.                  ║</span>`);
+  html(`<span class="ok">╚══════════════════════════════════════════════════╝</span>`);
+  ci.disabled=false;
+}
+
+function startWave(n){
+  const wv = getWave(n);
+  G.wave=n;
+  G.phase='player';
+  G.deployUsed=false;
+  G.bossEnraged=false;
+  G.enemies = wv.spawn.map(e=>({...e}));
+
+  blank();
+  line('══════════════════════════════════════════════════','dim');
+  line(wv.title,'err');
+  line('══════════════════════════════════════════════════','dim');
+  if(wv.note) line(wv.note,'wrn');
+  line(G.enemies.length+' hostile units inbound. Type "scan" to identify targets.','sys');
+  blank();
+  pushFeed('── WAVE '+(n+1)+' — '+wv.title,'dim');
+
+  setPhaseDisplay('PLAYER TURN');
+  ci.disabled=false;
+  ci.focus();
+  updateSidebar();
+  updateThreatGrid();
+}
+
+/* ══════════════════════════════════════════════════════
+   COMMANDS
+══════════════════════════════════════════════════════ */
+const BT_HITS  = ['"Direct hit, Cooper."','"Target acquired."','"Suppressive fire effective."','"Neutralizing."'];
+const BT_DMGS  = ['"Hull breach detected."','"Taking fire."','"Shields holding."','"Absorbing impact."'];
+
+const CMDS = {
+
+  help(){
+    blank();
+    html(`<span class="sys">╔══════════════════════════════════════════════════════════╗</span>`);
+    html(`<span class="sys">║</span>  <span class="wrn">COMBAT COMMANDS — BT-7274 TACTICAL INTERFACE</span>         <span class="sys">║</span>`);
+    html(`<span class="sys">╠══════════════════════════════════════════════════════════╣</span>`);
+    html(`<span class="sys">║</span>  <span class="err">ATTACK — triggers enemy response</span>                        <span class="sys">║</span>`);
+    [
+      ['fire [#]',  'Shoot enemy by number (default: lowest HP, 8 batt)'],
+      ['volley',    'Suppressive fire — hits ALL enemies (25 batt)'],
+      ['rodeo [#]', 'Rip titan/reaper battery — massive dmg, risky'],
+      ['core',      'BT Arc Wave — AoE blast (requires 80%+ core)'],
+    ].forEach(([c,d])=>html(`<span class="sys">║</span>  <span class="ok" style="display:inline-block;width:165px">${esc(c)}</span><span class="dim">${esc(d)}</span>`));
+    html(`<span class="sys">║</span>  <span class="err">DEFEND — modify incoming damage</span>                         <span class="sys">║</span>`);
+    [
+      ['defend',    'Particle wall — 60% dmg reduction this turn'],
+      ['stealth',   'Cloak — skip all enemy attacks (20 batt, 4cd)'],
+      ['grapple',   'Reposition — 65% dodge chance (8 batt)'],
+      ['eject',     'Emergency eject — shield drops but skip enemy'],
+    ].forEach(([c,d])=>html(`<span class="sys">║</span>  <span class="ok" style="display:inline-block;width:165px">${esc(c)}</span><span class="dim">${esc(d)}</span>`));
+    html(`<span class="sys">║</span>  <span class="err">SUPPORT — buffs and recovery</span>                            <span class="sys">║</span>`);
+    [
+      ['stim',      'Activate stim: +15 atk, hull regen 2 turns'],
+      ['repair',    'Spend 30 battery — restore 20 hull'],
+      ['deploy',    'BT support drop: +25 hull +25 shield (once/wave)'],
+      ['charge',    'Skip attack: +20 battery, +15 core (enemy acts)'],
+    ].forEach(([c,d])=>html(`<span class="sys">║</span>  <span class="ok" style="display:inline-block;width:165px">${esc(c)}</span><span class="dim">${esc(d)}</span>`));
+    html(`<span class="sys">║</span>  <span class="teal">FREE — no enemy response</span>                                <span class="sys">║</span>`);
+    [
+      ['scan',      'Show all enemies with HP bars'],
+      ['status',    'Full player + titan stats readout'],
+      ['clear',     'Clear terminal buffer'],
+    ].forEach(([c,d])=>html(`<span class="sys">║</span>  <span class="ok" style="display:inline-block;width:165px">${esc(c)}</span><span class="dim">${esc(d)}</span>`));
+    html(`<span class="sys">╚══════════════════════════════════════════════════════════╝</span>`);
+    blank();
+  },
+
+  fire(args){
+    if(!requirePlayerPhase()) return;
+    const alive=G.enemies.filter(e=>e.hp>0);
+    if(!alive.length){ line('No active enemies.','ok'); return; }
+
+    let target;
+    if(args[0]){
+      const n=parseInt(args[0]);
+      if(isNaN(n)||n<1||n>alive.length){ line('Invalid target #'+args[0]+'. Use 1–'+alive.length+'.','err'); return; }
+      target=alive[n-1];
+    } else {
+      target=alive.reduce((a,b)=>a.hp<b.hp?a:b);
+    }
+
+    G.phase='enemy';
+    ci.disabled=true;
+    G.battery=clamp(G.battery-8, 0, G.maxBattery);
+
+    const baseDmg = ri(15,35);
+    const stimBonus = G.stimmed>0 ? 15 : 0;
+    const dmg = baseDmg+stimBonus;
+    flashCard(target);
+    target.hp = Math.max(0, target.hp-dmg);
+
+    blank();
+    line('[FIRE] → '+target.name+(G.stimmed>0?' [STIM BOOST]':''),'wrn');
+    line('  Hit! — '+dmg+' damage'+(stimBonus?' (+'+stimBonus+' stim)':''),'ok');
+    line('  '+target.name+': ['+hpBar(target.hp,target.max)+'] '+target.hp+'/'+target.max+' HP','sys');
+    line('  '+BT_HITS[Math.floor(Math.random()*BT_HITS.length)],'brt');
+    pushFeed('→ '+target.name+' -'+dmg+'dmg'+(target.hp<=0?' [DEAD]':''),'ok');
+
+    if(target.hp<=0){
+      line('  '+target.name+' DESTROYED!','err');
+      onEnemyKilled(target);
+      updateSidebar(); updateThreatGrid();
+      if(checkWaveEnd()) return;
+    }
+    updateSidebar(); updateThreatGrid();
+    setTimeout(()=>enemyTurn(), 400);
+  },
+
+  attack(args){ CMDS.fire(args); },
+
+  volley(args){
+    if(!requirePlayerPhase()) return;
+    if(G.battery<25){ line('VOLLEY: INSUFFICIENT BATTERY — requires 25%','err'); return; }
+    const alive=G.enemies.filter(e=>e.hp>0);
+    if(!alive.length){ line('No active enemies.','ok'); return; }
+
+    G.phase='enemy'; ci.disabled=true;
+    G.battery-=25;
+
+    blank();
+    line('[VOLLEY] R-201 — suppressive fire on all targets!','wrn');
+
+    let killed=0;
+    alive.forEach(e=>{
+      const dmg=ri(8,22)+(G.stimmed>0?8:0);
+      flashCard(e);
+      e.hp=Math.max(0,e.hp-dmg);
+      line('  '+e.name+' — '+dmg+' dmg  ['+hpBar(e.hp,e.max)+'] '+e.hp+'/'+e.max,(e.hp<=0?'err':'sys'));
+      if(e.hp<=0){ onEnemyKilled(e, true); killed++; }
+    });
+    if(killed){ line('  '+killed+' unit(s) eliminated!','ok'); pushFeed('VOLLEY — '+killed+' destroyed','ok'); }
+    else{ pushFeed('VOLLEY — '+alive.length+' targets suppressed','wrn'); }
+
+    updateSidebar(); updateThreatGrid();
+    if(checkWaveEnd()) return;
+    setTimeout(()=>enemyTurn(), 500);
+  },
+
+  defend(args){
+    if(!requirePlayerPhase()) return;
+    G.phase='enemy'; ci.disabled=true;
+    G.defending=true;
+    G.shield=clamp(G.shield+12, 0, G.maxShield);
+    blank();
+    line('[DEFEND] Particle wall deployed — 60% damage reduction!','sys');
+    line('  Shield boosted +12%','ok');
+    line('"Cooper. Shields nominal."','brt');
+    updateSidebar();
+    setTimeout(()=>enemyTurn(), 400);
+  },
+
+  stim(args){
+    if(!requirePlayerPhase()) return;
+    if(G.stimCharges<=0){ line('STIM: DEPLETED — no charges remaining','err'); return; }
+    if(G.battery<15){ line('STIM: INSUFFICIENT BATTERY — requires 15%','err'); return; }
+    G.phase='enemy'; ci.disabled=true;
+    G.stimCharges--; G.battery-=15; G.stimmed=2;
+    blank();
+    line('[STIM] Combat stimulants injected!','ok');
+    line('  +15 attack bonus | +8 hull regen/turn for 2 turns','sys');
+    line('  Charges remaining: '+G.stimCharges,'wrn');
+    updateSidebar();
+    setTimeout(()=>enemyTurn(), 400);
+  },
+
+  stealth(args){
+    if(!requirePlayerPhase()) return;
+    if(G.cloakCd>0){ line('STEALTH: COOLING DOWN — '+G.cloakCd+' turns remaining','err'); return; }
+    if(G.battery<20){ line('STEALTH: INSUFFICIENT BATTERY — requires 20%','err'); return; }
+    G.phase='enemy'; ci.disabled=true;
+    G.cloaked=true; G.cloakCd=4; G.battery-=20;
+    blank();
+    line('[STEALTH] Optical camouflage active — enemy attacks will miss!','ok');
+    line('  Cooldown: 4 turns after this turn','wrn');
+    updateSidebar();
+    setTimeout(()=>enemyTurn(), 400);
+  },
+
+  cloak(args){ CMDS.stealth(args); },
+
+  grapple(args){
+    if(!requirePlayerPhase()) return;
+    if(G.grappleCd>0){ line('GRAPPLE: COOLING DOWN — '+G.grappleCd+' turns remaining','err'); return; }
+    if(G.battery<8){ line('GRAPPLE: INSUFFICIENT BATTERY — requires 8%','err'); return; }
+    G.phase='enemy'; ci.disabled=true;
+    G.grappled=true; G.grappleCd=2;
+    G.battery=clamp(G.battery-8, 0, G.maxBattery);
+    blank();
+    line('[GRAPPLE] Hook fired — repositioning!','sys');
+    line('  65% chance to evade all incoming attacks this turn.','ok');
+    line('  Cooldown: 2 turns','wrn');
+    updateSidebar();
+    setTimeout(()=>enemyTurn(), 400);
+  },
+
+  eject(args){
+    if(!requirePlayerPhase()) return;
+    G.phase='enemy'; ci.disabled=true;
+    G.cloaked=true; // skip enemy attack
+    const shieldLost=Math.min(G.shield,35);
+    G.shield=Math.max(0, G.shield-shieldLost);
+    blank();
+    line('[EJECT] Emergency pilot ejection — BT covering extraction!','wrn');
+    line('  Ejection clears enemy attack this turn.','ok');
+    line('  Shield lost during fall: -'+shieldLost+'%','err');
+    line('"Good luck, Cooper."','brt');
+    updateSidebar();
+    setTimeout(()=>enemyTurn(), 500);
+  },
+
+  rodeo(args){
+    if(!requirePlayerPhase()) return;
+    const alive=G.enemies.filter(e=>e.hp>0);
+    const valid=alive.filter(e=>e.type==='titan'||e.type==='reaper'||e.type==='boss');
+    if(!valid.length){ line('RODEO: NO VALID TARGETS — requires Titan, Reaper, or Apex','err'); return; }
+
+    let target;
+    if(args[0]){
+      const n=parseInt(args[0]);
+      if(isNaN(n)||n<1||n>alive.length){ line('Invalid target #'+args[0]+'.','err'); return; }
+      target=alive[n-1];
+      if(!['titan','reaper','boss'].includes(target.type)){ line('RODEO: INVALID TARGET — must be Titan or Reaper class','err'); return; }
+    } else {
+      target=valid[0];
+    }
+
+    G.phase='enemy'; ci.disabled=true;
+    blank();
+    line('[RODEO] Initiating rodeo protocol on '+target.name+'...','wrn');
+    setTimeout(()=>line('  Grapple hook fired — LOCKED on target chassis!','ok'), 300);
+    setTimeout(()=>line('  Ascending to battery access panel...','sys'), 700);
+    setTimeout(()=>{
+      if(G.phase==='gameover') return;
+      const fail=Math.random()<0.35;
+      if(fail){
+        line('  RODEO FAILED — enemy pilot intervened!','err');
+        pushFeed('RODEO FAIL — counter hit','err');
+        const pen=25;
+        applyDamage(pen, target.name+' [COUNTER]');
+        updateSidebar();
+        if(checkGameOver()) return;
+      } else {
+        const dmg=ri(50,90);
+        flashCard(target);
+        target.hp=Math.max(0, target.hp-dmg);
+        line('  Battery EXTRACTED — '+dmg+' damage!','ok');
+        line('  '+target.name+': ['+hpBar(target.hp,target.max)+'] '+target.hp+'/'+target.max,'sys');
+        pushFeed('RODEO → '+target.name+' -'+dmg+'dmg','ok');
+        G.score+=Math.floor(dmg/2);
+        G.core=clamp(G.core+10, 0, G.maxCore);
+        if(target.hp<=0){
+          line('  '+target.name+' DESTROYED!','err');
+          onEnemyKilled(target);
+          updateSidebar(); updateThreatGrid();
+          if(checkWaveEnd()) return;
+        }
+      }
+      updateSidebar(); updateThreatGrid();
+      setTimeout(()=>enemyTurn(), 400);
+    }, 1400);
+  },
+
+  core(args){
+    if(!requirePlayerPhase()) return;
+    if(G.core<80){ line('CORE: INSUFFICIENT — '+Math.round(G.core)+'% (requires 80%)','err'); return; }
+
+    G.phase='enemy'; ci.disabled=true;
+    const alive=G.enemies.filter(e=>e.hp>0);
+    G.core=0;
+
+    blank();
+    line('BT ARC WAVE — VANGUARD CORE ACTIVATED','err');
+    line('"Cooper. Firing Arc Wave. Stand clear."','brt');
+
+    let delay=400;
+    alive.forEach(e=>{
+      setTimeout(()=>{
+        if(G.phase==='gameover') return;
+        const dmg=ri(80,140);
+        flashCard(e);
+        e.hp=Math.max(0, e.hp-dmg);
+        html(`<span class="ts">[${ts()}]</span><span class="${e.hp<=0?'err':'wrn'}">  ⚡ ${esc(e.name)} — ${dmg} damage${e.hp<=0?' [DESTROYED]':''}</span>`);
+        if(e.hp<=0){ onEnemyKilled(e, true); pushFeed('⚡ ARC: '+e.name+' DESTROYED','err'); }
+        else{ pushFeed('⚡ ARC: '+e.name+' -'+dmg,'wrn'); }
+        updateThreatGrid();
+      }, delay);
+      delay+=350;
+    });
+
+    setTimeout(()=>{
+      if(G.phase==='gameover') return;
+      updateSidebar();
+      if(!checkWaveEnd()) setTimeout(()=>enemyTurn(), 400);
+    }, delay+100);
+  },
+
+  charge(args){
+    if(!requirePlayerPhase()) return;
+    G.phase='enemy'; ci.disabled=true;
+    G.battery=clamp(G.battery+20, 0, G.maxBattery);
+    G.core=clamp(G.core+15, 0, G.maxCore);
+    blank();
+    line('[CHARGE] Diverting power — vulnerable during charge!','wrn');
+    line('  Battery +20%  |  Core +15%','ok');
+    updateSidebar();
+    setTimeout(()=>enemyTurn(), 400);
+  },
+
+  repair(args){
+    if(!requirePlayerPhase()) return;
+    if(G.battery<30){ line('REPAIR: INSUFFICIENT BATTERY — requires 30%','err'); return; }
+    if(G.hull>=G.maxHull){ line('REPAIR: Hull already at maximum','wrn'); return; }
+    G.phase='enemy'; ci.disabled=true;
+    G.battery-=30;
+    const healed=Math.min(20, G.maxHull-G.hull);
+    G.hull+=healed;
+    blank();
+    line('[REPAIR] Emergency power diverted to hull — +'+healed+'%','ok');
+    line('  Battery -30%  |  Hull: '+Math.round(G.hull)+'%','sys');
+    updateSidebar();
+    setTimeout(()=>enemyTurn(), 400);
+  },
+
+  deploy(args){
+    if(!requirePlayerPhase()) return;
+    if(G.deployUsed){ line('DEPLOY: UNAVAILABLE — already deployed this wave','err'); return; }
+    G.phase='enemy'; ci.disabled=true;
+    G.deployUsed=true;
+    blank();
+    line('[DEPLOY] Requesting Titan support — orbital drop incoming!','wrn');
+    setTimeout(()=>{
+      G.hull   = clamp(G.hull+25,   0, G.maxHull);
+      G.shield = clamp(G.shield+25, 0, G.maxShield);
+      line('  BT-7274 support fire — hull +25%  |  shield +25%','ok');
+      line('"Cooper. I am here."','brt');
+      updateSidebar();
+    }, 800);
+    setTimeout(()=>enemyTurn(), 1200);
+  },
+
+  scan(args){
+    const alive=G.enemies.filter(e=>e.hp>0);
+    blank();
+    line('BATTLEFIELD SCAN — '+(G.phase!=='boot'?getWave(G.wave).title:'INITIALIZING'),'sys');
+    line('──────────────────────────────────────────────────','dim');
+    if(!alive.length){
+      line('No active threats.','ok');
+    } else {
+      alive.forEach((e,i)=>{
+        html(`<span class="ts">[${ts()}]</span><span class="wrn">#${i+1}</span> <span class="brt" style="display:inline-block;min-width:170px">${esc(e.name)}</span><span class="ok">[${hpBar(e.hp,e.max)}]</span> <span class="sys">${e.hp}/${e.max}</span>`);
+      });
+    }
+    line('──────────────────────────────────────────────────','dim');
+    line('Score: '+G.score+'  |  Turn: '+G.turn+'  |  Wave: '+(G.phase!=='boot'?'WAVE '+(G.wave+1)+' (∞)':'—'),'dim');
+    blank();
+  },
+
+  status(args){
+    blank();
+    line('FULL SYSTEM STATUS','wrn');
+    line('══════════════════════════════════════','dim');
+    line('Hull Integrity : '+Math.round(G.hull)+'%',(G.hull<25?'err':G.hull<50?'wrn':'ok'));
+    line('Shield         : '+Math.round(G.shield)+'%','sys');
+    line('Battery        : '+Math.round(G.battery)+'%','sys');
+    line('Core Charge    : '+Math.round(G.core)+'%'+(G.core>=80?' [ARC WAVE READY]':''), G.core>=80?'ok':'sys');
+    line('──────────────────────────────────────','dim');
+    line('Stim Charges   : '+G.stimCharges+(G.stimmed>0?' [ACTIVE: '+G.stimmed+'t]':''), 'sys');
+    line('Grapple        : '+(G.grappleCd>0?G.grappleCd+'t cooldown':'READY'),(G.grappleCd>0?'wrn':'ok'));
+    line('Stealth        : '+(G.cloakCd>0?G.cloakCd+'t cooldown':'READY'),(G.cloakCd>0?'wrn':'ok'));
+    line('Kill Streak    : '+G.killStreak+' (next stim @ '+(Math.ceil((G.killStreak+1)/3)*3)+')','dim');
+    line('Deploy         : '+(G.deployUsed?'USED (resets next wave)':'READY'),(G.deployUsed?'wrn':'ok'));
+    line('──────────────────────────────────────','dim');
+    line('Turn           : '+G.turn,'dim');
+    line('Wave           : '+(G.phase!=='boot'?'WAVE '+(G.wave+1)+' (∞)':'—'),'dim');
+    line('Score          : '+G.score,'sys');
+    blank();
+  },
+
+  titan(args){
+    blank();
+    line('VANGUARD-CLASS TITAN — BT-7274','wrn');
+    line('══════════════════════════════','dim');
+    line('Designation : BT-7274 (Vanguard prototype)','sys');
+    line('Weapons     : Charge Rifle | Particle Wall | Arc Wave','sys');
+    line('Core        : '+Math.round(G.core)+'% charged'+(G.core>=80?' — READY TO FIRE':''),'sys');
+    line('Bond        : Jack Cooper — OPTIMAL','ok');
+    line('"Trust me."','brt');
+    blank();
+  },
+
+  protocol(args){
+    blank();
+    line('ACTIVE PROTOCOLS — BT-7274','wrn');
+    line('══════════════════════════════','dim');
+    line('PROTOCOL 1: Link up with your Pilot.','dim');
+    line('[COMPLETE]  Linked with Pilot Jack Cooper','ok');
+    line('PROTOCOL 2: Uphold the mission of the Militia Rifleman.','dim');
+    line('[ACTIVE]    Eliminate IMC forces — wave '+( G.phase!=='boot' ? (G.wave+1)+' of ∞' : '—'),'sys');
+    line('PROTOCOL 3: Protect the Pilot.','dim');
+    line('[ENFORCED]  Hull '+Math.round(G.hull)+'% — monitoring.','brt');
+    blank();
+  },
+
+  ps(args){
+    blank();
+    line('TITAN SUBSYSTEM PROCESSES','wrn');
+    html(`<span class="dim">PID    SUBSYSTEM              CPU     MEM     STATE</span>`);
+    line('══════════════════════════════════════════════════','dim');
+    [
+      ['1001','Shield Regen',     ' 8.2%','128M','RUNNING'],
+      ['1002','Hull Monitor',     ' 2.1%',' 32M','RUNNING'],
+      ['1003','Tactical Overlay', '14.7%','256M','RUNNING'],
+      ['1004','Neural Uplink',    ' 3.4%',' 64M','RUNNING'],
+      ['1005','Core Accumulator', '19.6%','512M','RUNNING'],
+      ['1006','Ordnance Manager', ' 6.8%','128M','RUNNING'],
+      ['1007','Pilot Safety Sys', ' 1.2%',' 16M','RUNNING'],
+    ].forEach(([pid,name,cpu,mem,s])=>{
+      html(`<span class="ts">[${ts()}]</span><span class="sys">${pid.padEnd(7)}</span><span style="color:var(--bright)">${name.padEnd(22)}</span><span class="wrn">${cpu.padEnd(8)}</span><span style="color:var(--text)">${mem.padEnd(8)}</span><span class="ok">${s}</span>`);
+    });
+    blank();
+  },
+
+  clear(){ out.innerHTML=''; },
+
+  restart(){
+    G.hull=100; G.maxHull=100; G.shield=65; G.maxShield=100;
+    G.battery=88; G.maxBattery=100; G.core=0; G.maxCore=100;
+    G.stimmed=0; G.cloaked=false; G.defending=false; G.grappled=false;
+    G.cloakCd=0; G.grappleCd=0; G.killStreak=0; G.stimCharges=3; G.deployUsed=false;
+    G.wave=0; G.enemies=[]; G.score=0; G.turn=0; G.phase='boot'; G.bossEnraged=false;
+    waveCache.length=0;
+    // Clear terminal log
+    out.innerHTML='';
+    // Clear combat feed
+    feedLog.length=0;
+    renderFeed();
+    // Clear visual panel
+    const ws=document.getElementById('vpWaveStrip');
+    if(ws) ws.innerHTML='';
+    const eg=document.getElementById('vpEnemies');
+    if(eg) eg.innerHTML='<div style="color:rgba(90,138,132,.35);font-size:9px;font-family:Rajdhani,sans-serif;padding:4px 0">Awaiting deployment...</div>';
+    // Flush sidebar to fresh values immediately
+    updateSidebar();
+    ci.disabled=false;
+    boot();
+  },
+};
+
+/* INPUT HANDLER */
+ci.addEventListener('keydown', e=>{
+  if(e.key==='Enter'){
+    const raw=ci.value.trim(); if(!raw) return;
+    cmdHistory.unshift(raw); histIdx=-1;
+    line('BT-7274 [COOPER]> '+raw,'cmd');
+    const parts=raw.split(/\s+/);
+    const fn=CMDS[parts[0].toLowerCase()];
+    fn ? fn(parts.slice(1)) : line('Unknown command: "'+parts[0]+'". Type "help".','err');
+    ci.value='';
+  }
+  if(e.key==='ArrowUp'){ e.preventDefault(); if(histIdx<cmdHistory.length-1){histIdx++; ci.value=cmdHistory[histIdx];} }
+  if(e.key==='ArrowDown'){ e.preventDefault(); histIdx>0?(histIdx--,ci.value=cmdHistory[histIdx]):(histIdx=-1,ci.value=''); }
+});
+document.addEventListener('click',()=>{ if(!ci.disabled) ci.focus(); });
+
+/* ══════════════════════════════════════════════════════
+   BATTERY REROUTE MINI-GAME  (success = +20 battery)
+══════════════════════════════════════════════════════ */
+const CODES=['7A','3F','B2','C9','4E','D1','88','F5','2C','6B'];
+const GSIZE=6;
+let grid=[],target=[],binput=[],mode='row',curRow=0,curCol=0;
+let bInt,bLeft=0;
+
+function genBatt(){
+  grid=Array.from({length:GSIZE},()=>Array.from({length:GSIZE},()=>CODES[Math.floor(Math.random()*CODES.length)]));
+  target=Array.from({length:4},()=>CODES[Math.floor(Math.random()*CODES.length)]);
+  binput=[]; mode='row'; curRow=0; curCol=0;
+  renderBatt(); startBattTimer();
+}
+function renderBatt(){
+  const mat=document.getElementById('battMatrix');
+  const seq=document.getElementById('bSeq');
+  const inp=document.getElementById('bInput');
+  document.getElementById('bMode').textContent=mode.toUpperCase();
+  mat.innerHTML='';
+  mat.style.gridTemplateColumns=`repeat(${GSIZE},1fr)`;
+  grid.forEach((row,r)=>row.forEach((val,c)=>{
+    const el=document.createElement('div');
+    el.className='bcell';
+    el.textContent=val==='██'?'██':val;
+    if(val==='██') el.classList.add('used');
+    else if((mode==='row'&&r===curRow)||(mode==='col'&&c===curCol)){
+      el.classList.add('hi');
+      el.addEventListener('click',()=>pickCell(r,c,val));
+    }
+    mat.appendChild(el);
+  }));
+  seq.innerHTML='';
+  target.forEach(v=>{const d=document.createElement('div');d.className='bslot f';d.textContent=v;seq.appendChild(d);});
+  inp.innerHTML='';
+  for(let i=0;i<5;i++){const d=document.createElement('div');d.className='bslot'+(binput[i]?' f':'');d.textContent=binput[i]||'—';inp.appendChild(d);}
+}
+function pickCell(r,c,val){
+  if(val==='██') return;
+  if(mode==='row'&&r!==curRow) return;
+  if(mode==='col'&&c!==curCol) return;
+  binput.push(val); grid[r][c]='██';
+  mode==='row'?(mode='col',curCol=c):(mode='row',curRow=r);
+  renderBatt();
+  if(binput.length>=5){
+    const win=target.every((v,i)=>binput[i]===v);
+    clearInterval(bInt); document.getElementById('bTimer').textContent='00:00';
+    if(win){
+      G.battery=clamp(G.battery+20,0,G.maxBattery);
+      line('BATTERY REROUTE: SUCCESS — +20% battery restored','ok');
+      updateSidebar();
+    } else {
+      G.battery=clamp(G.battery-10,0,G.maxBattery);
+      line('BATTERY REROUTE: MISMATCH — IMC lockout, -10% battery','err');
+      updateSidebar();
+    }
+    setTimeout(genBatt,1600);
+  }
+}
+function startBattTimer(){
+  clearInterval(bInt); bLeft=50;
+  bInt=setInterval(()=>{
+    bLeft--;
+    document.getElementById('bTimer').textContent=pad(~~(bLeft/60))+':'+pad(bLeft%60);
+    if(bLeft<=0){
+      clearInterval(bInt);
+      G.battery=clamp(G.battery-10,0,G.maxBattery);
+      line('BATTERY REROUTE: TIMED OUT — -10% battery','err');
+      updateSidebar();
+      genBatt();
+    }
+  },1000);
+}
+function resetBatt(){ clearInterval(bInt); document.getElementById('bTimer').textContent='00:00'; genBatt(); }
+
+/* ══════════════════════════════════════════════════════
+   VISUAL PANEL + COMBAT FEED
+══════════════════════════════════════════════════════ */
+const TYPE_ICO = {infantry:'☰', spectre:'◈', reaper:'◆', titan:'⬡', boss:'⚠'};
+const feedLog = [];
+
+function pushFeed(text, cls='sys'){
+  feedLog.push({t:ts(), text, cls});
+  if(feedLog.length > 14) feedLog.shift();
+  renderFeed();
+}
+
+function renderFeed(){
+  const el = document.getElementById('vpFeed');
+  if(!el) return;
+  el.innerHTML='';
+  feedLog.forEach(e=>{
+    const d=document.createElement('div');
+    d.className='cfe '+e.cls;
+    d.innerHTML=`<span class="cfe-ts">[${e.t}]</span><span class="cfe-txt">${esc(e.text)}</span>`;
+    el.appendChild(d);
+  });
+  el.scrollTop=el.scrollHeight;
+}
+
+function updateVisualPanel(){
+  // Wave strip
+  const ws=document.getElementById('vpWaveStrip');
+  if(ws){
+    if(G.phase==='boot'){ ws.innerHTML=''; }
+    else {
+      const alive=G.enemies.filter(e=>e.hp>0).length;
+      const w=getWave(G.wave);
+      const mods=[];
+      if(w.eliteDouble) mods.push('ELITE DBL');
+      if(w.shieldPierce) mods.push('AP ROUNDS');
+      if(w.reinforceOnKill) mods.push('REINFORCE');
+      if(G.bossEnraged) mods.push('⚠ ENRAGED');
+      ws.innerHTML=`<div class="wstrip">
+        <div class="ws-title">WAVE ${G.wave+1} — ${alive} REMAINING</div>
+        ${mods.length?`<div class="ws-mod">MOD: <span>${mods.join(' | ')}</span></div>`:''}
+      </div>`;
+    }
+  }
+
+  // Enemy cards
+  const eg=document.getElementById('vpEnemies');
+  if(!eg) return;
+  if(G.enemies.length===0){
+    eg.innerHTML='<div style="color:rgba(90,138,132,.35);font-size:9px;font-family:Rajdhani,sans-serif;padding:4px 0">No active contacts</div>';
+    return;
+  }
+  const aliveList=G.enemies.filter(e=>e.hp>0);
+  G.enemies.forEach((e,i)=>{
+    let card=document.getElementById('ec-'+i);
+    const isDead=e.hp<=0;
+    const pct=clamp(e.hp/e.max,0,1);
+    const isBoss=e.type==='boss';
+    const fillCls=pct<0.25?'lo':pct<0.6?'md':'hi';
+    const aliveIdx=aliveList.indexOf(e);
+    const numLabel=isDead?'✗':'#'+(aliveIdx+1);
+    let stTxt, stCls;
+    if(isDead){stTxt='DESTROYED';stCls='dead';}
+    else if(pct<0.25){stTxt='CRITICAL';stCls='crit';}
+    else if(pct<0.6){stTxt='DAMAGED';stCls='dmg';}
+    else{stTxt='ACTIVE';stCls='alive';}
+    const ico=TYPE_ICO[e.type]||'◇';
+
+    if(!card){
+      card=document.createElement('div');
+      card.id='ec-'+i;
+      eg.appendChild(card);
+    }
+    // Preserve hit animation class if active
+    const wasHit=card.classList.contains('ec-hit');
+    card.className='ec'+(isDead?' dead':'')+(isBoss?' boss-ec':'')+(wasHit?' ec-hit':'');
+    card.innerHTML=`
+      <div class="ec-top">
+        <div class="ec-ico${isBoss?' boss-ico':''}">${ico}</div>
+        <div class="ec-num">${numLabel}</div>
+        <div class="ec-name${isBoss?' boss-nm':''}">${esc(e.name)}</div>
+      </div>
+      <div class="ec-bar"><div class="ec-fill ${fillCls}" style="width:${Math.round(pct*100)}%"></div></div>
+      <div class="ec-foot">
+        <div class="ec-hp">${Math.max(0,e.hp)}/${e.max}</div>
+        <div class="ec-st ${stCls}">${stTxt}</div>
+      </div>`;
+  });
+}
+
+function flashCard(enemyRef){
+  const i=G.enemies.indexOf(enemyRef);
+  if(i<0) return;
+  const card=document.getElementById('ec-'+i);
+  if(!card) return;
+  card.classList.remove('ec-hit');
+  void card.offsetWidth;
+  card.classList.add('ec-hit');
+  setTimeout(()=>card.classList.remove('ec-hit'), 420);
+}
+
+/* INFO MODAL */
+function openInfo(){ document.getElementById('infoModal').classList.add('open'); }
+function closeInfo(){ document.getElementById('infoModal').classList.remove('open'); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeInfo(); });
+document.getElementById('infoModal').addEventListener('click', e=>{ if(e.target===document.getElementById('infoModal')) closeInfo(); });
+
+/* ══════════════════════════════════════════════════════
+   BOOT SEQUENCE
+══════════════════════════════════════════════════════ */
+async function boot(){
+  setPhaseDisplay('INITIALIZING');
+  const art=`
+  ██████╗ ████████╗       ███████╗██████╗ ███╗   ██╗
+  ██╔══██╗╚══██╔══╝       ██╔════╝╚════██╗████╗  ██║
+  ██████╔╝   ██║    █████╗███████╗ █████╔╝██╔██╗ ██║
+  ██╔══██╗   ██║    ╚════╝╚════██║██╔═══╝ ██║╚██╗██║
+  ██████╔╝   ██║          ███████║███████╗██║ ╚████║
+  ╚═════╝    ╚═╝          ╚══════╝╚══════╝╚═╝  ╚═══╝
+                  VANGUARD NEURAL LINK v7.4.2`;
+  const artEl=document.createElement('div');
+  artEl.className='asc ln'; artEl.textContent=art;
+  out.appendChild(artEl); scroll();
+
+  await sleep(300);
+  const msgs=[
+    [60,  '══════════════════════════════════════════════════════','dim'],
+    [120, 'INITIALIZING VANGUARD-CLASS TITAN SYSTEMS...','sys'],
+    [80,  'Neural uplink hardware: DETECTED [OK]','ok'],
+    [90,  'Loading pilot profile: JACK COOPER [OK]','ok'],
+    [150, 'Establishing Pilot-Titan bond...','sys'],
+    [200, 'Bond synchronization: 98.4% — OPTIMAL [OK]','ok'],
+    [100, 'Tactical overlay: ACTIVE [OK]','ok'],
+    [80,  'Ordnance systems: ARMED [OK]','ok'],
+    [220, 'WARNING: IMC signal detected — SECTOR TYPHON-7','wrn'],
+    [80,  'Apex Predators squad signature confirmed','wrn'],
+    [300, 'WARNING: Fold Weapon signal trace — origin UNKNOWN','err'],
+    [120, 'Countermeasures: ENGAGED [OK]','ok'],
+    [80,  'Encryption: VANGUARD-AES-512 [OK]','ok'],
+    [60,  '══════════════════════════════════════════════════════','dim'],
+    [100, '"Hello, Cooper. I am BT-7274. Trust me."','brt'],
+    [200, 'COMBAT ENGAGEMENT IMMINENT. Type "help" for commands.','wrn'],
+    [60,  '══════════════════════════════════════════════════════','dim'],
+  ];
+  for(const [delay,text,cls] of msgs){
+    await sleep(delay);
+    line(text,cls);
+  }
+  blank();
+  await sleep(400);
+  startWave(0);
+}
+
+/* INIT */
+genBatt();
+boot();
+</script>
+</body>
+</html>
