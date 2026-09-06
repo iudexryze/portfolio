@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overclock</title>
+<meta name="description" content="An arena dodger where scoring is what speeds the arena up. Every packet you take raises the clock, and the throttle that saves you costs you the clock.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#131211; --sunken:#0E0D0C; --rule:#322E28; --dim:#8C8577; --mid:#B4AC9D;
+  --f:'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%; overscroll-behavior:none}
+body{
+  margin:0; background:var(--sunken); color:var(--mid);
+  font-family:var(--f); font-size:14px;
+  display:flex; flex-direction:column; overflow:hidden;
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+}
+.stage{position:relative; flex:1 1 auto; min-height:0}
+canvas{
+  position:absolute; inset:0; width:100%; height:100%; display:block;
+  touch-action:none; user-select:none; cursor:crosshair;
+}
+.hint{
+  flex:0 0 auto; margin:0; padding:7px 10px 9px; text-align:center;
+  font-size:10.5px; letter-spacing:.09em; color:var(--dim);
+  text-transform:uppercase; border-top:1px solid var(--rule); background:var(--ink);
+}
+@media (max-height:420px){ .hint{display:none} }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <canvas id="c" aria-label="Overclock, an arena dodging game"></canvas>
+</div>
+<p class="hint">drag to move &middot; second finger or SHIFT throttles &middot; R restart</p>
+
+<script>
+(function () {
+'use strict';
+
+var stage = document.getElementById('stage');
+var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+var FONT = "'IBM Plex Mono', ui-monospace, Consolas, monospace";
+var COL = { amber:'#F0902E', live:'#86C232', bad:'#D9484B', bone:'#EDE8DE', mid:'#B4AC9D', dim:'#8C8577' };
+
+/* ── Viewport ──────────────────────────────────────────────────────
+   The logical arena holds a constant area and takes the aspect of the
+   frame, so a phone held upright gets a tall narrow arena rather than
+   a letterboxed strip — and since one logical pixel is worth about the
+   same everywhere, the speeds and radii keep their tuning.
+   UI counter-scales the HUD: on a small screen the text has to grow in
+   logical units to stay the same physical size. */
+var AREA = 960 * 600;
+var W = 960, H = 600, dpr = 1, pxScale = 1, UI = 1;
+
+function fit() {
+  var r = stage.getBoundingClientRect();
+  var cw = Math.max(240, Math.round(r.width)), ch = Math.max(240, Math.round(r.height));
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = cw * dpr; cv.height = ch * dpr;
+
+  var oldW = W, oldH = H;
+  var k = Math.sqrt(AREA / (cw * ch));
+  W = cw * k; H = ch * k;
+  pxScale = 1 / k;
+  UI = Math.max(0.85, Math.min(1.75, k));
+
+  /* Everything already on the board is in logical pixels, so a reshape
+     has to carry it across — otherwise rotating the phone teleports the
+     faults on top of you. */
+  if (oldW && (oldW !== W || oldH !== H)) reflow(W / oldW, H / oldH);
+}
+
+function reflow(sx, sy) {
+  var lists = [faults, parts, trail], i, j;
+  if (player) { player.x *= sx; player.y *= sy; }
+  if (packet) { packet.x *= sx; packet.y *= sy; }
+  if (pointer) { pointer.x *= sx; pointer.y *= sy; }
+  for (i = 0; i < lists.length; i++) {
+    if (!lists[i]) continue;
+    for (j = 0; j < lists[i].length; j++) { lists[i][j].x *= sx; lists[i][j].y *= sy; }
+  }
+}
+
+fit();
+addEventListener('resize', fit);
+if (window.ResizeObserver) new ResizeObserver(fit).observe(stage);
+
+function font(size, weight) { return (weight || 400) + ' ' + (size * UI).toFixed(1) + 'px ' + FONT; }
+
+function rnd(a, b) { return a + Math.random() * (b - a); }
+
+/* ── State ─────────────────────────────────────────────────────── */
+var player, packet, faults, parts, trail;
+var clock, heat, score, taken, state = 'title', shake = 0, tick = 0, cause = '';
+var best = 0;
+try { best = parseInt(localStorage.getItem('overclock.best'), 10) || 0; } catch (e) {}
+
+var keys = Object.create(null), pointer = null, usingPointer = false;
+var BLOCK = { ArrowLeft:1, ArrowRight:1, ArrowUp:1, ArrowDown:1, Space:1 };
+
+addEventListener('keydown', function (e) {
+  if (BLOCK[e.code]) e.preventDefault();
+  keys[e.code] = true;
+  if (e.code === 'KeyR') { reset(); return; }
+  if (e.code === 'Space' || e.code === 'Enter') {
+    if (state === 'title' || state === 'over') reset();
+  }
+  if (e.code !== 'ShiftLeft' && e.code !== 'ShiftRight') usingPointer = false;
+});
+addEventListener('keyup', function (e) { keys[e.code] = false; });
+/* Dropping the clock reference on blur means the frame after you tab
+   back starts from now, instead of replaying the whole time you were
+   away as one burst of steps and killing you off-screen. */
+addEventListener('blur', function () { keys = Object.create(null); last = 0; });
+addEventListener('visibilitychange', function () { last = 0; });
+
+/* Touch: the first finger down steers, and any second finger anywhere on
+   the arena is the throttle. Shift has no touchscreen equivalent, and a
+   cornered on-screen pad would put the control furthest from the thumb
+   already holding the phone. */
+var live = Object.create(null), steerId = null;
+
+function aim(e) {
+  var r = cv.getBoundingClientRect();
+  pointer = { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
+  usingPointer = true;
+}
+
+function extras() {
+  var n = 0;
+  for (var id in live) if (Number(id) !== steerId) n++;
+  return n;
+}
+
+cv.addEventListener('pointermove', function (e) {
+  if (live[e.pointerId] === undefined || e.pointerId === steerId) aim(e);
+});
+
+cv.addEventListener('pointerdown', function (e) {
+  e.preventDefault();
+  if (state === 'title' || state === 'over') { reset(); return; }
+  live[e.pointerId] = 1;
+  if (steerId === null) { steerId = e.pointerId; aim(e); }
+  try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+});
+
+function lift(e) {
+  delete live[e.pointerId];
+  if (e.pointerId === steerId) {
+    steerId = null;
+    for (var id in live) { steerId = Number(id); break; }
+  }
+}
+cv.addEventListener('pointerup', lift);
+cv.addEventListener('pointercancel', lift);
+cv.addEventListener('pointerleave', function (e) {
+  lift(e);
+  if (steerId === null) pointer = null;
+});
+
+function throttling() {
+  return (keys.ShiftLeft || keys.ShiftRight || extras() > 0) && heat > 0;
+}
+
+function reset() {
+  tick = 0;
+  player = { x: W / 2, y: H / 2, vx: 0, vy: 0, r: 9 };
+  packet = spawnPacket();
+  faults = [];
+  parts = [];
+  trail = [];
+  clock = 1; heat = 1; score = 0; taken = 0; shake = 0;
+  state = 'play';
+  addFault();
+}
+
+function spawnPacket() {
+  var m = Math.min(70, Math.min(W, H) * 0.12);
+  return { x: rnd(m, W - m), y: rnd(m, H - m), r: 8, born: tick };
+}
+
+/* Faults spawn on the far side of the arena from the player, so a new
+   one never lands on top of you at the moment you earn it. */
+function addFault(kind) {
+  var x, y, guard = 0;
+  do {
+    x = rnd(40, W - 40); y = rnd(40, H - 40); guard++;
+  } while (guard < 40 && Math.hypot(x - player.x, y - player.y) < Math.min(260, Math.min(W, H) * 0.44));
+
+  var seeker = kind === 'seeker' || (kind === undefined && faults.length % 3 === 2);
+  var a = rnd(0, Math.PI * 2), s = seeker ? rnd(0.9, 1.3) : rnd(1.8, 2.9);
+  faults.push({
+    x:x, y:y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+    r: seeker ? 8 : 10, seeker: seeker, spin: rnd(0, 6.28), born: tick
+  });
+}
+
+function burst(x, y, n, col, speed, life) {
+  for (var i = 0; i < n; i++) {
+    var a = rnd(0, Math.PI * 2), s = rnd(0.25, 1) * speed;
+    parts.push({ x:x, y:y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: life * rnd(0.5, 1.2), max: life, col: col });
+  }
+}
+
+/* ── Simulation ────────────────────────────────────────────────── */
+function step() {
+  tick++;
+
+  for (var i = parts.length - 1; i >= 0; i--) {
+    var q = parts[i];
+    q.x += q.vx; q.y += q.vy; q.vx *= 0.95; q.vy *= 0.95;
+    if (--q.life <= 0) parts.splice(i, 1);
+  }
+  if (shake > 0) shake *= 0.87;
+  if (state !== 'play') return;
+
+  /* The throttle is the whole risk curve: it buys you reaction time and
+     charges you the clock, which is also the score multiplier. */
+  var braking = throttling();
+  if (braking) {
+    heat = Math.max(0, heat - 0.006);
+    clock = Math.max(1, clock - 0.006);
+  } else {
+    heat = Math.min(1, heat + 0.0022);
+  }
+  var ts = braking ? 0.42 : 1;
+
+  movePlayer();
+
+  trail.push({ x: player.x, y: player.y });
+  if (trail.length > 22) trail.shift();
+
+  for (var f = 0; f < faults.length; f++) {
+    var e = faults[f];
+    if (e.seeker) {
+      var dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 1;
+      e.vx += (dx / d) * 0.055; e.vy += (dy / d) * 0.055;
+      var sp = Math.hypot(e.vx, e.vy), cap = 2.5;
+      if (sp > cap) { e.vx = e.vx / sp * cap; e.vy = e.vy / sp * cap; }
+    }
+    e.x += e.vx * clock * ts;
+    e.y += e.vy * clock * ts;
+    e.spin += 0.04 * clock * ts;
+
+    if (e.x < e.r)     { e.x = e.r;     e.vx = Math.abs(e.vx); }
+    if (e.x > W - e.r) { e.x = W - e.r; e.vx = -Math.abs(e.vx); }
+    if (e.y < e.r)     { e.y = e.r;     e.vy = Math.abs(e.vy); }
+    if (e.y > H - e.r) { e.y = H - e.r; e.vy = -Math.abs(e.vy); }
+
+    /* A grace window after spawn, or a fault that materialises mid-dodge
+       reads as an unfair death rather than a mistake. */
+    if (tick - e.born > 45 && Math.hypot(e.x - player.x, e.y - player.y) < e.r + player.r) {
+      die(e.seeker ? 'caught by a seeker' : 'clipped a drifter');
+      return;
+    }
+  }
+
+  if (Math.hypot(packet.x - player.x, packet.y - player.y) < packet.r + player.r + 4) collect();
+
+  score += clock * 0.06;
+}
+
+function movePlayer() {
+  var ax = 0, ay = 0;
+  if (keys.KeyA || keys.ArrowLeft)  ax -= 1;
+  if (keys.KeyD || keys.ArrowRight) ax += 1;
+  if (keys.KeyW || keys.ArrowUp)    ay -= 1;
+  if (keys.KeyS || keys.ArrowDown)  ay += 1;
+
+  if (ax || ay) {
+    usingPointer = false;
+    var m = Math.hypot(ax, ay);
+    player.vx += (ax / m) * 1.1;
+    player.vy += (ay / m) * 1.1;
+  } else if (usingPointer && pointer) {
+    player.vx += (pointer.x - player.x) * 0.055;
+    player.vy += (pointer.y - player.y) * 0.055;
+  }
+
+  player.vx *= 0.82; player.vy *= 0.82;
+  player.x += player.vx; player.y += player.vy;
+
+  player.x = Math.max(player.r, Math.min(W - player.r, player.x));
+  player.y = Math.max(player.r, Math.min(H - player.r, player.y));
+}
+
+function collect() {
+  taken++;
+  clock = Math.min(4.2, clock + 0.075);
+  heat = Math.min(1, heat + 0.16);
+  score += 25 * clock;
+  burst(packet.x, packet.y, 16, 'live', 3.2, 26);
+  shake = 4;
+
+  addFault(taken % 4 === 0 ? 'seeker' : undefined);
+  if (taken % 8 === 0) addFault('seeker');
+
+  packet = spawnPacket();
+}
+
+function die(why) {
+  state = 'over';
+  cause = why;
+  shake = 20;
+  burst(player.x, player.y, 54, 'bad', 5, 44);
+  burst(player.x, player.y, 24, 'amber', 3, 32);
+  score = Math.round(score);
+  if (score > best) {
+    best = score;
+    try { localStorage.setItem('overclock.best', String(best)); } catch (e) {}
+  }
+}
+
+/* ── Render ────────────────────────────────────────────────────── */
+function draw() {
+  ctx.setTransform(dpr * pxScale, 0, 0, dpr * pxScale, 0, 0);
+  if (shake > 0.4) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
+
+  ctx.fillStyle = '#0E0D0C';
+  ctx.fillRect(-30, -30, W + 60, H + 60);
+
+  /* The grid breathes with the clock — the speed is legible before the
+     number is. */
+  var g = 40, drift = (tick * 0.35 * (clock || 1)) % g;
+  ctx.strokeStyle = 'rgba(68,62,54,.32)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (var x = -g + drift; x < W + g; x += g) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+  for (var y = -g + drift; y < H + g; y += g) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+  ctx.stroke();
+
+  if (state === 'title') { drawPanelTitle(); return; }
+
+  drawPacket();
+  drawTrail();
+  drawFaults();
+  if (state === 'play') drawPlayer();
+  drawParts();
+  drawHud();
+  if (state === 'over') drawOver();
+}
+
+function drawPacket() {
+  var p = packet, k = 1 + Math.sin(tick * 0.12) * 0.12;
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(tick * 0.02);
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = COL.live;
+  ctx.fillRect(-p.r * 2 * k, -p.r * 2 * k, p.r * 4 * k, p.r * 4 * k);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = COL.live;
+  ctx.fillRect(-p.r * k, -p.r * k, p.r * 2 * k, p.r * 2 * k);
+  ctx.restore();
+}
+
+function drawTrail() {
+  for (var i = 0; i < trail.length; i++) {
+    ctx.globalAlpha = (i / trail.length) * 0.3;
+    ctx.fillStyle = COL.bone;
+    var s = 2 + (i / trail.length) * 5;
+    ctx.fillRect(trail[i].x - s / 2, trail[i].y - s / 2, s, s);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawFaults() {
+  for (var i = 0; i < faults.length; i++) {
+    var e = faults[i];
+    var fresh = Math.min(1, (tick - e.born) / 45);
+
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.rotate(e.spin);
+    ctx.globalAlpha = 0.35 + fresh * 0.65;
+
+    if (e.seeker) {
+      ctx.beginPath();
+      ctx.moveTo(0, -e.r); ctx.lineTo(e.r, 0); ctx.lineTo(0, e.r); ctx.lineTo(-e.r, 0);
+      ctx.closePath();
+      ctx.fillStyle = COL.bad;
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = COL.amber;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-e.r, -e.r, e.r * 2, e.r * 2);
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawPlayer() {
+  var p = player;
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = COL.bone;
+  ctx.beginPath(); ctx.arc(0, 0, p.r * 2.1, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = COL.bone;
+  ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = throttling() ? COL.amber : COL.live;
+  ctx.beginPath(); ctx.arc(0, 0, p.r * 0.42, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawParts() {
+  for (var i = 0; i < parts.length; i++) {
+    var q = parts[i];
+    ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.9;
+    ctx.fillStyle = COL[q.col];
+    ctx.fillRect(q.x - 1.5, q.y - 1.5, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* Anchored to the two edges rather than laid out from the left on fixed
+   offsets, which used to run the throttle bar off the side of a phone. */
+function drawHud() {
+  var e = 20 * UI;
+
+  ctx.textAlign = 'left';
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('CLOCK', e, 30 * UI);
+  ctx.font = font(21, 600);
+  ctx.fillStyle = clock > 3 ? COL.amber : COL.bone;
+  ctx.fillText('×' + clock.toFixed(2), e, 53 * UI);
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText(taken + ' TAKEN  ·  ' + faults.length + ' FAULTS', e, 71 * UI);
+
+  ctx.textAlign = 'right';
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('SCORE', W - e, 30 * UI);
+  ctx.font = font(21, 600);
+  ctx.fillStyle = COL.bone;
+  ctx.fillText(String(Math.round(score)), W - e, 53 * UI);
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('BEST ' + best, W - e, 71 * UI);
+
+  /* Centred, and only as wide as there is room for — on a narrow arena
+     the bar shrinks instead of colliding with the numbers. */
+  var bw = Math.min(150 * UI, W * 0.34), bx = (W - bw) / 2, by = 40 * UI;
+  ctx.textAlign = 'center';
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('THROTTLE', W / 2, 30 * UI);
+  ctx.strokeStyle = '#443E36';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, by + 0.5, bw, 10 * UI);
+  ctx.fillStyle = heat > 0.25 ? COL.live : COL.bad;
+  ctx.fillRect(bx + 1.5, by + 1.5, Math.max(0, (bw - 3) * heat), 10 * UI - 3);
+  ctx.textAlign = 'left';
+}
+
+/* Overlay copy wraps to the real width instead of assuming a desktop
+   line length, because on a phone there is not one. */
+function wrap(text, max) {
+  var words = text.split(' '), lines = [], line = '';
+  for (var i = 0; i < words.length; i++) {
+    var test = line ? line + ' ' + words[i] : words[i];
+    if (ctx.measureText(test).width > max && line) { lines.push(line); line = words[i]; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function panel(items, accent) {
+  ctx.fillStyle = 'rgba(14,13,12,.86)';
+  ctx.fillRect(0, 0, W, H);
+
+  var bw = Math.min(W - 28 * UI, 560 * UI), inner = bw - 44 * UI;
+  var rows = [], i;
+  for (i = 0; i < items.length; i++) {
+    if (items[i].big) { rows.push(items[i]); continue; }
+    ctx.font = font(13);
+    var parts = wrap(items[i].t, inner);
+    for (var p = 0; p < parts.length; p++) rows.push({ t: parts[p], mute: items[i].mute });
+  }
+
+  var lh = 21 * UI, th = 35 * UI, bh = 44 * UI;
+  for (i = 0; i < rows.length; i++) bh += rows[i].big ? th : lh;
+  var bx = (W - bw) / 2, by = Math.max(8, (H - bh) / 2);
+
+  ctx.fillStyle = '#1B1917';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = '#322E28';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
+  ctx.fillStyle = accent;
+  ctx.fillRect(bx, by, bw, 2);
+
+  ctx.textAlign = 'center';
+  var y = by + 22 * UI;
+  for (i = 0; i < rows.length; i++) {
+    var l = rows[i];
+    y += l.big ? th : lh;
+    ctx.font = l.big ? font(24, 600) : font(13);
+    ctx.fillStyle = l.big ? accent : (l.mute ? COL.dim : COL.mid);
+    ctx.fillText(l.t, W / 2, y);
+  }
+  ctx.textAlign = 'left';
+}
+
+function drawPanelTitle() {
+  panel([
+    { t:'OVERCLOCK', big:true },
+    { t:'Take the green packets. Each one raises the clock,' },
+    { t:'and the clock is what everything hunting you runs on.' },
+    { t:'SHIFT — or a second finger — throttles the arena, and spends the clock.', mute:true },
+    { t:'press SPACE to start', mute:true }
+  ], COL.live);
+}
+
+function drawOver() {
+  panel([
+    { t:'HALTED', big:true },
+    { t:cause + ' at ×' + clock.toFixed(2) },
+    { t:Math.round(score) + ' points   ·   ' + taken + ' packets   ·   best ' + best },
+    { t:'press SPACE to run again', mute:true }
+  ], COL.bad);
+}
+
+/* ── Loop ──────────────────────────────────────────────────────── */
+var acc = 0, last = 0, STEP = 1000 / 60;
+
+function frame(now) {
+  if (!last) last = now;
+  acc += Math.min(now - last, 100);
+  last = now;
+  while (acc >= STEP) { step(); acc -= STEP; }
+  draw();
+  requestAnimationFrame(frame);
+}
+
+reset();
+state = 'title';
+requestAnimationFrame(frame);
+try { window.focus(); } catch (e) {}
+})();
+</script>
+</body>
+</html>

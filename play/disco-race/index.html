@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Disco Race</title>
+<meta name="description" content="A lane racer with a metronome under it. Steer the gaps, and drop on the beat — the beat is what makes you fast.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#131211; --sunken:#0E0D0C; --rule:#322E28; --dim:#8C8577; --mid:#B4AC9D;
+  --f:'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%; overscroll-behavior:none}
+body{
+  margin:0; background:var(--sunken); color:var(--mid);
+  font-family:var(--f); font-size:14px;
+  display:flex; flex-direction:column; overflow:hidden;
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+}
+.stage{position:relative; flex:1 1 auto; min-height:0}
+canvas{
+  position:absolute; inset:0; width:100%; height:100%; display:block;
+  touch-action:none; user-select:none;
+}
+.hint{
+  flex:0 0 auto; margin:0; padding:7px 10px 9px; text-align:center;
+  font-size:10.5px; letter-spacing:.09em; color:var(--dim);
+  text-transform:uppercase; border-top:1px solid var(--rule); background:var(--ink);
+}
+@media (max-height:420px){ .hint{display:none} }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <canvas id="c" aria-label="Disco Race, a rhythm lane racer"></canvas>
+</div>
+<p class="hint">tap sides to steer &middot; tap middle on the beat &middot; M sound &middot; R restart</p>
+
+<script>
+(function () {
+'use strict';
+
+var stage = document.getElementById('stage');
+var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+var FONT = "'IBM Plex Mono', ui-monospace, Consolas, monospace";
+var COL = {
+  amber:'#F0902E', live:'#86C232', bad:'#D9484B', vio:'#8A6FD8',
+  bone:'#EDE8DE', mid:'#B4AC9D', dim:'#8C8577'
+};
+
+/* ── Viewport ──────────────────────────────────────────────────────
+   The logical road holds a constant area and takes the aspect of the
+   frame. Held upright, a phone gets a narrower road and a longer view
+   down it, which is the right trade — a letterboxed strip gave you
+   neither. One logical pixel stays worth about the same either way, so
+   the speeds and the beat keep their tuning. */
+var AREA = 960 * 600;
+var W = 960, H = 600, dpr = 1, pxScale = 1, UI = 1;
+
+/* ── Track geometry ─────────────────────────────────────────────── */
+var LANES = 5, ROAD_X = 220, LANE_W = 104, ROAD_W = 520;
+var TILE = 52, CAR_W = 46, CAR_H = 74, PLAYER_Y = 452;
+
+function laneX(i) { return ROAD_X + i * LANE_W + LANE_W / 2; }
+
+function fit() {
+  var r = stage.getBoundingClientRect();
+  var cw = Math.max(240, Math.round(r.width)), ch = Math.max(240, Math.round(r.height));
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = cw * dpr; cv.height = ch * dpr;
+
+  var oldH = H;
+  var k = Math.sqrt(AREA / (cw * ch));
+  W = cw * k; H = ch * k;
+  pxScale = 1 / k;
+  UI = Math.max(0.85, Math.min(1.75, k));
+
+  /* The road takes a share of the width but never more than five lanes
+     need, so a wide monitor gets shoulders rather than a motorway. */
+  ROAD_W = Math.min(W * 0.84, 560);
+  LANE_W = ROAD_W / LANES;
+  ROAD_X = (W - ROAD_W) / 2;
+  CAR_W = LANE_W * 0.44;
+  CAR_H = CAR_W * 1.6;
+  TILE = LANE_W * 0.5;
+  PLAYER_Y = H - CAR_H - Math.max(70, H * 0.17);
+
+  /* Traffic already on the road is in logical pixels, so carry it across
+     the reshape — otherwise rotating the phone drops a car on your
+     bonnet, and re-derive the sizes that came from the lane width. */
+  if (typeof things !== 'undefined' && things) {
+    var sy = H / oldH;
+    for (var i = 0; i < things.length; i++) {
+      var t = things[i];
+      t.y *= sy;
+      t.x = laneX(t.lane);
+      t.w = t.kind === 'car' ? CAR_W : LANE_W * 0.22;
+      t.h = t.kind === 'car' ? CAR_H : t.w;
+    }
+  }
+  if (typeof player !== 'undefined' && player) player.x = laneX(player.lane);
+}
+fit();
+addEventListener('resize', fit);
+if (window.ResizeObserver) new ResizeObserver(fit).observe(stage);
+
+function rnd(a, b) { return a + Math.random() * (b - a); }
+function font(size, weight) { return (weight || 400) + ' ' + (size * UI).toFixed(1) + 'px ' + FONT; }
+
+/* ── The metronome ─────────────────────────────────────────────────
+   124 BPM at a fixed 60 Hz step. Everything in the game — the floor,
+   the spawns, the window you have to hit — is derived from this one
+   counter, so the picture and the scoring can never disagree. */
+var BPM = 124, BEAT = 3600 / BPM;
+var beatT = 0, beatIndex = 0, lastDropBeat = -1;
+var PERFECT = 3.2, GOOD = 6.5;
+
+/* ── State ─────────────────────────────────────────────────────── */
+var player, things, parts, calls;
+var scroll, dist, speed, boost, combo, mult, score, shields, topCombo, topMult;
+var state = 'title', shake = 0, hitFlash = 0, tick = 0;
+var best = 0;
+try { best = parseInt(localStorage.getItem('discorace.best'), 10) || 0; } catch (e) {}
+
+var keys = Object.create(null);
+var BLOCK = { ArrowLeft:1, ArrowRight:1, ArrowUp:1, ArrowDown:1, Space:1 };
+
+function reset() {
+  player = { lane: 2, x: laneX(2), tilt: 0, inv: 0 };
+  things = []; parts = []; calls = [];
+  scroll = 0; dist = 0; speed = 4; boost = 0;
+  combo = 0; mult = 1; score = 0; shields = 3; topCombo = 0; topMult = 1;
+  beatT = 0; beatIndex = 0; lastDropBeat = -1;
+  tick = 0; shake = 0; hitFlash = 0;
+  state = 'play';
+}
+
+/* ── Input ─────────────────────────────────────────────────────── */
+addEventListener('keydown', function (e) {
+  if (BLOCK[e.code]) e.preventDefault();
+  var repeat = keys[e.code];
+  keys[e.code] = true;
+
+  if (e.code === 'KeyR') { reset(); return; }
+  if (e.code === 'KeyM') { toggleSound(); return; }
+
+  if (state !== 'play') {
+    if (e.code === 'Space' || e.code === 'Enter') reset();
+    return;
+  }
+  if (repeat) return;
+
+  if (e.code === 'ArrowLeft'  || e.code === 'KeyA') steer(-1);
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') steer(1);
+  if (e.code === 'Space' || e.code === 'Enter') drop();
+});
+addEventListener('keyup', function (e) { keys[e.code] = false; });
+addEventListener('blur', function () { keys = Object.create(null); last = 0; });
+addEventListener('visibilitychange', function () { last = 0; });
+
+/* Pointer: the outer thirds steer, the middle drops. Enough to show
+   the game to someone holding a phone, not enough to be the way in. */
+cv.addEventListener('pointerdown', function (e) {
+  e.preventDefault();
+  if (state !== 'play') { reset(); return; }
+  var r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W;
+  if (x < W * 0.3) steer(-1);
+  else if (x > W * 0.7) steer(1);
+  else drop();
+});
+
+function steer(d) {
+  player.lane = Math.max(0, Math.min(LANES - 1, player.lane + d));
+  player.tilt = d * 0.34;
+}
+
+/* Scoring the drop off the metronome rather than off a spawned note
+   means there is always something to hit, and being early reads the
+   same as being late. */
+function drop() {
+  var early = BEAT - beatT;
+  var off = Math.min(beatT, early);
+  var owner = early < beatT ? beatIndex + 1 : beatIndex;
+
+  if (owner === lastDropBeat) { fumble('EARLY'); return; }
+  lastDropBeat = owner;
+
+  if (off <= PERFECT) {
+    combo++;
+    boost = Math.min(5.2, boost + 1.25);
+    score += 120 * mult;
+    call('PERFECT', COL.live);
+    thump(20, 'live', 3.4);
+    beep(1);
+  } else if (off <= GOOD) {
+    combo++;
+    boost = Math.min(5.2, boost + 0.6);
+    score += 55 * mult;
+    call('GOOD', COL.amber);
+    thump(12, 'amber', 2.4);
+    beep(0.6);
+  } else {
+    fumble('MISS');
+  }
+  mult = Math.min(8, 1 + (combo / 4 | 0));
+  topCombo = Math.max(topCombo, combo);
+  topMult = Math.max(topMult, mult);
+}
+
+function fumble(word) {
+  combo = 0;
+  mult = 1;
+  boost = Math.max(0, boost - 1.4);
+  call(word, COL.bad);
+}
+
+/* One verdict at a time. Two drops inside 42 frames printed both words
+   on the same pixels, which reads as neither. */
+function call(text, col) { calls = [{ t: text, col: col, life: 42, max: 42 }]; }
+
+function thump(n, col, sp) {
+  for (var i = 0; i < n; i++) {
+    var a = rnd(0, Math.PI * 2), s = rnd(0.3, 1) * sp;
+    parts.push({
+      x: player.x, y: PLAYER_Y + 30,
+      vx: Math.cos(a) * s, vy: Math.sin(a) * s - 1,
+      life: rnd(14, 30), max: 30, col: col
+    });
+  }
+}
+
+/* ── Spawning ──────────────────────────────────────────────────────
+   Driven off the beat, and gated on how many lanes are already shut,
+   so the track can crowd but never closes completely. */
+function laneBusy(lane, top, bottom) {
+  for (var i = 0; i < things.length; i++) {
+    var t = things[i];
+    if (t.lane === lane && t.y + t.h > top && t.y < bottom) return true;
+  }
+  return false;
+}
+
+function onBeat() {
+  if (state !== 'play') return;
+
+  var d = Math.min(1, dist / 4200);
+  var free = [];
+  for (var i = 0; i < LANES; i++) if (!laneBusy(i, -H * 0.72, H * 0.36)) free.push(i);
+
+  if (free.length > 2 && Math.random() < 0.5 + 0.34 * d) {
+    var pick = free.splice((Math.random() * free.length) | 0, 1)[0];
+    things.push({
+      kind: 'car', lane: pick, x: laneX(pick), y: -CAR_H - 20,
+      w: CAR_W, h: CAR_H, own: rnd(0.6, 2.2), hue: Math.random() < 0.5 ? 'vio' : 'dim'
+    });
+  }
+
+  if (free.length && beatIndex % 2 === 0 && Math.random() < 0.62) {
+    var op = free[(Math.random() * free.length) | 0];
+    var ow = LANE_W * 0.22;
+    things.push({ kind: 'orb', lane: op, x: laneX(op), y: -ow * 2, w: ow, h: ow, own: 0 });
+  }
+}
+
+/* ── Simulation ────────────────────────────────────────────────── */
+function step() {
+  tick++;
+
+  for (var p = parts.length - 1; p >= 0; p--) {
+    var q = parts[p];
+    q.x += q.vx; q.y += q.vy; q.vy += 0.06; q.vx *= 0.97;
+    if (--q.life <= 0) parts.splice(p, 1);
+  }
+  for (var c = calls.length - 1; c >= 0; c--) if (--calls[c].life <= 0) calls.splice(c, 1);
+
+  if (shake > 0) shake *= 0.86;
+  if (hitFlash > 0) hitFlash -= 0.05;
+
+  /* The metronome runs whether or not you are racing, so the title
+     screen is already showing you the tempo you will have to hit. */
+  beatT++;
+  if (beatT >= BEAT) { beatT -= BEAT; beatIndex++; onBeat(); tickSound(); }
+
+  if (state !== 'play') return;
+
+  var braking = keys.ArrowDown || keys.KeyS;
+  var base = 4 + Math.min(6.4, dist / 2600);
+  boost = Math.max(0, boost - 0.019);
+  speed = Math.max(1.9, base + boost - (braking ? 2.6 : 0));
+
+  scroll += speed;
+  dist += speed / 9;
+  score += speed * 0.3 * mult;
+
+  var target = laneX(player.lane);
+  player.x += (target - player.x) * 0.22;
+  player.tilt *= 0.86;
+  if (player.inv > 0) player.inv--;
+
+  for (var i = things.length - 1; i >= 0; i--) {
+    var t = things[i];
+    t.y += t.kind === 'car' ? speed - t.own : speed;
+    if (t.y > H + 80) { things.splice(i, 1); continue; }
+
+    var overlapY = t.y < PLAYER_Y + CAR_H && t.y + t.h > PLAYER_Y;
+    var overlapX = Math.abs(t.x - player.x) < (t.w + CAR_W) / 2 - 6;
+    if (!overlapY || !overlapX) continue;
+
+    if (t.kind === 'orb') {
+      things.splice(i, 1);
+      score += 30 * mult;
+      boost = Math.min(5.2, boost + 0.28);
+      thump(10, 'live', 2);
+    } else if (player.inv <= 0) {
+      crash();
+    }
+  }
+}
+
+function crash() {
+  shields--;
+  player.inv = 100;
+  shake = 18;
+  hitFlash = 1;
+  combo = 0; mult = 1; boost = 0;
+  call('WRECKED', COL.bad);
+  thump(40, 'bad', 5);
+
+  if (shields <= 0) {
+    state = 'over';
+    score = Math.round(score);
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem('discorace.best', String(best)); } catch (e) {}
+    }
+  }
+}
+
+/* ── Sound ─────────────────────────────────────────────────────────
+   Off until asked for, and built the moment it is: an AudioContext
+   created on load would be born suspended by autoplay policy, and a
+   game embedded in someone's portfolio should not make noise first. */
+var actx = null, soundOn = false;
+
+function toggleSound() {
+  soundOn = !soundOn;
+  if (soundOn && !actx) {
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { soundOn = false; }
+  }
+  if (soundOn && actx && actx.state === 'suspended') actx.resume();
+}
+
+function tone(freq, endFreq, dur, gain, type) {
+  if (!soundOn || !actx) return;
+  var t0 = actx.currentTime;
+  var o = actx.createOscillator(), g = actx.createGain();
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(freq, t0);
+  o.frequency.exponentialRampToValueAtTime(endFreq, t0 + dur);
+  g.gain.setValueAtTime(gain, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(actx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+}
+
+function tickSound() { tone(150, 48, 0.13, 0.16); }
+function beep(strength) { tone(660 * strength + 220, 180, 0.09, 0.07, 'square'); }
+
+/* ── Render ────────────────────────────────────────────────────── */
+function phase() { return beatT / BEAT; }
+function pulse() { return Math.max(0, 1 - phase() * 3.4); }
+
+function draw() {
+  ctx.setTransform(dpr * pxScale, 0, 0, dpr * pxScale, 0, 0);
+  if (shake > 0.4) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
+
+  ctx.fillStyle = '#0E0D0C';
+  ctx.fillRect(-40, -40, W + 80, H + 80);
+
+  drawRig();
+  drawRoad();
+  if (state !== 'title') {
+    drawThings();
+    if (state === 'play' || shields > 0) drawCar();
+    drawParts();
+    drawBrackets();
+    drawCalls();
+    drawHud();
+  }
+
+  if (hitFlash > 0) {
+    ctx.fillStyle = 'rgba(217,72,75,' + (hitFlash * 0.22).toFixed(3) + ')';
+    ctx.fillRect(0, 0, W, H);
+  }
+  if (state === 'title') drawTitle();
+  if (state === 'over') drawOver();
+}
+
+/* Light rigs down both shoulders. They are the peripheral copy of the
+   beat, so the timing is readable even while the eye is on the gap. */
+function drawRig() {
+  var p = pulse(), bar = beatIndex % 4;
+  /* Sized off whatever shoulder is left. On a phone the shoulder is
+     thin, so the rigs thin with it rather than sliding off-canvas. */
+  var w = Math.min(34, Math.max(6, ROAD_X * 0.55));
+  var gap = (ROAD_X - w) / 2;
+  var pitch = Math.max(48, H / 9), tall = pitch * 0.62;
+  for (var s = 0; s < 2; s++) {
+    var x = s ? ROAD_X + ROAD_W + gap : gap;
+    for (var i = 0; i * pitch < H; i++) {
+      var y = 20 + i * pitch, lit = (i + bar) % 3 === 0;
+      ctx.globalAlpha = lit ? 0.18 + p * 0.72 : 0.1;
+      ctx.fillStyle = lit ? (bar % 2 ? COL.amber : COL.vio) : '#2A2721';
+      ctx.fillRect(x, y, w, tall);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawRoad() {
+  var p = pulse(), off = scroll % TILE;
+  var cols = ROAD_W / (TILE / 2);
+
+  ctx.fillStyle = '#141311';
+  ctx.fillRect(ROAD_X, 0, ROAD_W, H);
+
+  for (var r = -1; r * TILE - off < H; r++) {
+    for (var c = 0; c < cols; c++) {
+      var dark = (r + c) % 2 === 0;
+      ctx.fillStyle = dark ? '#17150F' : '#121110';
+      var x = ROAD_X + c * (TILE / 2), y = r * TILE - off;
+      ctx.fillRect(x, y, TILE / 2, TILE);
+      if (dark && p > 0.02) {
+        ctx.globalAlpha = p * 0.16;
+        ctx.fillStyle = beatIndex % 4 < 2 ? COL.amber : COL.vio;
+        ctx.fillRect(x, y, TILE / 2, TILE);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  ctx.strokeStyle = '#3A352E';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([26, 30]);
+  ctx.lineDashOffset = -off;
+  ctx.beginPath();
+  for (var l = 1; l < LANES; l++) {
+    var lx = ROAD_X + l * LANE_W;
+    ctx.moveTo(lx, -20); ctx.lineTo(lx, H + 20);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.strokeStyle = '#4A443A';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(ROAD_X + 1.5, 0); ctx.lineTo(ROAD_X + 1.5, H);
+  ctx.moveTo(ROAD_X + ROAD_W - 1.5, 0); ctx.lineTo(ROAD_X + ROAD_W - 1.5, H);
+  ctx.stroke();
+}
+
+function drawThings() {
+  for (var i = 0; i < things.length; i++) {
+    var t = things[i];
+    if (t.kind === 'orb') {
+      var k = 1 + Math.sin(tick * 0.16) * 0.14;
+      ctx.save();
+      ctx.translate(t.x + t.w / 2 - 11, t.y + 11);
+      ctx.rotate(tick * 0.05);
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = COL.live;
+      ctx.fillRect(-14 * k, -14 * k, 28 * k, 28 * k);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = COL.live;
+      ctx.fillRect(-7 * k, -7 * k, 14 * k, 14 * k);
+      ctx.restore();
+    } else {
+      carBody(t.x, t.y, t.hue === 'vio' ? COL.vio : '#9A9184', false);
+    }
+  }
+}
+
+function carBody(cx, y, col, mine) {
+  var x = cx - CAR_W / 2;
+  ctx.fillStyle = mine ? COL.bone : '#1E1B18';
+  ctx.fillRect(x, y, CAR_W, CAR_H);
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, CAR_W - 2, CAR_H - 2);
+
+  ctx.fillStyle = mine ? COL.live : col;
+  ctx.fillRect(x + CAR_W * 0.2, y + CAR_H * (mine ? 0.16 : 0.62), CAR_W * 0.6, CAR_H * 0.22);
+  ctx.globalAlpha = 0.35;
+  ctx.fillRect(x + CAR_W * 0.09, mine ? y - 3 : y + CAR_H - 1, CAR_W * 0.82, 4);
+  ctx.globalAlpha = 1;
+}
+
+function drawCar() {
+  if (player.inv > 0 && (tick >> 2) % 2 === 0) return;
+
+  ctx.save();
+  ctx.translate(player.x, PLAYER_Y + CAR_H / 2);
+  ctx.rotate(player.tilt * 0.5);
+  ctx.translate(-player.x, -(PLAYER_Y + CAR_H / 2));
+
+  if (boost > 0.3) {
+    ctx.globalAlpha = Math.min(0.7, boost / 5);
+    ctx.fillStyle = COL.amber;
+    ctx.fillRect(player.x - 14, PLAYER_Y + CAR_H, 28, 12 + boost * 7);
+    ctx.globalAlpha = 1;
+  }
+  carBody(player.x, PLAYER_Y, COL.amber, true);
+  ctx.restore();
+}
+
+/* Two markers that slide inward and meet on the car exactly on the
+   beat. The floor says when the beat was; this says when it will be. */
+function drawBrackets() {
+  var ph = phase(), win = PERFECT / BEAT;
+  var gap = CAR_W * 0.65 + (1 - ph) * LANE_W * 1.3;
+  /* Lit across the whole scoring window, which straddles the beat —
+     lighting only the approach would punish a hair-late tap that the
+     scoring counts as perfect. */
+  var close = ph > 1 - win || ph < win;
+  ctx.fillStyle = close ? COL.live : '#9A9184';
+  ctx.globalAlpha = close ? 1 : 0.75;
+  var bw = Math.max(4, CAR_W * 0.11), bh = CAR_H * 0.56;
+  ctx.fillRect(player.x - gap - bw, PLAYER_Y + CAR_H * 0.24, bw, bh);
+  ctx.fillRect(player.x + gap, PLAYER_Y + CAR_H * 0.24, bw, bh);
+  ctx.globalAlpha = 1;
+}
+
+function drawParts() {
+  for (var i = 0; i < parts.length; i++) {
+    var q = parts[i];
+    ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.9;
+    ctx.fillStyle = COL[q.col];
+    ctx.fillRect(q.x - 1.5, q.y - 1.5, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawCalls() {
+  ctx.textAlign = 'center';
+  for (var i = 0; i < calls.length; i++) {
+    var c = calls[i], k = 1 - c.life / c.max;
+    ctx.globalAlpha = Math.min(1, c.life / 16);
+    ctx.font = font(16, 600);
+    ctx.fillStyle = c.col;
+    ctx.fillText(c.t, player.x, PLAYER_Y - 16 * UI - k * 32);
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
+}
+
+/* A compact top band. The road now takes most of a narrow screen, so
+   the HUD has to sit over it rather than out on a shoulder that is not
+   there any more — anchored to the two edges and the centre. */
+function drawHud() {
+  var e = 16 * UI, top = 26 * UI;
+
+  ctx.fillStyle = 'rgba(14,13,12,.55)';
+  ctx.fillRect(0, 0, W, 84 * UI);
+
+  ctx.textAlign = 'left';
+  ctx.font = font(10);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('COMBO', e, top);
+  ctx.font = font(20, 600);
+  ctx.fillStyle = mult > 1 ? COL.live : COL.bone;
+  ctx.fillText('×' + mult, e, top + 22 * UI);
+  ctx.font = font(10);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText(combo + ' ON BEAT', e, top + 38 * UI);
+
+  ctx.textAlign = 'right';
+  ctx.font = font(10);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('SCORE', W - e, top);
+  ctx.font = font(20, 600);
+  ctx.fillStyle = COL.bone;
+  ctx.fillText(String(Math.round(score)), W - e, top + 22 * UI);
+  ctx.font = font(10);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText(Math.round(dist) + ' M  ·  BEST ' + best, W - e, top + 38 * UI);
+
+  var bw = Math.min(120 * UI, W * 0.3), bx = (W - bw) / 2;
+  ctx.textAlign = 'center';
+  ctx.font = font(10);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('SPEED', W / 2, top);
+  ctx.strokeStyle = '#443E36';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, top + 8 * UI + 0.5, bw, 9 * UI);
+  ctx.fillStyle = boost > 0.3 ? COL.amber : COL.live;
+  ctx.fillRect(bx + 1.5, top + 8 * UI + 1.5, Math.max(0, (bw - 3) * Math.min(1, speed / 15)), 9 * UI - 3);
+
+  var pip = 9 * UI, py = top + 28 * UI;
+  for (var i = 0; i < 3; i++) {
+    ctx.fillStyle = i < shields ? COL.live : '#2A2721';
+    ctx.fillRect(W / 2 - pip * 2 + i * (pip + 4), py, pip, pip);
+  }
+  ctx.textAlign = 'left';
+}
+
+/* Overlay copy wraps to the real width instead of assuming a desktop
+   line length, because on a phone there is not one. */
+function wrap(text, max) {
+  var words = text.split(' '), lines = [], line = '';
+  for (var i = 0; i < words.length; i++) {
+    var test = line ? line + ' ' + words[i] : words[i];
+    if (ctx.measureText(test).width > max && line) { lines.push(line); line = words[i]; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function panel(items, accent) {
+  ctx.fillStyle = 'rgba(14,13,12,.87)';
+  ctx.fillRect(0, 0, W, H);
+
+  var bw = Math.min(W - 28 * UI, 560 * UI), inner = bw - 44 * UI;
+  var rows = [], i;
+  for (i = 0; i < items.length; i++) {
+    if (items[i].big) { rows.push(items[i]); continue; }
+    ctx.font = font(13);
+    var parts = wrap(items[i].t, inner);
+    for (var q = 0; q < parts.length; q++) rows.push({ t: parts[q], mute: items[i].mute });
+  }
+
+  var lh = 21 * UI, th = 35 * UI, bh = 44 * UI;
+  for (i = 0; i < rows.length; i++) bh += rows[i].big ? th : lh;
+  var bx = (W - bw) / 2, by = Math.max(8, (H - bh) / 2);
+
+  ctx.fillStyle = '#1B1917';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = '#322E28';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
+  ctx.fillStyle = accent;
+  ctx.fillRect(bx, by, bw, 2);
+
+  ctx.textAlign = 'center';
+  var y = by + 22 * UI;
+  for (i = 0; i < rows.length; i++) {
+    var l = rows[i];
+    y += l.big ? th : lh;
+    ctx.font = l.big ? font(24, 600) : font(13);
+    ctx.fillStyle = l.big ? accent : (l.mute ? COL.dim : COL.mid);
+    ctx.fillText(l.t, W / 2, y);
+  }
+  ctx.textAlign = 'left';
+}
+
+function drawTitle() {
+  panel([
+    { t:'DISCO RACE', big:true },
+    { t:'Steer the gaps. Tap SPACE when the markers meet.' },
+    { t:'On-beat builds the combo, and the combo is your speed.' },
+    { t:'← → steer   ↓ brake   M for sound', mute:true },
+    { t:'press SPACE to start', mute:true }
+  ], COL.vio);
+}
+
+function drawOver() {
+  panel([
+    { t:'OUT OF SHIELDS', big:true },
+    { t:Math.round(score) + ' points   ·   ' + Math.round(dist) + ' m   ·   best ' + best },
+    { t:'best run of ' + topCombo + ' on the beat, peaking at ×' + topMult },
+    { t:'press SPACE to race again', mute:true }
+  ], COL.bad);
+}
+
+/* ── Loop ──────────────────────────────────────────────────────── */
+var acc = 0, last = 0, STEP = 1000 / 60;
+
+function frame(now) {
+  if (!last) last = now;
+  acc += Math.min(now - last, 100);
+  last = now;
+  while (acc >= STEP) { step(); acc -= STEP; }
+  draw();
+  requestAnimationFrame(frame);
+}
+
+reset();
+state = 'title';
+requestAnimationFrame(frame);
+try { window.focus(); } catch (e) {}
+})();
+</script>
+</body>
+</html>
