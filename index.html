@@ -455,9 +455,8 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
   display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px;
   font-family:var(--f-mono); font-size:10.5px; letter-spacing:.05em; color:var(--dim);
 }
-.game-meta a{color:var(--mid); text-decoration:none; border-bottom:1px solid var(--rule-hi)}
-.game-meta a:hover{color:var(--amber); border-color:var(--amber)}
-.game-meta .end{margin-left:auto}
+/* No links out of a card: the screen above it is the way in, and a
+   second route to the same game only made people choose. */
 
 /* What each game actually wants to be played on, stated on the card so
    nobody taps through on a phone only to be told to go away. */
@@ -860,7 +859,6 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
               <p>Turn-based command combat. Twelve orders, four resources that never quite stretch, and waves that change the rules rather than just the numbers.</p>
               <p class="game-meta">
                 <span>Typed commands</span><span>Reflows</span>
-                <a class="end" href="play/bt-7274n/index.html" target="_blank" rel="noopener">Open standalone</a>
               </p>
             </div>
           </article>
@@ -887,7 +885,6 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
               <p>Procedural terrain, a fuel budget that never covers the descent, and pads that pay more the narrower they get. Fixed-timestep physics so a 144&nbsp;Hz panel plays the same as a laptop.</p>
               <p class="game-meta">
                 <span>Touch or keyboard</span><span>Reflows</span>
-                <a class="end" href="play/drift-lander/index.html" target="_blank" rel="noopener">Open standalone</a>
               </p>
             </div>
           </article>
@@ -922,7 +919,6 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
               <p>Rotate every segment until the board goes live. Boards come out of a randomised spanning tree, so there is always a solution and never an unreachable corner &mdash; and the shuffle itself sets the par.</p>
               <p class="game-meta">
                 <span>Touch or keyboard</span><span>Reflows</span>
-                <a class="end" href="play/circuit-breaker/index.html" target="_blank" rel="noopener">Open standalone</a>
               </p>
             </div>
           </article>
@@ -955,7 +951,6 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
               <p>Scoring is the thing that speeds the arena up. Every packet raises the clock everything hunting you runs on, and the throttle that saves you is paid for out of the same clock.</p>
               <p class="game-meta">
                 <span>Touch or keyboard</span><span>Reflows</span>
-                <a class="end" href="play/overclock/index.html" target="_blank" rel="noopener">Open standalone</a>
               </p>
             </div>
           </article>
@@ -998,7 +993,6 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
               <p>A lane racer with a metronome under it. Steering keeps you alive; tapping on the beat is the only thing that makes you fast, so the two demands pull against each other at speed.</p>
               <p class="game-meta">
                 <span>Touch or keyboard</span><span>124 BPM</span>
-                <a class="end" href="play/disco-race/index.html" target="_blank" rel="noopener">Open standalone</a>
               </p>
             </div>
           </article>
@@ -1029,7 +1023,6 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
               <p>Drag the nodes until no edge crosses another. Boards are generated at a layout that is already flat and then scrambled, so a solution is known to exist rather than hoped for.</p>
               <p class="game-meta">
                 <span>Drag</span><span>Reflows</span>
-                <a class="end" href="play/refactor/index.html" target="_blank" rel="noopener">Open standalone</a>
               </p>
             </div>
           </article>
@@ -1059,7 +1052,6 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
               <p>A block slides across the top of the tower; tap to drop it. Whatever hangs over is cut off for good, so only a dead-centre landing ever buys any width back.</p>
               <p class="game-meta">
                 <span>One tap</span><span>Reflows</span>
-                <a class="end" href="play/heap/index.html" target="_blank" rel="noopener">Open standalone</a>
               </p>
             </div>
           </article>
@@ -1090,7 +1082,6 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
               <p>Runners lap rings that overlap, and where two rings cross only one may pass. Tap to hold one back &mdash; but a held runner is spending patience, so the lock is the scarce thing.</p>
               <p class="game-meta">
                 <span>One tap</span><span>Reflows</span>
-                <a class="end" href="play/mutex/index.html" target="_blank" rel="noopener">Open standalone</a>
               </p>
             </div>
           </article>
