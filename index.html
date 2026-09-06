@@ -473,6 +473,32 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
 .fits.wide{color:var(--mid)}
 .fits.desk{color:var(--amber); border-color:rgba(240,144,46,.45)}
 
+/* ══ GALLERY ══════════════════════════════════════════════════
+   Real work, so it gets real pictures — the one place on the page
+   that does. Masonry columns rather than a grid, because the renders
+   are not one aspect ratio and forcing them into one would throw away
+   the composition that is the point of them. The height cap only bites
+   on the two near-vertical pieces, which would otherwise run a column
+   two screens long on their own. */
+.gallery{columns:3 260px; column-gap:14px; margin-bottom:20px}
+.shot{
+  break-inside:avoid; margin:0 0 14px; position:relative; display:block;
+  border:1px solid var(--rule); border-radius:2px; overflow:hidden;
+  background:var(--sunken); text-decoration:none;
+}
+.shot:hover{border-color:var(--rule-hi)}
+.shot img{
+  display:block; width:100%; height:auto; background:var(--sunken);
+  max-height:min(58vh,520px); object-fit:cover; object-position:center;
+}
+.shot figcaption{
+  display:flex; align-items:baseline; gap:10px;
+  padding:9px 12px; border-top:1px solid var(--rule); background:var(--panel);
+  font-family:var(--f-mono); font-size:11.5px; color:var(--mid);
+}
+.shot figcaption .yr{margin-left:auto; color:var(--dim); font-size:10.5px; flex:none}
+.shot:hover figcaption{color:var(--bone)}
+
 /* ══ REPOSITORIES ═════════════════════════════════════════════ */
 .repos{border:1px solid var(--rule); border-radius:2px; overflow:hidden; background:var(--panel)}
 .repo{
@@ -656,8 +682,9 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
         </ul>
       </div>
       <div class="rail-group">
-        <button class="rail-head" type="button" aria-expanded="true">Games<span class="n">3</span></button>
+        <button class="rail-head" type="button" aria-expanded="true">Games<span class="n">4</span></button>
         <ul class="rail-list">
+          <li><a class="rail-link" href="#echolocate"><span class="dot wip"></span>EchoLocate</a></li>
           <li><a class="rail-link" href="#phantom-parry"><span class="dot wip"></span>Phantom Parry</a></li>
           <li><a class="rail-link" href="#mega-bank-2"><span class="dot"></span>Mega Bank 2</a></li>
           <li><a class="rail-link" href="#cash-hog"><span class="dot"></span>Cash Hog</a></li>
@@ -750,7 +777,7 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
       <section class="section" id="work">
         <div class="section-bar">
           <h2>Work</h2>
-          <span class="count">4 entries</span>
+          <span class="count">5 entries</span>
         </div>
 
         <article class="entry">
@@ -772,6 +799,29 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
             <div class="actions">
               <button class="btn btn-go" type="button" data-launch="bt-7274n">Play in browser</button>
               <a class="btn" href="https://github.com/iudexryze/portfolio/tree/main/play/bt-7274n">Source</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="entry" id="echolocate">
+          <div class="entry-head">
+            <span class="entry-kind">Game</span>
+            <h3>EchoLocate</h3>
+            <span class="pill wip">In development</span>
+          </div>
+          <div class="entry-body">
+            <p>A stealth game about escaping a district in the dark, played by a protagonist who has been blind since birth. You tap to send out an echolocation pulse; whatever it touches lights up and decays, and you build a map of a place you cannot see from what came back.</p>
+            <p>The whole design hangs off one trade: the pulse is both how you see and how you are seen. Everything hunting you hears it too, so every look costs you position. Decoys exist because without them the correct play was to stand still and make no noise, and a stealth game whose optimal move is to do nothing is not a game.</p>
+            <dl class="props">
+              <dt>Role</dt><dd>Solo &mdash; design, systems, code, shaders, audio</dd>
+              <dt>Stack</dt><dd>Unity 6000.5.5f1, URP, C#</dd>
+              <dt>Systems</dt><dd>Pulse echolocation and highlight shader, sight/hearing stealth split, three enemy archetypes, BSP + MST level generation, four-part dynamic weather</dd>
+              <dt>Scope</dt><dd>Twelve levels, PC, keyboard/mouse and gamepad</dd>
+              <dt>Progress</dt><dd>109 commits across 18 PRs since 27&nbsp;July 2026</dd>
+            </dl>
+            <div class="actions">
+              <a class="btn btn-go" href="devlog/echolocate/">Read the devlog</a>
+              <span class="unavailable">Repository private</span>
             </div>
           </div>
         </article>
@@ -1212,7 +1262,7 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
       <section class="section" id="art">
         <div class="section-bar">
           <h2>Art &amp; other</h2>
-          <span class="count">3 entries</span>
+          <span class="count">3 entries &middot; 10 renders</span>
         </div>
 
         <article class="entry" id="architectus">
@@ -1248,7 +1298,7 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
               <dt>Context</dt><dd>Pwnisher community challenge</dd>
             </dl>
             <div class="actions">
-              <span class="unavailable">Render link to add</span>
+              <a class="btn" href="https://www.artstation.com/artwork/1xaKn2" rel="noopener">View on ArtStation</a>
             </div>
           </div>
         </article>
@@ -1264,9 +1314,56 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
             <dl class="props">
               <dt>Stack</dt><dd>Blender, geometry nodes, shader editor</dd>
               <dt>Subjects</dt><dd>Environment design, procedural scenes, material studies</dd>
+              <dt>Body of work</dt><dd>52 pieces on ArtStation, 2023 &ndash; 2024</dd>
             </dl>
+
+            <!-- Ten of the fifty-two, picked for the dark interiors the
+                 rest of this page is built out of. -->
+            <div class="gallery">
+              <a class="shot" href="https://www.artstation.com/artwork/rJxEXL" rel="noopener">
+                <img src="assets/art/spatial-ruins.jpg" alt="Spatial Ruins — a cavernous ruined interior lit from a single opening" loading="lazy" decoding="async">
+                <figcaption>Spatial Ruins<span class="yr">2024</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/WByNNN" rel="noopener">
+                <img src="assets/art/horror-in-space-station.jpg" alt="Horror in space station — a dim corridor aboard an abandoned station" loading="lazy" decoding="async">
+                <figcaption>Horror in Space Station<span class="yr">2024</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/29w48v" rel="noopener">
+                <img src="assets/art/asylum-escape.jpg" alt="Asylum Escape — a corridor lit by failing overhead lights" loading="lazy" decoding="async">
+                <figcaption>Asylum Escape<span class="yr">2024</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/PXwyVn" rel="noopener">
+                <img src="assets/art/escaping-the-dead.jpg" alt="Escaping the Dead — an overgrown street scene at night" loading="lazy" decoding="async">
+                <figcaption>Escaping the Dead<span class="yr">2024</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/04woay" rel="noopener">
+                <img src="assets/art/witch-house.jpg" alt="Witch house — a lantern-lit cabin interior" loading="lazy" decoding="async">
+                <figcaption>Witch House<span class="yr">2024</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/1xaKn2" rel="noopener">
+                <img src="assets/art/bossfight.jpg" alt="BossFight — the Pwnisher challenge boss scene" loading="lazy" decoding="async">
+                <figcaption>BossFight<span class="yr">2023</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/xDvxKY" rel="noopener">
+                <img src="assets/art/cannibal-cave.jpg" alt="Cannibal Cave — a firelit cave interior" loading="lazy" decoding="async">
+                <figcaption>Cannibal Cave<span class="yr">2023</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/046YDe" rel="noopener">
+                <img src="assets/art/open-area-in-backrooms.jpg" alt="Open area in Backrooms — a vast fluorescent-lit empty room" loading="lazy" decoding="async">
+                <figcaption>Open Area in Backrooms<span class="yr">2023</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/m8EQv8" rel="noopener">
+                <img src="assets/art/ruins.jpg" alt="Ruins — a weathered stone structure in low light" loading="lazy" decoding="async">
+                <figcaption>Ruins<span class="yr">2023</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/49a50n" rel="noopener">
+                <img src="assets/art/ancient-spell-book.jpg" alt="Ancient Spell Book — a lit book on a dark surface" loading="lazy" decoding="async">
+                <figcaption>Ancient Spell Book<span class="yr">2023</span></figcaption>
+              </a>
+            </div>
+
             <div class="actions">
-              <span class="unavailable">ArtStation profile URL to add</span>
+              <a class="btn" href="https://www.artstation.com/notryze" rel="noopener">All 52 on ArtStation</a>
             </div>
           </div>
         </article>
@@ -1415,6 +1512,7 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
           <li><a href="mailto:varun2002saini19@gmail.com"><span class="k">Email</span><span class="v">varun2002saini19@gmail.com</span><span class="go">Compose</span></a></li>
           <li><a href="https://linkedin.com/in/varun-saini"><span class="k">LinkedIn</span><span class="v">linkedin.com/in/varun-saini</span><span class="go">Open</span></a></li>
           <li><a href="https://github.com/iudexryze"><span class="k">GitHub</span><span class="v">github.com/iudexryze</span><span class="go">Open</span></a></li>
+          <li><a href="https://www.artstation.com/notryze"><span class="k">ArtStation</span><span class="v">artstation.com/notryze</span><span class="go">Open</span></a></li>
           <li><a href="tel:+919901098611"><span class="k">Phone</span><span class="v">+91 99010 98611</span><span class="go">Call</span></a></li>
         </ul>
 
