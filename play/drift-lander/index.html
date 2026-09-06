@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drift Lander</title>
+<meta name="description" content="A physics lander. Procedural terrain, narrow pads that pay more, and a fuel gauge that never quite covers the descent.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#131211; --panel:#1B1917; --sunken:#0E0D0C;
+  --rule:#322E28; --dim:#8C8577; --mid:#B4AC9D;
+  --f:'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%; overscroll-behavior:none}
+body{
+  margin:0; background:var(--sunken); color:var(--mid);
+  font-family:var(--f); font-size:14px;
+  display:flex; flex-direction:column; overflow:hidden;
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+}
+.stage{position:relative; flex:1 1 auto; min-height:0}
+canvas{
+  position:absolute; inset:0; width:100%; height:100%; display:block;
+  touch-action:none; user-select:none;
+}
+.hint{
+  flex:0 0 auto; margin:0; padding:7px 10px 9px; text-align:center;
+  font-size:10.5px; letter-spacing:.09em; color:var(--dim);
+  text-transform:uppercase; border-top:1px solid var(--rule); background:var(--ink);
+}
+@media (max-height:420px){ .hint{display:none} }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <canvas id="c" aria-label="Drift Lander, a physics landing game"></canvas>
+</div>
+<p class="hint">tap sides to rotate &middot; tap middle to thrust &middot; R restart &middot; P pause</p>
+
+<script>
+(function () {
+'use strict';
+
+var stage = document.getElementById('stage');
+var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+var FONT = "'IBM Plex Mono', ui-monospace, Consolas, monospace";
+var COL = { amber:'#F0902E', live:'#86C232', bad:'#D9484B', bone:'#EDE8DE', dim:'#8C8577' };
+
+/* ── Viewport ──────────────────────────────────────────────────────
+   The logical world holds a constant area and takes the aspect of the
+   frame, so a phone held upright becomes a narrow shaft with a long
+   descent rather than a letterboxed strip. One logical pixel is worth
+   about the same in either shape, which is what lets gravity, thrust
+   and the landing tolerances keep their tuning across the reshape.
+   UI counter-scales the HUD so text stays the same physical size. */
+var AREA = 960 * 600;
+var W = 960, H = 600, dpr = 1, pxScale = 1, UI = 1;
+var CELLS = 64, CW = W / CELLS;
+
+function fit() {
+  var r = stage.getBoundingClientRect();
+  var cw = Math.max(240, Math.round(r.width)), ch = Math.max(240, Math.round(r.height));
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = cw * dpr; cv.height = ch * dpr;
+
+  var oldW = W, oldH = H;
+  var k = Math.sqrt(AREA / (cw * ch));
+  W = cw * k; H = ch * k;
+  pxScale = 1 / k;
+  UI = Math.max(0.85, Math.min(1.75, k));
+
+  /* The cell count stays put and only the cell width changes, so a
+     reshape rescales the ground instead of regenerating it — the pads
+     stay flat and stay where they were, which matters when the reshape
+     lands mid-descent. */
+  CW = W / CELLS;
+
+  if (oldW !== W || oldH !== H) reflow(W / oldW, H / oldH);
+}
+
+function reflow(sx, sy) {
+  if (!terrain) return;   /* first call, before the world exists */
+  var i;
+  for (i = 0; i < stars.length; i++) { stars[i].x *= sx; stars[i].y *= sy; }
+  for (i = 0; i < parts.length; i++) { parts[i].x *= sx; parts[i].y *= sy; }
+  for (i = 0; i < pads.length; i++) pads[i].y *= sy;
+  for (i = 0; i < terrain.length; i++) { terrain[i].x = i * CW; terrain[i].y *= sy; }
+  if (ship) { ship.x *= sx; ship.y *= sy; }
+}
+
+fit();
+addEventListener('resize', fit);
+if (window.ResizeObserver) new ResizeObserver(fit).observe(stage);
+
+function font(size, weight) { return (weight || 400) + ' ' + (size * UI).toFixed(1) + 'px ' + FONT; }
+
+/* ── Input ─────────────────────────────────────────────────────── */
+var keys = Object.create(null);
+var BLOCK = { ArrowLeft:1, ArrowRight:1, ArrowUp:1, ArrowDown:1, Space:1 };
+
+addEventListener('keydown', function (e) {
+  if (BLOCK[e.code]) e.preventDefault();
+  if (!keys[e.code]) onPress(e.code);
+  keys[e.code] = true;
+});
+addEventListener('keyup', function (e) { keys[e.code] = false; });
+addEventListener('blur', function () {
+  keys = Object.create(null);
+  if (state === 'play') state = 'pause';
+});
+
+function held() {
+  for (var i = 0; i < arguments.length; i++) if (keys[arguments[i]]) return true;
+  return false;
+}
+
+function onPress(code) {
+  if (code === 'KeyR') { newGame(); return; }
+  if (code === 'KeyP' && (state === 'play' || state === 'pause')) {
+    state = state === 'play' ? 'pause' : 'play';
+    return;
+  }
+  var go = code === 'Space' || code === 'Enter' || code === 'ArrowUp' || code === 'KeyW';
+  if (!go) return;
+  if (state === 'title')  { newGame(); }
+  else if (state === 'landed') { level++; buildLevel(); }
+  else if (state === 'dead')   { lives--; if (lives <= 0) state = 'over'; else buildLevel(); }
+  else if (state === 'over')   { newGame(); }
+  else if (state === 'pause')  { state = 'play'; }
+}
+
+/* Touch controls. The left third yaws left, the right third yaws right,
+   the middle thrusts — and each finger is tracked by pointer id, because
+   landing this thing means rotating and burning at the same time and a
+   single-touch scheme would make that impossible rather than hard. */
+var touches = Object.create(null);
+
+function zoneFor(e) {
+  var r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W;
+  return x < W * 0.33 ? 'ArrowLeft' : x > W * 0.67 ? 'ArrowRight' : 'ArrowUp';
+}
+
+cv.addEventListener('pointerdown', function (e) {
+  e.preventDefault();
+  if (state !== 'play') { onPress('Space'); return; }
+  var zone = zoneFor(e);
+  touches[e.pointerId] = zone;
+  keys[zone] = true;
+  try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+});
+
+/* Sliding a finger across a zone boundary should hand over cleanly, not
+   leave the old zone stuck on. */
+cv.addEventListener('pointermove', function (e) {
+  var held = touches[e.pointerId];
+  if (!held) return;
+  var zone = zoneFor(e);
+  if (zone === held) return;
+  release(e.pointerId);
+  touches[e.pointerId] = zone;
+  keys[zone] = true;
+});
+
+function release(id) {
+  var zone = touches[id];
+  if (!zone) return;
+  delete touches[id];
+  for (var other in touches) if (touches[other] === zone) return;
+  keys[zone] = false;
+}
+
+function lift(e) { release(e.pointerId); }
+cv.addEventListener('pointerup', lift);
+cv.addEventListener('pointercancel', lift);
+addEventListener('blur', function () {
+  for (var id in touches) delete touches[id];
+});
+
+/* ── World ─────────────────────────────────────────────────────── */
+var terrain = [], pads = [], stars = [], parts = [];
+var ship = null, level = 1, lives = 3, score = 0;
+var state = 'title', shake = 0, banner = '', bannerSub = '';
+
+function rnd(a, b) { return a + Math.random() * (b - a); }
+
+/* Midpoint displacement, with the pads stamped flat afterwards. Doing
+   it in that order matters: flatten first and the later passes tilt the
+   pad back by a pixel or two, which is enough to fail a clean landing. */
+function makeTerrain() {
+  var h = new Array(CELLS + 1);
+  h[0] = rnd(H - 170, H - 70);
+  h[CELLS] = rnd(H - 170, H - 70);
+
+  var relief = (78 + level * 7) * (H / 600);
+  for (var step = CELLS, amp = relief; step > 1; step >>= 1, amp *= 0.56) {
+    var half = step >> 1;
+    for (var i = half; i < CELLS; i += step) {
+      h[i] = (h[i - half] + h[i + half]) / 2 + rnd(-amp, amp);
+    }
+  }
+  for (var k = 0; k <= CELLS; k++) h[k] = Math.max(H * 0.36, Math.min(H - 26, h[k]));
+
+  pads = [];
+  var count = Math.max(1, 3 - (((level - 1) / 3) | 0));
+  var wide  = Math.max(2, 5 - (((level - 1) / 2) | 0));
+
+  for (var tries = 0; pads.length < count && tries < 250; tries++) {
+    var w  = wide + (Math.random() < 0.35 ? 1 : 0);
+    var i0 = rnd(2, CELLS - w - 2) | 0, i1 = i0 + w;
+    var clash = false;
+    for (var p = 0; p < pads.length; p++) {
+      if (i0 <= pads[p].i1 + 2 && i1 >= pads[p].i0 - 2) { clash = true; break; }
+    }
+    if (clash) continue;
+
+    var y = 0;
+    for (var j = i0; j <= i1; j++) y = Math.max(y, h[j]);
+    for (var m = i0; m <= i1; m++) h[m] = y;
+    pads.push({ i0:i0, i1:i1, y:y, mult: w <= 2 ? 5 : w <= 3 ? 3 : w <= 4 ? 2 : 1 });
+  }
+
+  terrain = [];
+  for (var t = 0; t <= CELLS; t++) terrain.push({ x: t * CW, y: h[t] });
+}
+
+function groundAt(x) {
+  var i = Math.max(0, Math.min(CELLS - 1, (x / CW) | 0));
+  return terrain[i].y + (terrain[i + 1].y - terrain[i].y) * ((x - i * CW) / CW);
+}
+
+function padAt(x) {
+  var i = (x / CW) | 0;
+  for (var p = 0; p < pads.length; p++) {
+    if (i >= pads[p].i0 && i < pads[p].i1) return pads[p];
+  }
+  return null;
+}
+
+function makeStars() {
+  stars = [];
+  for (var i = 0; i < 130; i++) {
+    stars.push({ x: rnd(0, W), y: rnd(0, H * 0.72), r: rnd(0.5, 1.5), a: rnd(0.1, 0.6) });
+  }
+}
+
+function buildLevel() {
+  makeTerrain();
+  ship = {
+    x: rnd(W * 0.2, W * 0.8), y: H * 0.12,
+    vx: rnd(-0.9, 0.9) * (1 + level * 0.08), vy: rnd(0.1, 0.5),
+    /* A taller world means a longer fall and a bigger burn to arrest it,
+       which goes as the square root of the drop — so the tank does too. */
+    ang: 0, fuel: Math.max(430, 1000 - (level - 1) * 55) * Math.sqrt(H / 600), alive: true
+  };
+  parts = [];
+  state = 'play';
+}
+
+function newGame() {
+  level = 1; lives = 3; score = 0;
+  makeStars(); buildLevel();
+}
+
+/* ── Simulation ────────────────────────────────────────────────── */
+var GRAV = 0.038, TURN = 0.052, THRUST = 0.105, BURN = 1.5;
+var SAFE_V = 1.7, SAFE_VX = 0.95, SAFE_ANG = 0.17;
+
+function burst(x, y, n, spread, col, life, speed) {
+  for (var i = 0; i < n; i++) {
+    var a = rnd(0, Math.PI * 2), s = rnd(0.3, 1) * speed;
+    parts.push({
+      x:x, y:y, vx: Math.cos(a) * s * spread, vy: Math.sin(a) * s,
+      life: life * rnd(0.6, 1.2), max: life, col: col
+    });
+  }
+}
+
+function step() {
+  if (state !== 'play') return;
+  var s = ship;
+
+  if (held('ArrowLeft', 'KeyA'))  s.ang -= TURN;
+  if (held('ArrowRight', 'KeyD')) s.ang += TURN;
+  s.ang = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, s.ang));
+
+  if (held('ArrowUp', 'KeyW', 'Space') && s.fuel > 0) {
+    s.vx += Math.sin(s.ang) * THRUST;
+    s.vy -= Math.cos(s.ang) * THRUST;
+    s.fuel = Math.max(0, s.fuel - BURN);
+
+    var bx = s.x - Math.sin(s.ang) * 13, by = s.y + Math.cos(s.ang) * 13;
+    for (var i = 0; i < 2; i++) {
+      parts.push({
+        x:bx, y:by,
+        vx: -Math.sin(s.ang) * rnd(1, 2.6) + rnd(-0.5, 0.5),
+        vy:  Math.cos(s.ang) * rnd(1, 2.6) + rnd(-0.5, 0.5),
+        life: rnd(10, 22), max: 22, col: 'amber'
+      });
+    }
+  }
+
+  s.vy += GRAV + level * 0.0045;
+  s.x += s.vx; s.y += s.vy;
+
+  if (s.x < 12)     { s.x = 12;     s.vx =  Math.abs(s.vx) * 0.4; }
+  if (s.x > W - 12) { s.x = W - 12; s.vx = -Math.abs(s.vx) * 0.4; }
+  if (s.y < 14)     { s.y = 14;     s.vy = Math.max(0, s.vy); }
+
+  for (var q = parts.length - 1; q >= 0; q--) {
+    var pt = parts[q];
+    pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.035; pt.vx *= 0.985;
+    if (--pt.life <= 0) parts.splice(q, 1);
+  }
+  if (shake > 0) shake *= 0.88;
+
+  /* Contact is measured at the feet rather than the hull centre, so a
+     near-vertical touchdown reads the same way it looks. */
+  if (s.y + 11 >= groundAt(s.x)) resolveContact();
+}
+
+function resolveContact() {
+  var s = ship, pad = padAt(s.x), speed = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
+  var ok = pad && speed < SAFE_V && Math.abs(s.vx) < SAFE_VX && Math.abs(s.ang) < SAFE_ANG;
+
+  if (ok) {
+    var gained = Math.round((120 * pad.mult + s.fuel * 0.35) * (1 + (level - 1) * 0.2));
+    score += gained;
+    state = 'landed';
+    banner = 'TOUCHDOWN';
+    bannerSub = 'pad x' + pad.mult + '   fuel ' + Math.round(s.fuel) + '   +' + gained + ' pts';
+    s.y = pad.y - 11; s.vx = 0; s.vy = 0;
+    burst(s.x, s.y + 11, 18, 2.4, 'live', 26, 1.6);
+  } else {
+    state = 'dead';
+    s.alive = false;
+    shake = 16;
+    burst(s.x, s.y, 46, 1.8, 'bad', 40, 3.4);
+    burst(s.x, s.y, 22, 1.4, 'amber', 30, 2.2);
+    banner = 'WRECKED';
+    bannerSub = !pad ? 'not on a landing pad'
+      : speed >= SAFE_V ? 'came in at ' + speed.toFixed(1) + ' — limit ' + SAFE_V.toFixed(1)
+      : Math.abs(s.vx) >= SAFE_VX ? 'too much lateral drift'
+      : 'set down at an angle';
+  }
+}
+
+/* ── Render ────────────────────────────────────────────────────── */
+function draw() {
+  ctx.setTransform(dpr * pxScale, 0, 0, dpr * pxScale, 0, 0);
+  if (shake > 0.4) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
+
+  ctx.fillStyle = '#0E0D0C';
+  ctx.fillRect(-30, -30, W + 60, H + 60);
+
+  ctx.fillStyle = '#EDE8DE';
+  for (var i = 0; i < stars.length; i++) {
+    ctx.globalAlpha = stars[i].a;
+    ctx.fillRect(stars[i].x, stars[i].y, stars[i].r, stars[i].r);
+  }
+  ctx.globalAlpha = 1;
+
+  drawTerrain();
+  drawParts();
+  if (ship && ship.alive) drawShip();
+  drawHud();
+  if (state !== 'play') drawOverlay();
+}
+
+function drawTerrain() {
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (var i = 0; i <= CELLS; i++) ctx.lineTo(terrain[i].x, terrain[i].y);
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  ctx.fillStyle = '#1B1917';
+  ctx.fill();
+  ctx.strokeStyle = '#443E36';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  for (var p = 0; p < pads.length; p++) {
+    var pad = pads[p], x0 = pad.i0 * CW, x1 = pad.i1 * CW;
+    ctx.strokeStyle = COL.live;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x0, pad.y); ctx.lineTo(x1, pad.y);
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = COL.live;
+    ctx.fillRect(x0, pad.y - 16, x1 - x0, 16);
+    ctx.globalAlpha = 1;
+
+    ctx.font = font(11, 600);
+    ctx.fillText('x' + pad.mult, (x0 + x1) / 2, pad.y - 22);
+  }
+  ctx.textAlign = 'left';
+}
+
+function drawParts() {
+  for (var i = 0; i < parts.length; i++) {
+    var q = parts[i];
+    ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.9;
+    ctx.fillStyle = COL[q.col];
+    ctx.fillRect(q.x - 1.5, q.y - 1.5, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawShip() {
+  var s = ship;
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.rotate(s.ang);
+
+  ctx.strokeStyle = '#443E36';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-6, 7); ctx.lineTo(-11, 12);
+  ctx.moveTo(6, 7);  ctx.lineTo(11, 12);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0, -12); ctx.lineTo(9, 6); ctx.lineTo(-9, 6);
+  ctx.closePath();
+  ctx.fillStyle = COL.bone;
+  ctx.fill();
+
+  ctx.fillStyle = state === 'play' ? COL.live : COL.amber;
+  ctx.fillRect(-2.5, -5, 5, 5);
+  ctx.restore();
+
+  /* The drift vector is the number that actually kills you, so draw it
+     where the eye already is instead of only in the HUD. */
+  if (state === 'play') {
+    ctx.strokeStyle = Math.sqrt(s.vx * s.vx + s.vy * s.vy) < SAFE_V ? COL.live : COL.amber;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(s.x + s.vx * 16, s.y + s.vy * 16);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function pad3(n) { n = String(n); while (n.length < 3) n = '0' + n; return n; }
+function pad5(n) { n = String(n); while (n.length < 5) n = '0' + n; return n; }
+
+/* Four readouts spread across whatever width there is, plus a fuel bar
+   on its own line. The old version laid them out from five fixed offsets
+   and ran off the side of anything narrower than a laptop. */
+function meter(label, value, cx, warn) {
+  ctx.textAlign = 'center';
+  ctx.font = font(9.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText(label, cx, 22 * UI);
+  ctx.font = font(15, 500);
+  ctx.fillStyle = warn ? COL.amber : COL.bone;
+  ctx.fillText(value, cx, 40 * UI);
+}
+
+function drawHud() {
+  var s = ship;
+  if (!s) return;
+  var alt = Math.max(0, groundAt(s.x) - (s.y + 11));
+  var spd = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
+  var e = 14 * UI, span = W - e * 2;
+
+  ctx.fillStyle = 'rgba(14,13,12,.5)';
+  ctx.fillRect(0, 0, W, 78 * UI);
+
+  meter('ALT', pad3(Math.round(alt)), e + span * 0.11, false);
+  meter('DRIFT', (s.vx >= 0 ? '+' : '') + s.vx.toFixed(2), e + span * 0.37, Math.abs(s.vx) >= SAFE_VX);
+  meter('DESCENT', (s.vy >= 0 ? '+' : '') + s.vy.toFixed(2), e + span * 0.63, spd >= SAFE_V);
+  meter('ATT', (s.ang * 57.3).toFixed(0) + '°', e + span * 0.89, Math.abs(s.ang) >= SAFE_ANG);
+
+  /* The fuel bar gets the centre and the two text runs get the edges,
+     so nothing has to guess how much room the others left it. */
+  var full = Math.max(430, 1000 - (level - 1) * 55) * Math.sqrt(H / 600);
+  var pct = Math.max(0, Math.min(1, s.fuel / full));
+  var bw = Math.min(150 * UI, span * 0.4), bx = (W - bw) / 2, by = 52 * UI;
+
+  ctx.strokeStyle = '#443E36';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, by + 0.5, bw, 11 * UI);
+  ctx.fillStyle = pct < 0.2 ? COL.amber : COL.live;
+  ctx.fillRect(bx + 1.5, by + 1.5, Math.max(0, (bw - 3) * pct), 11 * UI - 3);
+
+  ctx.font = font(9.5);
+  ctx.fillStyle = COL.dim;
+  ctx.textAlign = 'left';
+  ctx.fillText('L' + level + '  ·  ' + Math.max(0, lives) + ' LEFT', e, by + 9 * UI);
+  ctx.textAlign = 'right';
+  ctx.fillText(pad5(score), W - e, by + 9 * UI);
+  ctx.textAlign = 'left';
+}
+
+/* Overlay copy wraps to the real width instead of assuming a desktop
+   line length, because on a phone there is not one. */
+function wrap(text, max) {
+  var words = text.split(' '), lines = [], line = '';
+  for (var i = 0; i < words.length; i++) {
+    var test = line ? line + ' ' + words[i] : words[i];
+    if (ctx.measureText(test).width > max && line) { lines.push(line); line = words[i]; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function panel(items, accent) {
+  ctx.fillStyle = 'rgba(14,13,12,.86)';
+  ctx.fillRect(0, 0, W, H);
+
+  var bw = Math.min(W - 28 * UI, 520 * UI), inner = bw - 44 * UI;
+  var rows = [], i;
+  for (i = 0; i < items.length; i++) {
+    if (items[i].big) { rows.push(items[i]); continue; }
+    ctx.font = font(13);
+    var parts = wrap(items[i].t, inner);
+    for (var q = 0; q < parts.length; q++) rows.push({ t: parts[q], mute: items[i].mute });
+  }
+
+  var lh = 21 * UI, th = 35 * UI, bh = 44 * UI;
+  for (i = 0; i < rows.length; i++) bh += rows[i].big ? th : lh;
+  var bx = (W - bw) / 2, by = Math.max(8, (H - bh) / 2);
+
+  ctx.fillStyle = '#1B1917';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = '#322E28';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
+  ctx.fillStyle = accent;
+  ctx.fillRect(bx, by, bw, 2);
+
+  ctx.textAlign = 'center';
+  var y = by + 22 * UI;
+  for (i = 0; i < rows.length; i++) {
+    var l = rows[i];
+    y += l.big ? th : lh;
+    ctx.font = l.big ? font(24, 600) : font(13);
+    ctx.fillStyle = l.big ? accent : (l.mute ? COL.dim : COL.mid);
+    ctx.fillText(l.t, W / 2, y);
+  }
+  ctx.textAlign = 'left';
+}
+
+function drawOverlay() {
+  if (state === 'title') {
+    panel([
+      { t:'DRIFT LANDER', big:true },
+      { t:'Set down on a green pad. Slowly, and level.' },
+      { t:'Narrow pads pay more. Fuel does not come back.' },
+      { t:'← → rotate    ↑ thrust    R restart', mute:true },
+      { t:'press SPACE to begin', mute:true }
+    ], COL.live);
+  } else if (state === 'landed') {
+    panel([
+      { t:banner, big:true }, { t:bannerSub },
+      { t:'press SPACE for level ' + (level + 1), mute:true }
+    ], COL.live);
+  } else if (state === 'dead') {
+    panel([
+      { t:banner, big:true }, { t:bannerSub },
+      { t:(lives - 1) + ' lander' + (lives - 1 === 1 ? '' : 's') + ' left · press SPACE', mute:true }
+    ], COL.bad);
+  } else if (state === 'over') {
+    panel([
+      { t:'ALL LANDERS LOST', big:true },
+      { t:'final score ' + score + '   reached level ' + level },
+      { t:'press SPACE to fly again', mute:true }
+    ], COL.amber);
+  } else if (state === 'pause') {
+    panel([{ t:'PAUSED', big:true }, { t:'press P to resume', mute:true }], COL.amber);
+  }
+}
+
+/* ── Loop ──────────────────────────────────────────────────────────
+   Fixed 60 Hz steps, so the physics behaves the same on a 144 Hz panel
+   as it does on a laptop. */
+var acc = 0, last = 0, STEP = 1000 / 60;
+
+function frame(now) {
+  if (!last) last = now;
+  acc += Math.min(now - last, 100);
+  last = now;
+  while (acc >= STEP) { step(); acc -= STEP; }
+  draw();
+  requestAnimationFrame(frame);
+}
+
+makeStars();
+buildLevel();
+state = 'title';
+requestAnimationFrame(frame);
+try { window.focus(); } catch (e) {}
+})();
+</script>
+</body>
+</html>

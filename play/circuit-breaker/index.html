@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circuit Breaker</title>
+<meta name="description" content="A routing puzzle. Rotate every segment until power reaches the whole board, in as few turns as the generator says it takes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#131211; --sunken:#0E0D0C; --rule:#322E28; --dim:#8C8577; --mid:#B4AC9D;
+  --f:'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%; overscroll-behavior:none}
+body{
+  margin:0; background:var(--sunken); color:var(--mid);
+  font-family:var(--f); font-size:14px;
+  display:flex; flex-direction:column; overflow:hidden;
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+}
+/* The canvas takes the shape of the frame and the board lays itself out
+   to fit, so a phone held upright gets a full board, not a letterbox. */
+.stage{position:relative; flex:1 1 auto; min-height:0}
+canvas{
+  position:absolute; inset:0; width:100%; height:100%; display:block;
+  touch-action:none; user-select:none; cursor:pointer;
+}
+.hint{
+  flex:0 0 auto; margin:0; padding:7px 10px 9px; text-align:center;
+  font-size:10.5px; letter-spacing:.09em; color:var(--dim);
+  text-transform:uppercase; border-top:1px solid var(--rule); background:var(--ink);
+}
+@media (max-height:420px){ .hint{display:none} }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <canvas id="c" aria-label="Circuit Breaker, a pipe routing puzzle"></canvas>
+</div>
+<p class="hint">tap or click to rotate &middot; arrows + space &middot; R reshuffle</p>
+
+<script>
+(function () {
+'use strict';
+
+var stage = document.getElementById('stage');
+var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+var FONT = "'IBM Plex Mono', ui-monospace, Consolas, monospace";
+var COL = { amber:'#F0902E', live:'#86C232', bone:'#EDE8DE', mid:'#B4AC9D', dim:'#8C8577', rule:'#443E36' };
+
+/* ── Viewport ──────────────────────────────────────────────────────
+   The logical viewport keeps a constant area and takes the aspect of
+   whatever it is given. A phone held upright gets a tall narrow world
+   instead of a letterboxed strip, and one logical pixel stays worth
+   about the same everywhere — so the tuning survives the reshape.
+   UI counter-scales text: on a small screen the HUD has to grow in
+   logical units to stay the same physical size. */
+var AREA = 960 * 600;
+var W = 960, H = 600, dpr = 1, pxScale = 1, UI = 1;
+
+function fit() {
+  var r = stage.getBoundingClientRect();
+  var cw = Math.max(240, Math.round(r.width)), ch = Math.max(240, Math.round(r.height));
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = cw * dpr; cv.height = ch * dpr;
+
+  var k = Math.sqrt(AREA / (cw * ch));
+  W = cw * k; H = ch * k;
+  pxScale = 1 / k;
+  UI = Math.max(0.85, Math.min(1.75, k));
+}
+fit();
+addEventListener('resize', fit);
+if (window.ResizeObserver) new ResizeObserver(fit).observe(stage);
+
+function font(size, weight) { return (weight || 400) + ' ' + (size * UI).toFixed(1) + 'px ' + FONT; }
+function hudH() { return 46 * UI + 16; }
+
+/* Direction bits: 0 up, 1 right, 2 down, 3 left. A rotation is a
+   one-place barrel shift of the nibble, which is why the whole board
+   can be stored as a flat array of small integers. */
+var DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
+function cw(m)  { return ((m << 1) | (m >> 3)) & 15; }
+function ccw(m) { return ((m >> 1) | (m << 3)) & 15; }
+
+var N = 4, cells = [], solved = [], powered = [];
+var srcX = 0, srcY = 0;
+var level = 1, score = 0, moves = 0, par = 0, best = 0;
+var curX = 0, curY = 0, hoverX = -1, hoverY = -1;
+var state = 'title', startedAt = 0, elapsed = 0, winAt = 0;
+var pulse = [];
+
+function idx(x, y) { return y * N + x; }
+function inBounds(x, y) { return x >= 0 && y >= 0 && x < N && y < N; }
+
+/* Randomised depth-first spanning tree. Every cell ends up on the tree,
+   so a finished board is always fully lit — there is no unreachable
+   corner to hunt for and no unsolvable shuffle. */
+function generate() {
+  N = Math.min(9, 4 + ((level / 2) | 0));
+  cells = new Array(N * N).fill(0);
+  var seen = new Array(N * N).fill(false);
+
+  srcX = (Math.random() * N) | 0;
+  srcY = (Math.random() * N) | 0;
+
+  var stack = [[srcX, srcY]];
+  seen[idx(srcX, srcY)] = true;
+
+  while (stack.length) {
+    var top = stack[stack.length - 1], x = top[0], y = top[1];
+    var open = [];
+    for (var d = 0; d < 4; d++) {
+      var nx = x + DX[d], ny = y + DY[d];
+      if (inBounds(nx, ny) && !seen[idx(nx, ny)]) open.push(d);
+    }
+    if (!open.length) { stack.pop(); continue; }
+
+    var pick = open[(Math.random() * open.length) | 0];
+    var tx = x + DX[pick], ty = y + DY[pick];
+    cells[idx(x, y)]   |= 1 << pick;
+    cells[idx(tx, ty)] |= 1 << ((pick + 2) % 4);
+    seen[idx(tx, ty)] = true;
+    stack.push([tx, ty]);
+  }
+
+  solved = cells.slice();
+
+  /* Shuffle, then read par off the shuffle itself. Re-roll while the
+     result is already live — turning a straight segment 180° puts it
+     back, so a nonzero shuffle can still open solved, and a board that
+     opens solved never fires the win check. */
+  do {
+    par = 0;
+    for (var i = 0; i < cells.length; i++) {
+      var turns = (Math.random() * 4) | 0;
+      for (var t = 0; t < turns; t++) cells[i] = cw(cells[i]);
+      par += Math.min(turns, 4 - turns) % 4;
+    }
+  } while (par === 0 || computePower());
+
+  moves = 0;
+  curX = srcX; curY = srcY;
+  pulse = [];
+  computePower();
+  elapsed = 0;
+  startedAt = performance.now();
+  state = 'play';
+}
+
+/* Flood fill from the source. An edge only conducts when both cells
+   have a stub facing each other, which is the entire rule of the game. */
+function computePower() {
+  powered = new Array(N * N).fill(false);
+  var queue = [[srcX, srcY]];
+  powered[idx(srcX, srcY)] = true;
+
+  while (queue.length) {
+    var c = queue.pop(), x = c[0], y = c[1], m = cells[idx(x, y)];
+    for (var d = 0; d < 4; d++) {
+      if (!(m & (1 << d))) continue;
+      var nx = x + DX[d], ny = y + DY[d];
+      if (!inBounds(nx, ny) || powered[idx(nx, ny)]) continue;
+      if (!(cells[idx(nx, ny)] & (1 << ((d + 2) % 4)))) continue;
+      powered[idx(nx, ny)] = true;
+      queue.push([nx, ny]);
+    }
+  }
+  return powered.every(Boolean);
+}
+
+function rotate(x, y, reverse) {
+  if (state !== 'play' || !inBounds(x, y)) return;
+  var i = idx(x, y);
+  cells[i] = reverse ? ccw(cells[i]) : cw(cells[i]);
+  moves++;
+  if (computePower()) win();
+}
+
+function win() {
+  state = 'won';
+  winAt = performance.now();
+  elapsed = (winAt - startedAt) / 1000;
+
+  var efficiency = Math.max(0, Math.round((par / Math.max(moves, 1)) * 500));
+  var speed = Math.max(0, Math.round(300 - elapsed * 4));
+  best = efficiency + speed + level * 100;
+  score += best;
+
+  for (var i = 0; i < N * N; i++) pulse.push({ i: i, t: -(i % N + ((i / N) | 0)) * 3 });
+}
+
+/* ── Input ─────────────────────────────────────────────────────── */
+var BLOCK = { ArrowLeft:1, ArrowRight:1, ArrowUp:1, ArrowDown:1, Space:1 };
+
+addEventListener('keydown', function (e) {
+  if (BLOCK[e.code]) e.preventDefault();
+
+  if (e.code === 'KeyR') { generate(); return; }
+
+  if (state === 'title') {
+    if (e.code === 'Space' || e.code === 'Enter') { level = 1; score = 0; generate(); }
+    return;
+  }
+  if (state === 'won') {
+    if (e.code === 'Space' || e.code === 'Enter') { level++; generate(); }
+    return;
+  }
+
+  if (e.code === 'ArrowLeft')  curX = Math.max(0, curX - 1);
+  if (e.code === 'ArrowRight') curX = Math.min(N - 1, curX + 1);
+  if (e.code === 'ArrowUp')    curY = Math.max(0, curY - 1);
+  if (e.code === 'ArrowDown')  curY = Math.min(N - 1, curY + 1);
+  if (e.code === 'Space' || e.code === 'Enter') rotate(curX, curY, e.shiftKey);
+  if (e.code === 'Backspace') rotate(curX, curY, true);
+});
+
+function cellAt(ev) {
+  var r = cv.getBoundingClientRect();
+  var x = (ev.clientX - r.left) / r.width * W;
+  var y = (ev.clientY - r.top) / r.height * H;
+  var g = geom();
+  return { x: Math.floor((x - g.ox) / g.cs), y: Math.floor((y - g.oy) / g.cs) };
+}
+
+cv.addEventListener('pointermove', function (e) {
+  var c = cellAt(e);
+  hoverX = c.x; hoverY = c.y;
+});
+cv.addEventListener('pointerleave', function () { hoverX = hoverY = -1; });
+
+cv.addEventListener('pointerdown', function (e) {
+  e.preventDefault();
+  if (state === 'title') { level = 1; score = 0; generate(); return; }
+  if (state === 'won')   { level++; generate(); return; }
+  var c = cellAt(e);
+  if (inBounds(c.x, c.y)) { curX = c.x; curY = c.y; rotate(c.x, c.y, e.button === 2); }
+});
+cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+/* ── Render ────────────────────────────────────────────────────── */
+/* The board is the largest square that fits under the HUD, whatever
+   shape the frame is — which is what lets it fill a portrait phone. */
+function geom() {
+  var hud = hudH(), pad = 14 * UI;
+  var box = Math.min(W - pad * 2, H - hud - pad * 2);
+  var cs = Math.floor(box / N);
+  return { cs: cs, ox: (W - cs * N) / 2, oy: hud + (H - hud - cs * N) / 2, hud: hud };
+}
+
+function draw(now) {
+  ctx.setTransform(dpr * pxScale, 0, 0, dpr * pxScale, 0, 0);
+  ctx.fillStyle = '#0E0D0C';
+  ctx.fillRect(0, 0, W, H);
+
+  if (state === 'title') { drawTitle(); return; }
+
+  drawBoard(now);
+  drawHud();
+  if (state === 'won') drawWon();
+}
+
+function drawBoard(now) {
+  var g = geom(), cs = g.cs, r = cs * 0.5;
+
+  for (var y = 0; y < N; y++) {
+    for (var x = 0; x < N; x++) {
+      var i = idx(x, y), m = cells[i];
+      var px = g.ox + x * cs, py = g.oy + y * cs;
+      var lit = powered[i];
+
+      ctx.fillStyle = '#141311';
+      ctx.fillRect(px, py, cs, cs);
+      ctx.strokeStyle = '#221F1B';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px + 0.5, py + 0.5, cs, cs);
+
+      if (hoverX === x && hoverY === y && state === 'play') {
+        ctx.fillStyle = 'rgba(240,144,46,.07)';
+        ctx.fillRect(px, py, cs, cs);
+      }
+
+      var boost = 0;
+      for (var p = 0; p < pulse.length; p++) {
+        if (pulse[p].i === i) boost = Math.max(0, 1 - Math.abs(pulse[p].t - 12) / 12);
+      }
+
+      var cx = px + r, cy = py + r;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(3, cs * 0.13);
+      ctx.strokeStyle = lit ? COL.live : '#4A443A';
+      ctx.globalAlpha = lit ? 0.85 + boost * 0.15 : 1;
+
+      ctx.beginPath();
+      for (var d = 0; d < 4; d++) {
+        if (!(m & (1 << d))) continue;
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + DX[d] * r, cy + DY[d] * r);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      var one = m && !(m & (m - 1));
+      if (x === srcX && y === srcY) {
+        ctx.fillStyle = COL.amber;
+        ctx.fillRect(cx - cs * 0.16, cy - cs * 0.16, cs * 0.32, cs * 0.32);
+      } else if (one) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, cs * 0.15, 0, Math.PI * 2);
+        ctx.fillStyle = lit ? COL.live : '#2A2721';
+        ctx.fill();
+        ctx.strokeStyle = lit ? COL.live : '#4A443A';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = lit ? COL.live : '#4A443A';
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.max(2, cs * 0.055), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  if (state === 'play') {
+    ctx.strokeStyle = COL.amber;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(g.ox + curX * cs + 1, g.oy + curY * cs + 1, cs - 2, cs - 2);
+  }
+
+  ctx.strokeStyle = '#322E28';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(g.ox - 6.5, g.oy - 6.5, cs * N + 13, cs * N + 13);
+
+  for (var q = pulse.length - 1; q >= 0; q--) {
+    if (++pulse[q].t > 26) pulse.splice(q, 1);
+  }
+}
+
+/* A banded HUD anchored to the two edges and one proportional column,
+   rather than four fixed offsets that ran off the side of a phone. */
+function stat(label, value, x, align, accent) {
+  ctx.textAlign = align;
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText(label, x, hudH() * 0.38);
+  ctx.font = font(16, 500);
+  ctx.fillStyle = accent || COL.bone;
+  ctx.fillText(value, x, hudH() * 0.76);
+}
+
+function drawHud() {
+  var hud = hudH(), edge = 14 * UI;
+  if (state === 'play') elapsed = (performance.now() - startedAt) / 1000;
+
+  ctx.fillStyle = '#131211';
+  ctx.fillRect(0, 0, W, hud);
+  ctx.strokeStyle = '#322E28';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, hud - 0.5); ctx.lineTo(W, hud - 0.5); ctx.stroke();
+
+  stat('LEVEL', level + '  ·  ' + N + '×' + N, edge, 'left');
+  stat('MOVES', moves + ' / ' + par, W * 0.45, 'center', moves > par ? COL.amber : COL.bone);
+  stat('SCORE', String(score), W - edge, 'right');
+
+  var wired = powered.filter(Boolean).length;
+  ctx.textAlign = 'center';
+  ctx.font = font(10.5);
+  ctx.fillStyle = wired === N * N ? COL.live : COL.dim;
+  ctx.fillText(wired + ' / ' + N * N + ' LIVE   ·   ' + elapsed.toFixed(1) + 'S', W / 2, hud + 15 * UI);
+  ctx.textAlign = 'left';
+}
+
+/* Overlay copy wraps to the real width instead of assuming a desktop
+   line length, because on a phone there is not one. */
+function wrap(text, max) {
+  var words = text.split(' '), lines = [], line = '';
+  for (var i = 0; i < words.length; i++) {
+    var test = line ? line + ' ' + words[i] : words[i];
+    if (ctx.measureText(test).width > max && line) { lines.push(line); line = words[i]; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function panel(items, accent) {
+  ctx.fillStyle = 'rgba(14,13,12,.87)';
+  ctx.fillRect(0, 0, W, H);
+
+  var bw = Math.min(W - 28 * UI, 560 * UI), inner = bw - 44 * UI;
+  var rows = [];
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].big) { rows.push(items[i]); continue; }
+    ctx.font = font(13);
+    var parts = wrap(items[i].t, inner);
+    for (var p = 0; p < parts.length; p++) rows.push({ t: parts[p], mute: items[i].mute });
+  }
+
+  var lh = 21 * UI, th = 35 * UI;
+  var bh = 44 * UI;
+  for (i = 0; i < rows.length; i++) bh += rows[i].big ? th : lh;
+  var bx = (W - bw) / 2, by = Math.max(8, (H - bh) / 2);
+
+  ctx.fillStyle = '#1B1917';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = '#322E28';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
+  ctx.fillStyle = accent;
+  ctx.fillRect(bx, by, bw, 2);
+
+  ctx.textAlign = 'center';
+  var y = by + 22 * UI;
+  for (i = 0; i < rows.length; i++) {
+    var l = rows[i];
+    y += l.big ? th : lh;
+    ctx.font = l.big ? font(24, 600) : font(13);
+    ctx.fillStyle = l.big ? accent : (l.mute ? COL.dim : COL.mid);
+    ctx.fillText(l.t, W / 2, y);
+  }
+  ctx.textAlign = 'left';
+}
+
+function drawTitle() {
+  panel([
+    { t:'CIRCUIT BREAKER', big:true },
+    { t:'Rotate every segment until the whole board is live.' },
+    { t:'Nothing lights until it links back to the amber source.' },
+    { t:'click rotate · right-click reverse · arrows + space', mute:true },
+    { t:'press SPACE to start', mute:true }
+  ], COL.live);
+}
+
+function drawWon() {
+  panel([
+    { t:'BOARD LIVE', big:true },
+    { t:moves + ' moves against a par of ' + par + '   ·   ' + elapsed.toFixed(1) + 's' },
+    { t:'+' + best + ' points' },
+    { t:'press SPACE for level ' + (level + 1), mute:true }
+  ], COL.live);
+}
+
+function frame(now) { draw(now); requestAnimationFrame(frame); }
+
+generate();
+state = 'title';
+requestAnimationFrame(frame);
+try { window.focus(); } catch (e) {}
+})();
+</script>
+</body>
+</html>

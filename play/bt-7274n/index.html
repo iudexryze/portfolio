@@ -80,6 +80,29 @@ body{animation:body-flicker 18s infinite;}
 
 #body{display:grid;grid-template-columns:260px 1fr 280px;gap:5px;flex:1;min-height:0;}
 
+/* ══ NARROW ═══════════════════════════════════════════════════════
+   Three columns will not fit a phone, so they become one and the whole
+   body scrolls. The terminal goes first and keeps a definite height —
+   it is the game; the readouts are reference and can sit under it.
+   The command line is a real <input>, so the on-screen keyboard works
+   and this is genuinely playable by touch, if not comfortably. */
+@media (max-width: 900px) {
+  #app{height:100dvh;padding:4px;gap:4px;}
+  #body{grid-template-columns:1fr;gap:6px;overflow-y:auto;overscroll-behavior:contain;}
+  #term{order:1;height:min(58vh,520px);min-height:280px;}
+  #sidebar{order:2;overflow:visible;}
+  #visual{order:3;overflow:visible;}
+  #hdr{flex-wrap:wrap;gap:4px 10px;padding:6px 10px;}
+  .hdr-meta{gap:4px 10px;flex-wrap:wrap;}
+  .info-body{grid-template-columns:1fr;}
+  .info-inner{width:min(820px,96vw);max-height:84vh;}
+}
+@media (max-width: 560px) {
+  .hdr-brand{font-size:11px;letter-spacing:1px;}
+  #cmdinput{font-size:16px;}  /* 16px stops iOS zooming the page on focus */
+  .prompt{font-size:11px;}
+}
+
 #sidebar{display:flex;flex-direction:column;gap:5px;overflow-y:auto;}
 #sidebar::-webkit-scrollbar{width:2px;}
 #sidebar::-webkit-scrollbar-thumb{background:var(--teal);}

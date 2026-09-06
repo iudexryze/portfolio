@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Refactor</title>
+<meta name="description" content="Untangle the dependency graph. Drag the nodes until no two edges cross.">
+<meta name="theme-color" content="#131211">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#131211; --sunken:#0E0D0C; --rule:#322E28; --dim:#8C8577; --mid:#B4AC9D;
+  --f:'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%; overscroll-behavior:none}
+body{
+  margin:0; background:var(--sunken); color:var(--mid);
+  font-family:var(--f); font-size:14px;
+  display:flex; flex-direction:column; overflow:hidden;
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+}
+/* The canvas takes whatever shape the frame is, and the game lays itself
+   out to fit — a phone in portrait gets a full board, not black bars. */
+.stage{position:relative; flex:1 1 auto; min-height:0}
+canvas{
+  position:absolute; inset:0; width:100%; height:100%; display:block;
+  touch-action:none; user-select:none;
+}
+.hint{
+  flex:0 0 auto; margin:0; padding:7px 10px 9px; text-align:center;
+  font-size:10.5px; letter-spacing:.09em; color:var(--dim);
+  text-transform:uppercase; border-top:1px solid var(--rule); background:var(--ink);
+}
+@media (max-height:420px){ .hint{display:none} }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <canvas id="c" aria-label="Refactor, a graph untangling puzzle"></canvas>
+</div>
+<p class="hint">drag a node &middot; no edge may cross another &middot; R reshuffle</p>
+
+<script>
+(function () {
+'use strict';
+
+var stage = document.getElementById('stage');
+var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+var FONT = "'IBM Plex Mono', ui-monospace, Consolas, monospace";
+var COL = { amber:'#F0902E', live:'#86C232', bad:'#D9484B', bone:'#EDE8DE', mid:'#B4AC9D', dim:'#8C8577' };
+
+var W = 320, H = 480, dpr = 1, S = 1;
+var area = { x:0, y:0, w:1, h:1 }, R = 12, hud = 56;
+
+function fit() {
+  var r = stage.getBoundingClientRect();
+  W = Math.max(240, Math.round(r.width));
+  H = Math.max(240, Math.round(r.height));
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = W * dpr; cv.height = H * dpr;
+
+  /* One scale factor drives every size in the game, so the same board
+     reads at 320 px and at 1400 px without a second set of numbers. */
+  S = Math.max(0.68, Math.min(1.25, Math.min(W, H) / 560));
+  hud = Math.round(46 * S + 14);
+  R = Math.max(9, Math.round(Math.min(W, H) * 0.027));
+
+  var pad = R * 2.4;
+  area.x = pad; area.y = hud + pad;
+  area.w = Math.max(40, W - pad * 2);
+  area.h = Math.max(40, H - hud - pad * 2);
+}
+fit();
+addEventListener('resize', fit);
+if (window.ResizeObserver) new ResizeObserver(fit).observe(stage);
+
+function px(n) { return area.x + n.x * area.w; }
+function py(n) { return area.y + n.y * area.h; }
+function rnd(a, b) { return a + Math.random() * (b - a); }
+function font(size, weight) { return (weight || 400) + ' ' + Math.round(size * S) + 'px ' + FONT; }
+
+/* ── Graph ─────────────────────────────────────────────────────────
+   Node positions live in normalised [0,1] space. Screen mapping is a
+   per-axis scale, which is affine — so whether two edges cross is the
+   same question in either space, and the solver never has to care what
+   shape the window is. */
+var nodes = [], edges = [], N = 6;
+var level = 1, moves = 0, score = 0, crossings = 0;
+var state = 'title', startedAt = 0, elapsed = 0, gained = 0;
+var drag = null, hover = -1, pulse = 0, tick = 0;
+
+function seg(a, b, c, d) {
+  function turn(p, q, r) { return (r.y - p.y) * (q.x - p.x) - (q.y - p.y) * (r.x - p.x); }
+  var d1 = turn(c, d, a), d2 = turn(c, d, b), d3 = turn(a, b, c), d4 = turn(a, b, d);
+  return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+}
+
+function shares(e, f) {
+  return e.a === f.a || e.a === f.b || e.b === f.a || e.b === f.b;
+}
+
+function crossesAny(list, pts, a, b) {
+  for (var i = 0; i < list.length; i++) {
+    var e = list[i];
+    if (e.a === a || e.a === b || e.b === a || e.b === b) continue;
+    if (seg(pts[a], pts[b], pts[e.a], pts[e.b])) return true;
+  }
+  return false;
+}
+
+function connected(list, n) {
+  var adj = [], i;
+  for (i = 0; i < n; i++) adj.push([]);
+  for (i = 0; i < list.length; i++) { adj[list[i].a].push(list[i].b); adj[list[i].b].push(list[i].a); }
+
+  var seen = new Array(n).fill(false), stack = [0], count = 0;
+  seen[0] = true;
+  while (stack.length) {
+    var v = stack.pop(); count++;
+    for (i = 0; i < adj[v].length; i++) if (!seen[adj[v][i]]) { seen[adj[v][i]] = true; stack.push(adj[v][i]); }
+  }
+  return count === n;
+}
+
+/* Build the graph at a layout that is already planar, then throw the
+   positions away. That is what guarantees every board is solvable —
+   a solution is known to exist because we drew one. */
+function build() {
+  N = Math.min(14, 5 + level);
+  var sep = 0.62 / Math.sqrt(N), sol = [], guard = 0;
+
+  while (sol.length < N && guard++ < 6000) {
+    var p = { x: rnd(0.05, 0.95), y: rnd(0.05, 0.95) }, ok = true;
+    for (var s = 0; s < sol.length; s++) {
+      if (Math.hypot(sol[s].x - p.x, sol[s].y - p.y) < sep) { ok = false; break; }
+    }
+    if (ok) sol.push(p);
+  }
+  N = sol.length;
+
+  var pairs = [], i, j;
+  for (i = 0; i < N; i++) {
+    for (j = i + 1; j < N; j++) {
+      pairs.push({ a:i, b:j, d: Math.hypot(sol[i].x - sol[j].x, sol[i].y - sol[j].y) });
+    }
+  }
+  pairs.sort(function (m, n) { return m.d - n.d; });
+
+  /* Shortest-first greedy gives a maximal planar graph. Thinning it back
+     down keeps the puzzle readable — a full triangulation is a hairball. */
+  edges = [];
+  for (i = 0; i < pairs.length; i++) {
+    if (!crossesAny(edges, sol, pairs[i].a, pairs[i].b)) edges.push({ a: pairs[i].a, b: pairs[i].b });
+  }
+
+  var target = Math.round(N * 1.65);
+  for (var t = 0; edges.length > target && t < 500; t++) {
+    var k = (Math.random() * edges.length) | 0;
+    var kept = edges.splice(k, 1)[0];
+    if (!connected(edges, N)) edges.splice(k, 0, kept);
+  }
+
+  scramble();
+}
+
+/* Onto a ring in a random order — the classic scramble, and the one that
+   makes the tangle look worse than it is. */
+function scramble() {
+  var order = [], i;
+  for (i = 0; i < N; i++) order.push(i);
+  for (i = order.length - 1; i > 0; i--) {
+    var j = (Math.random() * (i + 1)) | 0, tmp = order[i];
+    order[i] = order[j]; order[j] = tmp;
+  }
+
+  nodes = new Array(N);
+  for (i = 0; i < N; i++) {
+    var a = i / N * Math.PI * 2 - Math.PI / 2;
+    nodes[order[i]] = { x: 0.5 + Math.cos(a) * 0.43, y: 0.5 + Math.sin(a) * 0.43 };
+  }
+
+  count();
+  if (crossings === 0 && N > 4) scramble();
+}
+
+function count() {
+  var i, j;
+  for (i = 0; i < edges.length; i++) edges[i].bad = false;
+  crossings = 0;
+  for (i = 0; i < edges.length; i++) {
+    for (j = i + 1; j < edges.length; j++) {
+      if (shares(edges[i], edges[j])) continue;
+      if (seg(nodes[edges[i].a], nodes[edges[i].b], nodes[edges[j].a], nodes[edges[j].b])) {
+        edges[i].bad = edges[j].bad = true;
+        crossings++;
+      }
+    }
+  }
+  return crossings;
+}
+
+function newLevel() {
+  build();
+  moves = 0; elapsed = 0; startedAt = performance.now();
+  drag = null; pulse = 0;
+  state = 'play';
+}
+
+function newGame() { level = 1; score = 0; newLevel(); }
+
+function win() {
+  state = 'won';
+  elapsed = (performance.now() - startedAt) / 1000;
+  var tidy = Math.max(0, Math.round((N * 2.2 / Math.max(moves, 1)) * 400));
+  var quick = Math.max(0, Math.round(260 - elapsed * 3));
+  gained = tidy + quick + level * 120;
+  score += gained;
+  pulse = 1;
+}
+
+/* ── Input ─────────────────────────────────────────────────────────
+   One pointer at a time, tracked by id, so a stray second finger on a
+   phone cannot yank a node out from under the one you are dragging. */
+function at(ev) {
+  var r = cv.getBoundingClientRect();
+  return {
+    x: ((ev.clientX - r.left) / r.width * W - area.x) / area.w,
+    y: ((ev.clientY - r.top) / r.height * H - area.y) / area.h
+  };
+}
+
+function pick(p) {
+  var best = -1, bestD = Infinity, grab = (R * 2.2 / Math.min(area.w, area.h));
+  for (var i = 0; i < N; i++) {
+    var dx = (nodes[i].x - p.x) * area.w, dy = (nodes[i].y - p.y) * area.h;
+    var d = Math.hypot(dx, dy);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return bestD <= Math.max(R * 2.4, 26) ? best : -1;
+}
+
+cv.addEventListener('pointerdown', function (e) {
+  e.preventDefault();
+  if (state !== 'play') { state === 'won' ? (level++, newLevel()) : newGame(); return; }
+  if (drag !== null) return;
+
+  var hit = pick(at(e));
+  if (hit < 0) return;
+  drag = { id: hit, pointer: e.pointerId, moved: false };
+  try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+});
+
+cv.addEventListener('pointermove', function (e) {
+  var p = at(e);
+  if (drag && e.pointerId === drag.pointer) {
+    nodes[drag.id].x = Math.max(0, Math.min(1, p.x));
+    nodes[drag.id].y = Math.max(0, Math.min(1, p.y));
+    drag.moved = true;
+    if (count() === 0) { drag = null; moves++; win(); return; }
+  } else if (state === 'play') {
+    hover = pick(p);
+  }
+});
+
+function endDrag(e) {
+  if (!drag || e.pointerId !== drag.pointer) return;
+  if (drag.moved) moves++;
+  drag = null;
+}
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('pointerleave', function () { hover = -1; });
+
+addEventListener('keydown', function (e) {
+  if (e.code === 'Space' || e.code === 'Enter') e.preventDefault();
+  if (e.code === 'KeyR') { state === 'play' ? scramble() : newGame(); return; }
+  if (e.code !== 'Space' && e.code !== 'Enter') return;
+  if (state === 'title') newGame();
+  else if (state === 'won') { level++; newLevel(); }
+});
+
+/* ── Render ────────────────────────────────────────────────────── */
+function draw() {
+  tick++;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#0E0D0C';
+  ctx.fillRect(0, 0, W, H);
+
+  drawWeb();
+  if (state === 'play') elapsed = (performance.now() - startedAt) / 1000;
+  drawEdges();
+  drawNodes();
+  drawHud();
+
+  if (pulse > 0) pulse -= 0.012;
+  if (state === 'title') titlePanel();
+  if (state === 'won') wonPanel();
+}
+
+/* A faint grid, so a board with few edges still has something behind it
+   and dragging reads as movement rather than drift. */
+function drawWeb() {
+  var g = Math.max(34, Math.min(W, H) / 12);
+  ctx.strokeStyle = 'rgba(50,46,40,.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (var x = g; x < W; x += g) { ctx.moveTo(x, hud); ctx.lineTo(x, H); }
+  for (var y = hud + g; y < H; y += g) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+  ctx.stroke();
+}
+
+function drawEdges() {
+  var lit = pulse > 0 ? 0.5 + Math.sin(tick * 0.3) * 0.2 : 0;
+  ctx.lineCap = 'round';
+  for (var i = 0; i < edges.length; i++) {
+    var e = edges[i];
+    ctx.strokeStyle = e.bad ? COL.amber : COL.live;
+    ctx.globalAlpha = e.bad ? 0.95 : (crossings === 0 ? 0.9 + lit * 0.1 : 0.32);
+    ctx.lineWidth = Math.max(1.6, (e.bad ? 2.6 : 2.1) * S);
+    ctx.beginPath();
+    ctx.moveTo(px(nodes[e.a]), py(nodes[e.a]));
+    ctx.lineTo(px(nodes[e.b]), py(nodes[e.b]));
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawNodes() {
+  for (var i = 0; i < N; i++) {
+    var x = px(nodes[i]), y = py(nodes[i]);
+    var held = drag && drag.id === i, near = hover === i;
+
+    if (held || near) {
+      ctx.globalAlpha = held ? 0.2 : 0.11;
+      ctx.fillStyle = COL.amber;
+      ctx.beginPath(); ctx.arc(x, y, R * 2.3, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.fillStyle = '#1B1917';
+    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = held ? COL.amber : (crossings === 0 ? COL.live : COL.bone);
+    ctx.lineWidth = Math.max(2, 2.4 * S);
+    ctx.stroke();
+
+    ctx.fillStyle = held ? COL.amber : (crossings === 0 ? COL.live : COL.bone);
+    ctx.beginPath(); ctx.arc(x, y, R * 0.34, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawHud() {
+  ctx.fillStyle = '#131211';
+  ctx.fillRect(0, 0, W, hud);
+  ctx.strokeStyle = '#322E28';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, hud - 0.5); ctx.lineTo(W, hud - 0.5); ctx.stroke();
+
+  var y1 = hud * 0.38, y2 = hud * 0.76;
+  ctx.textAlign = 'left';
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('CROSSINGS', 14, y1);
+  ctx.font = font(19, 600);
+  ctx.fillStyle = crossings ? COL.amber : COL.live;
+  ctx.fillText(String(crossings), 14, y2);
+
+  var midX = Math.round(W * 0.42);
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('LEVEL', midX, y1);
+  ctx.font = font(15, 500);
+  ctx.fillStyle = COL.bone;
+  ctx.fillText(level + '  ·  ' + N + ' nodes', midX, y2);
+
+  ctx.textAlign = 'right';
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('SCORE', W - 14, y1);
+  ctx.font = font(15, 500);
+  ctx.fillStyle = COL.bone;
+  ctx.fillText(String(score), W - 14, y2);
+  ctx.textAlign = 'left';
+}
+
+/* Overlay text wraps to the actual width rather than assuming a desktop
+   line length, because on a phone it does not have one. */
+function wrap(text, max) {
+  var words = text.split(' '), lines = [], line = '';
+  for (var i = 0; i < words.length; i++) {
+    var test = line ? line + ' ' + words[i] : words[i];
+    if (ctx.measureText(test).width > max && line) { lines.push(line); line = words[i]; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function panel(title, body, foot, accent) {
+  ctx.fillStyle = 'rgba(14,13,12,.88)';
+  ctx.fillRect(0, 0, W, H);
+
+  var bw = Math.min(W - 28, 520 * S), inner = bw - 44;
+  ctx.font = font(13);
+  var lines = [];
+  for (var b = 0; b < body.length; b++) lines = lines.concat(wrap(body[b], inner));
+
+  var lh = Math.round(21 * S), th = Math.round(30 * S);
+  var bh = th + 26 + lines.length * lh + (foot ? lh + 12 : 0) + 26;
+  var bx = (W - bw) / 2, by = (H - bh) / 2;
+
+  ctx.fillStyle = '#1B1917';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = '#322E28';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
+  ctx.fillStyle = accent;
+  ctx.fillRect(bx, by, bw, 2);
+
+  ctx.textAlign = 'center';
+  var y = by + 26 + th * 0.72;
+  ctx.font = font(23, 600);
+  ctx.fillStyle = accent;
+  ctx.fillText(title, W / 2, y);
+
+  y += 22 * S;
+  ctx.font = font(13);
+  ctx.fillStyle = COL.mid;
+  for (var i = 0; i < lines.length; i++) { y += lh; ctx.fillText(lines[i], W / 2, y); }
+
+  if (foot) {
+    y += lh + 10;
+    ctx.fillStyle = COL.dim;
+    ctx.fillText(foot, W / 2, y);
+  }
+  ctx.textAlign = 'left';
+}
+
+function titlePanel() {
+  panel('REFACTOR', [
+    'Every board is a graph that can be drawn flat.',
+    'Drag the nodes until no edge crosses another.'
+  ], 'tap anywhere to start', COL.live);
+}
+
+function wonPanel() {
+  panel('UNTANGLED', [
+    N + ' nodes in ' + moves + ' moves, ' + elapsed.toFixed(1) + 's',
+    '+' + gained + ' points'
+  ], 'tap for level ' + (level + 1), COL.live);
+}
+
+function frame() { draw(); requestAnimationFrame(frame); }
+
+build();
+state = 'title';
+requestAnimationFrame(frame);
+try { window.focus(); } catch (e) {}
+})();
+</script>
+</body>
+</html>

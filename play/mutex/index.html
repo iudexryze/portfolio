@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Mutex</title>
+<meta name="description" content="Overlapping tracks, one shared critical section. Tap a runner to hold it — but a held runner is running out of patience.">
+<meta name="theme-color" content="#131211">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#131211; --sunken:#0E0D0C; --rule:#322E28; --dim:#8C8577; --mid:#B4AC9D;
+  --f:'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%; overscroll-behavior:none}
+body{
+  margin:0; background:var(--sunken); color:var(--mid);
+  font-family:var(--f); font-size:14px;
+  display:flex; flex-direction:column; overflow:hidden;
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+}
+.stage{position:relative; flex:1 1 auto; min-height:0}
+canvas{
+  position:absolute; inset:0; width:100%; height:100%; display:block;
+  touch-action:none; user-select:none;
+}
+.hint{
+  flex:0 0 auto; margin:0; padding:7px 10px 9px; text-align:center;
+  font-size:10.5px; letter-spacing:.09em; color:var(--dim);
+  text-transform:uppercase; border-top:1px solid var(--rule); background:var(--ink);
+}
+@media (max-height:420px){ .hint{display:none} }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <canvas id="c" aria-label="Mutex, a timing game about keeping runners apart"></canvas>
+</div>
+<p class="hint">tap a runner to hold it &middot; hold too long and it breaks free &middot; R restart</p>
+
+<script>
+(function () {
+'use strict';
+
+var stage = document.getElementById('stage');
+var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+var FONT = "'IBM Plex Mono', ui-monospace, Consolas, monospace";
+var COL = { amber:'#F0902E', live:'#86C232', bad:'#D9484B', vio:'#8A6FD8', bone:'#EDE8DE', mid:'#B4AC9D', dim:'#8C8577' };
+
+var W = 320, H = 480, dpr = 1, S = 1;
+var cx = 160, cy = 260, PR = 120, DOT = 11, hud = 56;
+
+function fit() {
+  var r = stage.getBoundingClientRect();
+  W = Math.max(240, Math.round(r.width));
+  H = Math.max(240, Math.round(r.height));
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = W * dpr; cv.height = H * dpr;
+
+  S = Math.max(0.68, Math.min(1.25, Math.min(W, H) / 560));
+  hud = Math.round(46 * S + 14);
+
+  /* The whole board is one circle inscribed in whatever space is left
+     under the HUD, so portrait and landscape both get the same game. */
+  cx = W / 2;
+  cy = hud + (H - hud) / 2;
+  PR = Math.min(W, H - hud) * 0.44;
+  DOT = Math.max(7, PR * 0.085);
+  layoutTracks();
+}
+
+function rnd(a, b) { return a + Math.random() * (b - a); }
+function font(size, weight) { return (weight || 400) + ' ' + Math.round(size * S) + 'px ' + FONT; }
+
+/* ── Tracks ────────────────────────────────────────────────────────
+   Rings on a ring. Neighbours are placed close enough that their arcs
+   overlap, and the overlaps are the whole game — nowhere else on the
+   board can two runners ever meet. */
+var tracks = [], dots = [], parts = [];
+var trackCount = 3, nextId = 0;
+var elapsed = 0, score = 0, spawnAt = 0, addTrackAt = 0;
+var state = 'title', shake = 0, tick = 0, cause = '';
+var best = 0;
+try { best = parseInt(localStorage.getItem('mutex.best'), 10) || 0; } catch (e) {}
+
+function layoutTracks() {
+  var d = PR * 0.50, rad = PR * 0.50;
+  for (var i = 0; i < tracks.length; i++) {
+    var a = i / tracks.length * Math.PI * 2 - Math.PI / 2;
+    tracks[i].x = cx + Math.cos(a) * d;
+    tracks[i].y = cy + Math.sin(a) * d;
+    tracks[i].r = rad;
+  }
+}
+
+function makeTracks(n) {
+  tracks = [];
+  for (var i = 0; i < n; i++) tracks.push({ dir: i % 2 ? -1 : 1, x: 0, y: 0, r: 1 });
+  layoutTracks();
+}
+
+function dotXY(d) {
+  var t = tracks[d.track];
+  return { x: t.x + Math.cos(d.a) * t.r, y: t.y + Math.sin(d.a) * t.r };
+}
+
+/* Spawn as far around the ring as possible from whatever is already on
+   it, so a new runner never appears on top of a slow one. */
+function addDot(track) {
+  var t = tracks[track], spot = 0, bestGap = -1;
+  for (var k = 0; k < 24; k++) {
+    var a = k / 24 * Math.PI * 2, gap = Infinity;
+    for (var i = 0; i < dots.length; i++) {
+      if (dots[i].track !== track) continue;
+      var diff = Math.abs(((a - dots[i].a + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+      gap = Math.min(gap, Math.PI - diff);
+    }
+    if (gap > bestGap) { bestGap = gap; spot = a; }
+  }
+  dots.push({
+    id: nextId++, track: track, a: spot,
+    spd: rnd(0.010, 0.019) * t.dir,
+    hold: false, charge: 1, born: tick, flash: 0
+  });
+}
+
+function reset() {
+  trackCount = 3;
+  makeTracks(trackCount);
+  dots = []; parts = [];
+  nextId = 0; elapsed = 0; score = 0; tick = 0; shake = 0; cause = '';
+  spawnAt = 7; addTrackAt = 26;
+  for (var i = 0; i < 3; i++) addDot(i % trackCount);
+  state = 'play';
+}
+
+function burst(x, y, n, col, sp) {
+  for (var i = 0; i < n; i++) {
+    var a = rnd(0, Math.PI * 2), s = rnd(0.3, 1) * sp;
+    parts.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rnd(18, 40), max: 40, col: col });
+  }
+}
+
+/* ── Input ─────────────────────────────────────────────────────── */
+cv.addEventListener('pointerdown', function (e) {
+  e.preventDefault();
+  if (state !== 'play') { reset(); return; }
+
+  var r = cv.getBoundingClientRect();
+  var mx = (e.clientX - r.left) / r.width * W, my = (e.clientY - r.top) / r.height * H;
+
+  var hit = -1, bestD = Math.max(DOT * 3, 34);
+  for (var i = 0; i < dots.length; i++) {
+    var p = dotXY(dots[i]), d = Math.hypot(p.x - mx, p.y - my);
+    if (d < bestD) { bestD = d; hit = i; }
+  }
+  if (hit < 0) return;
+
+  /* Releasing is always allowed; grabbing needs charge left, or a dot
+     that just broke free could be re-grabbed for a free extra second. */
+  if (dots[hit].hold) dots[hit].hold = false;
+  else if (dots[hit].charge > 0.12) dots[hit].hold = true;
+});
+
+addEventListener('keydown', function (e) {
+  if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    if (state !== 'play') reset();
+  }
+  if (e.code === 'KeyR') reset();
+});
+
+/* ── Simulation ────────────────────────────────────────────────── */
+function step() {
+  tick++;
+
+  for (var p = parts.length - 1; p >= 0; p--) {
+    var q = parts[p];
+    q.x += q.vx; q.y += q.vy; q.vx *= 0.95; q.vy *= 0.95;
+    if (--q.life <= 0) parts.splice(p, 1);
+  }
+  if (shake > 0) shake *= 0.87;
+  if (state !== 'play') return;
+
+  elapsed += 1 / 60;
+  score += dots.length * 0.05;
+
+  if (elapsed > spawnAt) {
+    spawnAt = elapsed + Math.max(4.5, 9 - elapsed / 22);
+    addDot((Math.random() * tracks.length) | 0);
+  }
+  if (elapsed > addTrackAt && trackCount < 5) {
+    trackCount++;
+    addTrackAt = elapsed + 34;
+    makeTracks(trackCount);
+    addDot(trackCount - 1);
+    burst(cx, cy, 26, 'vio', 4);
+  }
+
+  var i;
+  for (i = 0; i < dots.length; i++) {
+    var d = dots[i];
+    if (d.flash > 0) d.flash--;
+
+    if (d.hold) {
+      /* Patience is the reason you cannot simply freeze the board: the
+         lock you are holding is the resource, and it is running out. */
+      d.charge -= 0.0072;
+      if (d.charge <= 0) { d.charge = 0; d.hold = false; d.flash = 22; }
+    } else {
+      d.charge = Math.min(1, d.charge + 0.0034);
+      d.a += d.spd;
+    }
+  }
+
+  for (i = 0; i < dots.length; i++) {
+    for (var j = i + 1; j < dots.length; j++) {
+      var A = dots[i], B = dots[j];
+      if (tick - A.born < 70 || tick - B.born < 70) continue;
+      var pa = dotXY(A), pb = dotXY(B);
+      if (Math.hypot(pa.x - pb.x, pa.y - pb.y) < DOT * 1.85) {
+        cause = A.track === B.track ? 'two runners on the same ring' : 'a collision in the shared section';
+        die((pa.x + pb.x) / 2, (pa.y + pb.y) / 2);
+        return;
+      }
+    }
+  }
+}
+
+function die(x, y) {
+  state = 'over';
+  shake = 18;
+  burst(x, y, 54, 'bad', 5);
+  burst(x, y, 22, 'amber', 3);
+  score = Math.round(score);
+  if (score > best) {
+    best = score;
+    try { localStorage.setItem('mutex.best', String(best)); } catch (e) {}
+  }
+}
+
+/* ── Render ────────────────────────────────────────────────────── */
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (shake > 0.4) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
+
+  ctx.fillStyle = '#0E0D0C';
+  ctx.fillRect(-30, -30, W + 60, H + 60);
+
+  drawTracks();
+  drawDots();
+  drawParts();
+  drawHud();
+
+  if (state === 'title') {
+    panel('MUTEX', [
+      'Runners lap rings that overlap. Where two rings cross, only one of them may be there at a time.',
+      'Tap a runner to hold it. Its patience drains while held, and a runner that runs out breaks free on its own.'
+    ], 'tap anywhere to start', COL.live);
+  } else if (state === 'over') {
+    panel('DEADLOCK', [
+      cause,
+      Math.round(score) + ' points   ·   ' + elapsed.toFixed(1) + 's   ·   ' + dots.length + ' runners',
+      'best ' + best
+    ], 'tap to run again', COL.bad);
+  }
+}
+
+function drawTracks() {
+  for (var i = 0; i < tracks.length; i++) {
+    var t = tracks[i];
+    ctx.strokeStyle = '#2C2822';
+    ctx.lineWidth = Math.max(6, DOT * 1.7);
+    ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.stroke();
+
+    ctx.strokeStyle = '#443E36';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.stroke();
+
+    /* Direction ticks. Which way a ring turns decides whether a hold
+       buys you room or spends it, so it has to be visible at a glance. */
+    for (var k = 0; k < 12; k++) {
+      var a = k / 12 * Math.PI * 2 + tick * 0.004 * t.dir;
+      var x = t.x + Math.cos(a) * t.r, y = t.y + Math.sin(a) * t.r;
+      ctx.fillStyle = '#4A443A';
+      ctx.fillRect(x - 1, y - 1, 2, 2);
+    }
+  }
+}
+
+function drawDots() {
+  for (var i = 0; i < dots.length; i++) {
+    var d = dots[i], p = dotXY(d);
+    var fresh = Math.min(1, (tick - d.born) / 70);
+    var col = d.flash > 0 && (d.flash >> 2) % 2 === 0 ? COL.bad : (d.hold ? COL.amber : COL.live);
+
+    ctx.globalAlpha = 0.18 * fresh;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(p.x, p.y, DOT * 2.1, 0, Math.PI * 2); ctx.fill();
+
+    ctx.globalAlpha = 0.35 + fresh * 0.65;
+    ctx.fillStyle = '#17150F';
+    ctx.beginPath(); ctx.arc(p.x, p.y, DOT, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = Math.max(2, DOT * 0.26);
+    ctx.stroke();
+
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(p.x, p.y, DOT * 0.36, 0, Math.PI * 2); ctx.fill();
+
+    /* The charge arc rides on the runner. Reading it anywhere else
+       would mean looking away from the thing about to crash. */
+    if (d.charge < 0.999) {
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = d.charge < 0.3 ? COL.bad : COL.bone;
+      ctx.lineWidth = Math.max(2, DOT * 0.22);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, DOT * 1.55, -Math.PI / 2, -Math.PI / 2 + d.charge * Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawParts() {
+  for (var i = 0; i < parts.length; i++) {
+    var q = parts[i];
+    ctx.globalAlpha = Math.max(0, q.life / q.max) * 0.9;
+    ctx.fillStyle = COL[q.col];
+    ctx.fillRect(q.x - 1.5, q.y - 1.5, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawHud() {
+  ctx.fillStyle = '#131211';
+  ctx.fillRect(0, 0, W, hud);
+  ctx.strokeStyle = '#322E28';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, hud - 0.5); ctx.lineTo(W, hud - 0.5); ctx.stroke();
+
+  var y1 = hud * 0.38, y2 = hud * 0.76;
+  ctx.textAlign = 'left';
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('RUNNERS', 14, y1);
+  ctx.font = font(19, 600);
+  ctx.fillStyle = COL.bone;
+  ctx.fillText(String(dots.length), 14, y2);
+
+  var midX = Math.round(W * 0.38);
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('HELD', midX, y1);
+  var heldN = 0;
+  for (var i = 0; i < dots.length; i++) if (dots[i].hold) heldN++;
+  ctx.font = font(15, 500);
+  ctx.fillStyle = heldN ? COL.amber : COL.dim;
+  ctx.fillText(heldN + ' / ' + dots.length, midX, y2);
+
+  ctx.textAlign = 'right';
+  ctx.font = font(10.5);
+  ctx.fillStyle = COL.dim;
+  ctx.fillText('SCORE', W - 14, y1);
+  ctx.font = font(15, 500);
+  ctx.fillStyle = COL.bone;
+  ctx.fillText(Math.round(score) + '   ' + elapsed.toFixed(0) + 's', W - 14, y2);
+  ctx.textAlign = 'left';
+}
+
+function wrap(text, max) {
+  var words = text.split(' '), lines = [], line = '';
+  for (var i = 0; i < words.length; i++) {
+    var test = line ? line + ' ' + words[i] : words[i];
+    if (ctx.measureText(test).width > max && line) { lines.push(line); line = words[i]; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function panel(title, body, foot, accent) {
+  ctx.fillStyle = 'rgba(14,13,12,.88)';
+  ctx.fillRect(0, 0, W, H);
+
+  var bw = Math.min(W - 28, 520 * S), inner = bw - 44;
+  ctx.font = font(13);
+  var lines = [];
+  for (var b = 0; b < body.length; b++) lines = lines.concat(wrap(body[b], inner));
+
+  var lh = Math.round(21 * S), th = Math.round(30 * S);
+  var bh = th + 26 + lines.length * lh + lh + 22 + 26;
+  var bx = (W - bw) / 2, by = Math.max(8, (H - bh) / 2);
+
+  ctx.fillStyle = '#1B1917';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = '#322E28';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
+  ctx.fillStyle = accent;
+  ctx.fillRect(bx, by, bw, 2);
+
+  ctx.textAlign = 'center';
+  var y = by + 26 + th * 0.72;
+  ctx.font = font(23, 600);
+  ctx.fillStyle = accent;
+  ctx.fillText(title, W / 2, y);
+
+  y += 22 * S;
+  ctx.font = font(13);
+  ctx.fillStyle = COL.mid;
+  for (var i = 0; i < lines.length; i++) { y += lh; ctx.fillText(lines[i], W / 2, y); }
+
+  y += lh + 10;
+  ctx.fillStyle = COL.dim;
+  ctx.fillText(foot, W / 2, y);
+  ctx.textAlign = 'left';
+}
+
+/* ── Loop ──────────────────────────────────────────────────────── */
+var acc = 0, last = 0, STEP = 1000 / 60;
+addEventListener('blur', function () { last = 0; });
+addEventListener('visibilitychange', function () { last = 0; });
+
+function frame(now) {
+  if (!last) last = now;
+  acc += Math.min(now - last, 100);
+  last = now;
+  while (acc >= STEP) { step(); acc -= STEP; }
+  draw();
+  requestAnimationFrame(frame);
+}
+
+fit();
+addEventListener('resize', fit);
+if (window.ResizeObserver) new ResizeObserver(fit).observe(stage);
+
+reset();
+state = 'title';
+requestAnimationFrame(frame);
+try { window.focus(); } catch (e) {}
+})();
+</script>
+</body>
+</html>
