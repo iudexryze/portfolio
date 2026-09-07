@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EchoLocate — Devlog</title>
+<meta name="description" content="Development log for EchoLocate, a stealth game about escaping a dark district by echolocation. Built in Unity 6 and URP by Varun Saini.">
+<meta name="author" content="Varun Saini">
+<link rel="canonical" href="https://iudexryze.github.io/portfolio/devlog/echolocate/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="EchoLocate — Devlog">
+<meta property="og:description" content="A stealth game where every pulse that shows you the world also tells the world where you are. Development log.">
+<meta name="theme-color" content="#131211">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23131211'/><circle cx='16' cy='16' r='4' fill='%23F0902E'/><circle cx='16' cy='16' r='9' fill='none' stroke='%236E6659' stroke-width='2'/><circle cx='16' cy='16' r='14' fill='none' stroke='%23322E28' stroke-width='2'/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* Same tokens as the portfolio: this is one site, not two. */
+:root{
+  --ink:#131211; --panel:#1B1917; --raised:#24211D; --sunken:#0E0D0C;
+  --rule:#322E28; --rule-hi:#443E36; --dim:#8C8577; --mid:#B4AC9D;
+  --bone:#EDE8DE; --amber:#F0902E; --live:#86C232;
+  --f-disp:'IBM Plex Sans Condensed','Arial Narrow',sans-serif;
+  --f-ui:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  --pad:clamp(20px,5vw,64px);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--ink); color:var(--mid);
+  font-family:var(--f-ui); font-size:16px; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit}
+::selection{background:var(--amber); color:var(--ink)}
+:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} }
+
+.bar{
+  position:sticky; top:0; z-index:10;
+  display:flex; align-items:center; gap:16px; height:46px; padding:0 var(--pad);
+  background:var(--raised); border-bottom:1px solid var(--rule);
+}
+.brand{
+  font-family:var(--f-disp); font-weight:700; font-size:16px; letter-spacing:.015em;
+  color:var(--bone); text-decoration:none; white-space:nowrap;
+}
+.brand i{color:var(--amber); font-style:normal; padding:0 1px}
+.bar .back{
+  margin-left:auto; font-family:var(--f-mono); font-size:11.5px; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; white-space:nowrap;
+}
+.bar .back:hover{color:var(--amber)}
+
+.wrap{max-width:920px; margin:0 auto; padding:0 var(--pad) 18vh}
+
+/* ══ HERO ═════════════════════════════════════════════════════ */
+.hero{padding:clamp(44px,7vw,84px) 0 0}
+.kicker{
+  font-family:var(--f-mono); font-size:11.5px; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--amber); margin:0 0 14px;
+}
+h1{
+  margin:0 0 18px; color:var(--bone); font-family:var(--f-disp); font-weight:700;
+  font-size:clamp(2.4rem,6vw,3.7rem); line-height:1; letter-spacing:-.02em;
+}
+.lede{font-size:clamp(1.05rem,1.7vw,1.24rem); line-height:1.55; color:var(--bone); max-width:52ch; margin:0 0 26px}
+.facts{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  border-top:1px solid var(--rule); margin:0 0 clamp(30px,5vw,52px);
+}
+.facts div{padding:11px 20px 11px 0; border-right:1px solid var(--rule); min-width:0}
+.facts div:last-child{border-right:0}
+.facts dt{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); margin-bottom:3px;
+}
+.facts dd{margin:0; color:var(--bone); font-size:14.5px; font-weight:500}
+
+.note{
+  border:1px solid var(--rule); border-left:2px solid var(--amber);
+  background:var(--panel); border-radius:2px; padding:15px 18px;
+  font-size:14.5px; color:var(--mid); margin:0 0 clamp(34px,6vw,58px);
+}
+.note b{color:var(--bone); font-weight:600}
+
+/* ══ TIMELINE ═════════════════════════════════════════════════ */
+h2{
+  margin:0 0 clamp(24px,4vw,36px); padding-bottom:12px;
+  border-bottom:1px solid var(--rule);
+  font-family:var(--f-disp); font-weight:700; font-size:clamp(1.5rem,2.6vw,2rem);
+  line-height:1.1; color:var(--bone); letter-spacing:-.005em;
+}
+
+.log{list-style:none; margin:0; padding:0}
+.entry{position:relative; padding:0 0 clamp(32px,5vw,48px) clamp(22px,4vw,38px); border-left:1px solid var(--rule)}
+.entry:last-child{border-left-color:transparent; padding-bottom:0}
+/* The marker sits on the rule, so the column reads as one thread. */
+.entry::before{
+  content:''; position:absolute; left:-5px; top:7px;
+  width:9px; height:9px; border-radius:50%;
+  background:var(--rule-hi); border:2px solid var(--ink);
+}
+.entry.now::before{background:var(--amber)}
+.entry.first::before{background:var(--live)}
+
+.head{display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 14px; margin-bottom:9px}
+.when{font-family:var(--f-mono); font-size:11.5px; letter-spacing:.05em; color:var(--dim); flex:none}
+h3{margin:0; color:var(--bone); font-family:var(--f-disp); font-weight:700; font-size:clamp(1.2rem,2vw,1.5rem); line-height:1.15}
+.pill{
+  display:inline-flex; align-items:center; gap:7px; flex:none;
+  padding:3px 10px; border-radius:2px; border:1px solid var(--rule-hi);
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim);
+}
+.pill::before{content:''; width:5px; height:5px; border-radius:50%; background:currentColor}
+.pill.now{color:var(--amber); border-color:rgba(240,144,46,.4); background:rgba(240,144,46,.07)}
+.pill.shipped{color:var(--live); border-color:rgba(134,194,50,.35)}
+
+.entry p{margin:0 0 1em; max-width:66ch; font-size:15.5px}
+.entry p:last-child{margin-bottom:0}
+.entry strong{color:var(--bone); font-weight:600}
+code{font-family:var(--f-mono); font-size:.9em; color:var(--bone)}
+
+.did{list-style:none; margin:14px 0 0; padding:0; border-top:1px solid var(--rule)}
+.did li{
+  padding:8px 0 8px 18px; border-bottom:1px solid var(--rule); position:relative;
+  font-family:var(--f-mono); font-size:12.5px; color:var(--mid); line-height:1.55;
+}
+.did li::before{content:'·'; position:absolute; left:4px; color:var(--dim)}
+.did li b{color:var(--bone); font-weight:500}
+
+.foot{
+  margin-top:clamp(40px,7vw,72px); padding-top:16px; border-top:1px solid var(--rule);
+  font-family:var(--f-mono); font-size:11.5px; color:var(--dim); line-height:1.9;
+}
+.foot a{color:var(--mid)}
+.foot a:hover{color:var(--amber)}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <a class="brand" href="../../">GROUND<i>//</i>ZERO</a>
+  <a class="back" href="../../#echolocate">&larr; Back to the portfolio</a>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <p class="kicker">Devlog</p>
+    <h1>EchoLocate</h1>
+    <p class="lede">A stealth game about escaping a district in the dark, played by a protagonist who has been blind since birth. Every pulse that shows you the world also tells the world exactly where you are.</p>
+
+    <dl class="facts">
+      <div><dt>Engine</dt><dd>Unity 6000.5.5f1, URP</dd></div>
+      <div><dt>Started</dt><dd>27 July 2026</dd></div>
+      <div><dt>Commits</dt><dd>109 across 18 PRs</dd></div>
+      <div><dt>Status</dt><dd>In development</dd></div>
+    </dl>
+
+    <p class="note"><b>The repository is private.</b> This log is written from its history rather than linking to it, and it deliberately stops short of the story beats &mdash; the run has one turn near the end that only works if you have not been told about it.</p>
+  </section>
+
+  <h2>The log</h2>
+
+  <ol class="log">
+
+    <li class="entry now">
+      <div class="head">
+        <span class="when">7 Sep 2026</span>
+        <h3>Dressing the world, and measuring whether it worked</h3>
+        <span class="pill now">In flight</span>
+      </div>
+      <p>Until now every surface in the game was a procedural shader stretched over primitive geometry. That was a deliberate stall &mdash; it kept the systems honest while they were being built, because nothing could hide behind good-looking art. It has stopped being useful.</p>
+      <p>The branch replaces it. There is a <code>MeshSet</code> abstraction and a <code>PlacementDressing</code> pass, and on top of them the things a left district actually contains: industrial props, plants growing on the broken parts, standing dead, rubble, lamp heads. The storm got a real pass at the same time.</p>
+      <p>The half I am more pleased with is the tests. It is easy to add clutter and call the level better, so the branch also adds play-mode tests that <strong>measure</strong> the result rather than trusting it &mdash; whether the horizon reads at all, whether dressing actually lands where it was asked to, what each surface costs, whether the level survey still finds a route, and whether the dread pacing curve still has the shape it is supposed to have.</p>
+      <ul class="did">
+        <li><b>Added</b> MeshSet, PlacementDressing, IndustrialProps, Plants, StandingDead, RubbleMeshes, LampHeads</li>
+        <li><b>Reworked</b> Thunderstorm, GroundDetail, StreetFacades, WallRuins, NarrativeSites</li>
+        <li><b>Tests</b> HorizonCapture, WorldDressing, SurfaceCost, HorrorPacing, LevelSurvey, WorldSolidityDiagnostic</li>
+        <li><b>Also</b> automated the asset-store import, and took the screenshots back out of git</li>
+        <li><b>Size</b> 360 files, ~27,600 lines added &mdash; not merged to <code>prod</code> yet</li>
+      </ul>
+    </li>
+
+    <li class="entry">
+      <div class="head">
+        <span class="when">2 Sep 2026</span>
+        <h3>Weather, as four systems that agree</h3>
+        <span class="pill shipped">Merged</span>
+      </div>
+      <p>Rain is not set dressing here. The protagonist builds her entire model of the world out of sound, so a constant hiss laid over everything is the most aggressive thing the world can do to her primary sense. A level in a downpour is a level where you cannot hear what is coming.</p>
+      <p>So it had to be more than a particle system. Rain falls, the ground gets wet, the wet ground shows you where the lamps are, and the air takes the distance away &mdash; and all four move together because they read one number. The runtime debug panel reports that number, which is the only reason the four stayed in agreement while they were being tuned.</p>
+      <ul class="did">
+        <li><b>PR #17, #18</b> dynamic weather system</li>
+        <li><b>Systems</b> Rain, RainImpacts, WeatherSurfaces, Thunderstorm, height fog, weather audio</li>
+      </ul>
+    </li>
+
+    <li class="entry">
+      <div class="head">
+        <span class="when">1 Sep 2026</span>
+        <h3>A day spent stopping the interface from lying</h3>
+      </div>
+      <p>Ten commits in one day, all of them the same kind of bug: a readout that described the game inaccurately, or described it accurately while painting over the thing it described.</p>
+      <p>The HUD dial and the pulse reveal were both drawing on top of what they were meant to be reporting. The stealth readout whispered its warning instead of saying it, so the label now names the state and the bar just shows it. The detection banner snapped off the instant detection ended, which read as a bug rather than relief &mdash; it now lands and bleeds off. And the camera was cutting walls open at the edge of the frame, which is a hard thing to unsee once you have seen it.</p>
+      <p>The one I liked best: the interface is now lit by the player's own echo, so the UI belongs to the same world as everything else rather than floating above it.</p>
+      <ul class="did">
+        <li><b>Fixed</b> HUD dial and pulse reveal overdraw, camera wall-clipping at frame edge</li>
+        <li><b>Changed</b> stealth label names the state, detection banner decays, dread curve reframed</li>
+        <li><b>Lit</b> window panes shaped rather than flat-filled; interface lit by the player's pulse</li>
+      </ul>
+    </li>
+
+    <li class="entry">
+      <div class="head">
+        <span class="when">31 Aug 2026</span>
+        <h3>Pulse overhaul</h3>
+        <span class="pill shipped">Merged</span>
+      </div>
+      <p>The core mechanic got taken apart and put back together, alongside the ambience pass and the first rain import. Everything in the game hangs off the pulse, so this is the change the rest of the month was waiting on.</p>
+      <ul class="did"><li><b>PR #15</b> pulse overhaul, ambience, URP rain import</li></ul>
+    </li>
+
+    <li class="entry">
+      <div class="head">
+        <span class="when">22&ndash;24 Aug 2026</span>
+        <h3>The protagonist gets a skeleton</h3>
+      </div>
+      <p>For most of the project the MC was a single static mesh with no rig at all, which put a hard ceiling on how alive the world could feel &mdash; you cannot do contextual environmental animation with a character who cannot move. Walk cycle first, then the rest.</p>
+      <ul class="did"><li><b>Added</b> character rig, walk cycle, additional animation set</li></ul>
+    </li>
+
+    <li class="entry">
+      <div class="head">
+        <span class="when">23 Aug 2026</span>
+        <h3>Settings, and meaning it</h3>
+        <span class="pill shipped">Merged</span>
+      </div>
+      <p>In-game resolution, fullscreen and render scale, with gamepad bindings and stick-only menu navigation underneath. The console target is far-future and has no date on it, but stick-only navigation is the kind of groundwork that is cheap now and expensive to retrofit.</p>
+      <ul class="did"><li><b>PR #13</b> settings menu, gamepad bindings, stick-only UI navigation</li></ul>
+    </li>
+
+    <li class="entry">
+      <div class="head">
+        <span class="when">16 Aug 2026</span>
+        <h3>Dropping Android</h3>
+      </div>
+      <p>The project started as a portrait Android game. It is now PC, landscape, keyboard-and-mouse or gamepad &mdash; the framing the fixed 2.5D camera actually wanted.</p>
+      <p>The touch control layer came out entirely rather than being left half-wired to a platform nobody was building for. Half-wired code for a target you are not shipping is a liability that reads as a feature. The Android build script stayed, for whenever it comes back.</p>
+      <ul class="did"><li><b>Removed</b> the touch input layer; kept the Android build script and mobile render pipeline asset</li></ul>
+    </li>
+
+    <li class="entry">
+      <div class="head">
+        <span class="when">12 Aug 2026</span>
+        <h3>Levels that generate themselves</h3>
+      </div>
+      <p>BSP partition for the space, a minimum spanning tree plus deliberate loop connections so the layout is navigable but not a corridor, archetype-driven dressing per room, and grid-rasterised walls. Loops matter more than they sound: a level made only of a spanning tree has exactly one route between any two points, which makes evading anything hunting you a matter of luck rather than reading the space.</p>
+      <ul class="did"><li><b>Added</b> level generator, first generated scene</li></ul>
+    </li>
+
+    <li class="entry">
+      <div class="head">
+        <span class="when">10 Aug 2026</span>
+        <h3>Visual overhaul, and throwing things away</h3>
+        <span class="pill shipped">Merged</span>
+      </div>
+      <p>Two PRs that belong together: the visual pass, and then an orphaned-asset sweep behind it. Input actions cleaned up, docs cleaned up, the scene UI fixed.</p>
+      <ul class="did"><li><b>PR #8, #10</b> visual overhaul, orphaned asset cleanup</li></ul>
+    </li>
+
+    <li class="entry">
+      <div class="head">
+        <span class="when">4 Aug 2026</span>
+        <h3>Decoys, quests and the first words</h3>
+        <span class="pill shipped">Merged</span>
+      </div>
+      <p>The distraction system &mdash; throw something noisy, let the thing hunting you go and look at it &mdash; which is the counterweight the pulse needed. Without it, the only answer to being heard was to stop making noise, and a stealth game where the correct move is to do nothing is not a game.</p>
+      <p>The narrative controller and the tutorial hints landed alongside it.</p>
+      <ul class="did"><li><b>PR #6</b> decoys, NarrativeController, tutorial setup, scriptable objects</li></ul>
+    </li>
+
+    <li class="entry">
+      <div class="head">
+        <span class="when">2 Aug 2026</span>
+        <h3>Enemies, an ending, and a CI that says no</h3>
+        <span class="pill shipped">Merged</span>
+      </div>
+      <p>Five PRs in a day. Enemy setup with the camera stack, player health, the endgame controller, the main menu, quest logs, persistent UI.</p>
+      <p>The one that mattered longest was the least visible: branch protection rulesets, a workflow that guards merges into <code>prod</code>, required linear history, and a dotnet-format lint job that had to be run over the whole project once before it could start clean. Solo projects are exactly where this gets skipped, and exactly where losing an afternoon to a bad merge hurts most.</p>
+      <ul class="did"><li><b>PR #1&ndash;#5</b> core mechanics, rulesets, enemy setup, distraction groundwork</li></ul>
+    </li>
+
+    <li class="entry first">
+      <div class="head">
+        <span class="when">27&ndash;30 Jul 2026</span>
+        <h3>First light</h3>
+      </div>
+      <p>Git LFS and the Unity project structure, then the design docs, then the thing itself: tap to send a pulse, watch it expand through the scene, watch whatever it touches light up and decay.</p>
+      <p>The design documents came before the game logic on purpose. The first substantive doc was the one that writes down the trade &mdash; that sound is both how you see and how you are seen &mdash; because every system built afterwards had to answer to it.</p>
+      <ul class="did">
+        <li><b>Added</b> pulse emitter, object highlighting shader, sound emitters, foot trail</li>
+        <li><b>Wrote</b> the design docs: echolocation, stealth, enemies, level generation, narrative, visual style</li>
+      </ul>
+    </li>
+
+  </ol>
+
+  <p class="foot">
+    EchoLocate &mdash; Varun Saini, Bangalore.<br>
+    Written from the repository's own history: 109 commits between 27 July and 7 September 2026.<br>
+    <a href="../../#echolocate">Back to the portfolio</a>
+  </p>
+
+</main>
+</body>
+</html>
