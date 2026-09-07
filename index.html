@@ -9,7 +9,7 @@
 <link rel="canonical" href="https://iudexryze.github.io/portfolio/">
 
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Ground // Zero">
+<meta property="og:site_name" content="Varun Saini">
 <meta property="og:title" content="Varun Saini — Game Developer &amp; Technical Artist">
 <meta property="og:description" content="I build games and the tools that ship them. Unity, C#, shaders, Blender. Eight playables boot straight in the browser.">
 <meta property="og:url" content="https://iudexryze.github.io/portfolio/">
@@ -114,6 +114,12 @@ a{color:inherit}
 .boot::before{
   content:''; flex:none; width:0; height:0;
   border:5px solid transparent; border-left:8px solid var(--ink);
+}
+/* Same shape, but it opens a mail client rather than a game, so it
+   loses the transport triangle. */
+.boot.plain::before{
+  content:'\2192'; width:auto; height:auto; border:0;
+  font-size:13px; line-height:1; transform:translateY(-.5px);
 }
 
 /* ══ WORKSPACE ════════════════════════════════════════════════ */
@@ -225,6 +231,19 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
   text-transform:uppercase; color:var(--dim); margin-bottom:3px;
 }
 .hero-fact dd{margin:0; color:var(--bone); font-size:14.5px; font-weight:500}
+
+/* The hero closes on the two things a visitor actually came for: the
+   work, and a way to reach me. The arcade is a footnote here, not the
+   headline — it gets its own section further down. */
+.hero-actions{display:flex; flex-wrap:wrap; gap:9px; margin-bottom:clamp(20px,2.8vw,28px)}
+.btn.btn-key{color:var(--ink); background:var(--live); border-color:var(--live); font-weight:600}
+.btn.btn-key:hover{color:var(--ink); background:#9BD848; border-color:#9BD848}
+.hero-tail{
+  max-width:64ch; margin:0; padding-top:16px; border-top:1px solid var(--rule);
+  color:var(--dim); font-size:14.5px;
+}
+.hero-tail a{color:var(--mid); text-decoration:none; border-bottom:1px solid var(--rule-hi)}
+.hero-tail a:hover{color:var(--amber); border-color:var(--amber)}
 
 /* ══ THE CABINET — the one loud thing on the page ═════════════ */
 .cabinet{
@@ -532,6 +551,8 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
 .about-grid{display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:clamp(28px,5vw,64px); align-items:start}
 @media (max-width:860px){ .about-grid{grid-template-columns:1fr} }
 .about-prose p{font-size:16.5px; line-height:1.68}
+.about-prose a{color:var(--bone); text-decoration:none; border-bottom:1px solid var(--rule-hi)}
+.about-prose a:hover{color:var(--amber); border-color:var(--amber)}
 
 .track{list-style:none; margin:0; padding:0}
 .track li{
@@ -650,18 +671,18 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
 <div class="app">
 
   <header class="topbar">
-    <a class="brand" href="#top">GROUND<i>//</i>ZERO</a>
+    <a class="brand" href="#top">VARUN<i>//</i>SAINI</a>
     <nav class="tabs" aria-label="Sections">
+      <a class="tab" href="#about"   data-tab="about">About</a>
       <a class="tab" href="#work"    data-tab="work">Work</a>
-      <a class="tab" href="#arcade"  data-tab="arcade">Arcade</a>
       <a class="tab" href="#tools"   data-tab="tools">Tools</a>
       <a class="tab" href="#art"     data-tab="art">Art</a>
+      <a class="tab" href="#arcade"  data-tab="arcade">Arcade</a>
       <a class="tab" href="#code"    data-tab="code">Code</a>
-      <a class="tab" href="#about"   data-tab="about">About</a>
       <a class="tab" href="#contact" data-tab="contact">Contact</a>
     </nav>
     <div class="topbar-end">
-      <button class="boot" type="button" data-launch="bt-7274n">Play <span>BT-7274N</span></button>
+      <a class="boot plain" href="mailto:varun2002saini19@gmail.com">Email <span>me</span></a>
     </div>
   </header>
 
@@ -669,25 +690,12 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
 
     <nav class="rail" aria-label="Project index">
       <div class="rail-group">
-        <button class="rail-head" type="button" aria-expanded="true">Playable<span class="n">8</span></button>
-        <ul class="rail-list">
-          <li><a class="rail-link" href="#bt7274n"><span class="dot live"></span>BT-7274N</a></li>
-          <li><a class="rail-link" href="#drift-lander"><span class="dot live"></span>Drift Lander</a></li>
-          <li><a class="rail-link" href="#circuit-breaker"><span class="dot live"></span>Circuit Breaker</a></li>
-          <li><a class="rail-link" href="#overclock"><span class="dot live"></span>Overclock</a></li>
-          <li><a class="rail-link" href="#disco-race"><span class="dot live"></span>Disco Race</a></li>
-          <li><a class="rail-link" href="#refactor"><span class="dot live"></span>Refactor</a></li>
-          <li><a class="rail-link" href="#heap"><span class="dot live"></span>Heap</a></li>
-          <li><a class="rail-link" href="#mutex"><span class="dot live"></span>Mutex</a></li>
-        </ul>
-      </div>
-      <div class="rail-group">
         <button class="rail-head" type="button" aria-expanded="true">Games<span class="n">4</span></button>
         <ul class="rail-list">
-          <li><a class="rail-link" href="#echolocate"><span class="dot wip"></span>EchoLocate</a></li>
-          <li><a class="rail-link" href="#phantom-parry"><span class="dot wip"></span>Phantom Parry</a></li>
           <li><a class="rail-link" href="#mega-bank-2"><span class="dot"></span>Mega Bank 2</a></li>
           <li><a class="rail-link" href="#cash-hog"><span class="dot"></span>Cash Hog</a></li>
+          <li><a class="rail-link" href="#phantom-parry"><span class="dot wip"></span>Phantom Parry</a></li>
+          <li><a class="rail-link" href="#echolocate"><span class="dot wip"></span>EchoLocate</a></li>
         </ul>
       </div>
       <div class="rail-group">
@@ -708,6 +716,19 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
           <li><a class="rail-link" href="#architectus"><span class="dot live"></span>Architectus</a></li>
           <li><a class="rail-link" href="#final-boss"><span class="dot"></span>Final Boss</a></li>
           <li><a class="rail-link" href="#artstation"><span class="dot"></span>3D artwork</a></li>
+        </ul>
+      </div>
+      <div class="rail-group">
+        <button class="rail-head" type="button" aria-expanded="true">Playable<span class="n">8</span></button>
+        <ul class="rail-list">
+          <li><a class="rail-link" href="#bt7274n"><span class="dot live"></span>BT-7274N</a></li>
+          <li><a class="rail-link" href="#drift-lander"><span class="dot live"></span>Drift Lander</a></li>
+          <li><a class="rail-link" href="#circuit-breaker"><span class="dot live"></span>Circuit Breaker</a></li>
+          <li><a class="rail-link" href="#overclock"><span class="dot live"></span>Overclock</a></li>
+          <li><a class="rail-link" href="#disco-race"><span class="dot live"></span>Disco Race</a></li>
+          <li><a class="rail-link" href="#refactor"><span class="dot live"></span>Refactor</a></li>
+          <li><a class="rail-link" href="#heap"><span class="dot live"></span>Heap</a></li>
+          <li><a class="rail-link" href="#mutex"><span class="dot live"></span>Mutex</a></li>
         </ul>
       </div>
       <div class="rail-group">
@@ -748,27 +769,60 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
           <div class="hero-fact"><dt>Degree</dt><dd>B.Tech ECE, REVA University</dd></div>
         </dl>
 
-        <!-- The one loud element on the page: a game you can actually play. -->
-        <div class="cabinet" id="bt7274n">
-          <div class="cab-bar">
-            <span class="cab-lights"><i></i><i></i><i></i></span>
-            <span class="name">BT-7274 // VANGUARD NEURAL LINK</span>
-            <span class="end"><span>NO INSTALL</span></span>
+        <div class="hero-actions">
+          <a class="btn btn-key" href="#work">Read the work</a>
+          <a class="btn" href="mailto:varun2002saini19@gmail.com">Email</a>
+          <a class="btn" href="https://github.com/iudexryze" rel="noopener">GitHub</a>
+          <a class="btn" href="https://linkedin.com/in/varun-saini" rel="noopener">LinkedIn</a>
+          <a class="btn" href="https://www.artstation.com/notryze" rel="noopener">ArtStation</a>
+        </div>
+
+        <p class="hero-tail">Further down: seven editor tools I wrote to unblock my own projects, 3D and environment work, and an <a href="#arcade">arcade of eight browser games</a> whose source is the point.</p>
+      </section>
+
+      <!-- ══ ABOUT ═════════════════════════════════════════ -->
+      <section class="section" id="about">
+        <div class="section-bar">
+          <h2>About</h2>
+        </div>
+
+        <div class="about-grid">
+          <div class="about-prose">
+            <p>I am a game developer and technical artist in Bangalore, currently at <strong>Gameberry Labs</strong> building games at scale. Before that I was at <strong>ZVKY Design Studio</strong>, where I shipped two commercial slot games solo — gameplay systems, shader graphs, and the whole delivery pipeline.</p>
+            <p>The work I care about sits between code and craft. In practice that means writing C# during the day and sculpting environments in Blender at night, and it means that when a project stalls on something unglamorous — a build that got too big, a dependency graph nobody can read — I tend to go build the tool that answers it. That is where the <a href="#tools">seven editor windows below</a> came from.</p>
+            <p>Right now most of my own time goes into <strong>Project Phantom Parry</strong>, an eldritch horror game where I own the story, the design, the code and the sound.</p>
           </div>
 
-          <div class="cab-stage">
-            <div class="attract" data-attract>
-              <div class="attract-log" data-log aria-hidden="true"></div>
-              <button class="cab-launch" type="button" data-launch="bt-7274n">Establish neural link</button>
-              <p class="cab-hint">Runs in this tab &middot; keyboard only &middot; <kbd>Esc</kbd> to exit</p>
-            </div>
+          <div>
+            <ul class="track">
+              <li>
+                <span class="when">Mar 2026 —</span>
+                <span class="what"><b>Gameberry Labs</b><span>Game developer</span></span>
+              </li>
+              <li>
+                <span class="when">Prior</span>
+                <span class="what"><b>ZVKY Design Studio</b><span>Game developer — two slot titles shipped solo</span></span>
+              </li>
+              <li>
+                <span class="when">Degree</span>
+                <span class="what"><b>REVA University</b><span>B.Tech, Electronics &amp; Computer Engineering</span></span>
+              </li>
+            </ul>
           </div>
+        </div>
 
-          <div class="cab-foot">
-            <span>Terminal roguelike</span>
-            <span>Vanilla JS, zero dependencies</span>
-            <span>One self-contained file</span>
-            <a class="end" href="#arcade">Seven more playables below</a>
+        <div class="stack">
+          <div class="stack-group">
+            <h4>Engine</h4>
+            <p>Unity, C#, shader graph, Addressables, editor tooling, animation systems</p>
+          </div>
+          <div class="stack-group">
+            <h4>3D</h4>
+            <p>Blender, environment design, geometry nodes, shading and lookdev, modelling</p>
+          </div>
+          <div class="stack-group">
+            <h4>Also</h4>
+            <p>C and C++, Java and Kotlin, PostgreSQL, TypeScript and React, sound design</p>
           </div>
         </div>
       </section>
@@ -779,71 +833,6 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
           <h2>Work</h2>
           <span class="count">5 entries</span>
         </div>
-
-        <article class="entry">
-          <div class="entry-head">
-            <span class="entry-kind">Game</span>
-            <h3>BT-7274N</h3>
-            <span class="pill live">Playable now</span>
-          </div>
-          <div class="entry-body">
-            <p>A turn-based terminal roguelike. You type combat commands, the enemy answers, and the waves keep coming — twelve commands across attack, defence and support, all balanced against four competing resources you can never quite afford to spend.</p>
-            <p>The interesting problem was making a text interface feel like combat. Every command resolves into a readable console beat, wave modifiers change the rules rather than just the numbers, and a battery minigame runs alongside the fight so there is always a second decision competing for your attention.</p>
-            <dl class="props">
-              <dt>Role</dt><dd>Solo — design, systems, code, interface, copy</dd>
-              <dt>Stack</dt><dd>Vanilla JavaScript, Canvas, no dependencies</dd>
-              <dt>Systems</dt><dd>Infinite wave scaling, four-resource economy, cooldowns, four wave modifiers, boss encounters</dd>
-              <dt>Build</dt><dd>One self-contained HTML file, ~93&nbsp;KB, no build step</dd>
-              <dt>Note</dt><dd><em>Unofficial fan project, set in the Titanfall universe. Not affiliated with or endorsed by Respawn Entertainment or EA.</em></dd>
-            </dl>
-            <div class="actions">
-              <button class="btn btn-go" type="button" data-launch="bt-7274n">Play in browser</button>
-              <a class="btn" href="https://github.com/iudexryze/portfolio/tree/main/play/bt-7274n">Source</a>
-            </div>
-          </div>
-        </article>
-
-        <article class="entry" id="echolocate">
-          <div class="entry-head">
-            <span class="entry-kind">Game</span>
-            <h3>EchoLocate</h3>
-            <span class="pill wip">In development</span>
-          </div>
-          <div class="entry-body">
-            <p>A stealth game about escaping a district in the dark, played by a protagonist who has been blind since birth. You tap to send out an echolocation pulse; whatever it touches lights up and decays, and you build a map of a place you cannot see from what came back.</p>
-            <p>The whole design hangs off one trade: the pulse is both how you see and how you are seen. Everything hunting you hears it too, so every look costs you position. Decoys exist because without them the correct play was to stand still and make no noise, and a stealth game whose optimal move is to do nothing is not a game.</p>
-            <dl class="props">
-              <dt>Role</dt><dd>Solo &mdash; design, systems, code, shaders, audio</dd>
-              <dt>Stack</dt><dd>Unity 6000.5.5f1, URP, C#</dd>
-              <dt>Systems</dt><dd>Pulse echolocation and highlight shader, sight/hearing stealth split, three enemy archetypes, BSP + MST level generation, four-part dynamic weather</dd>
-              <dt>Scope</dt><dd>Twelve levels, PC, keyboard/mouse and gamepad</dd>
-              <dt>Progress</dt><dd>109 commits across 18 PRs since 27&nbsp;July 2026</dd>
-            </dl>
-            <div class="actions">
-              <a class="btn btn-go" href="devlog/echolocate/">Read the devlog</a>
-              <span class="unavailable">Repository private</span>
-            </div>
-          </div>
-        </article>
-
-        <article class="entry" id="phantom-parry">
-          <div class="entry-head">
-            <span class="entry-kind">Game</span>
-            <h3>Project Phantom Parry</h3>
-            <span class="pill wip">In development</span>
-          </div>
-          <div class="entry-body">
-            <p>An eldritch horror game I own end to end — story, design, code, and sound. Built to be atmospheric first: the systems exist to make a place feel wrong, not to fill a feature list.</p>
-            <dl class="props">
-              <dt>Role</dt><dd>Solo — writing, game design, development, sound design</dd>
-              <dt>Stack</dt><dd>Unity, C#, Blender, shader graph</dd>
-              <dt>Status</dt><dd>In active development</dd>
-            </dl>
-            <div class="actions">
-              <span class="unavailable">Devlog not public yet</span>
-            </div>
-          </div>
-        </article>
 
         <article class="entry" id="mega-bank-2">
           <div class="entry-head">
@@ -877,266 +866,71 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
             </dl>
           </div>
         </article>
-      </section>
 
-      <!-- ══ ARCADE ════════════════════════════════════════ -->
-      <section class="section" id="arcade">
-        <div class="section-bar">
-          <h2>Arcade</h2>
-          <span class="count">8 playable</span>
-        </div>
-        <p class="section-note">Eight small games, each self-contained in a single HTML file with no build step and no dependencies. They run in this page &mdash; nothing installs, nothing downloads. Every one of them is small enough to read in an afternoon, which is rather the point: the source is the portfolio piece.</p>
-
-        <div class="arcade">
-
-          <article class="game" id="bt-7274n-card">
-            <button class="game-screen" type="button" data-launch="bt-7274n" aria-label="Play BT-7274N">
-              <svg viewBox="0 0 160 100" aria-hidden="true">
-                <rect width="160" height="100" fill="#0E0D0C"/>
-                <rect x="14" y="19" width="50" height="4" fill="#86C232"/>
-                <rect x="14" y="30" width="88" height="4" fill="#3A352E"/>
-                <rect x="14" y="41" width="66" height="4" fill="#3A352E"/>
-                <rect x="14" y="52" width="98" height="4" fill="#F0902E"/>
-                <rect x="14" y="63" width="42" height="4" fill="#3A352E"/>
-                <rect x="14" y="74" width="7" height="7" fill="#F0902E"/>
-                <rect x="120" y="19" width="26" height="62" fill="none" stroke="#3A352E"/>
-              </svg>
-              <span class="go"><span>Play</span></span>
-            </button>
-            <div class="game-plate">
-              <p class="game-kind"><span class="dot"></span>Terminal roguelike</p>
-              <h3>BT-7274N</h3>
-              <p>Turn-based command combat. Twelve orders, four resources that never quite stretch, and waves that change the rules rather than just the numbers.</p>
-              <p class="game-meta">
-                <span>Typed commands</span><span>Reflows</span>
-              </p>
+        <article class="entry" id="phantom-parry">
+          <div class="entry-head">
+            <span class="entry-kind">Game</span>
+            <h3>Project Phantom Parry</h3>
+            <span class="pill wip">In development</span>
+          </div>
+          <div class="entry-body">
+            <p>An eldritch horror game I own end to end — story, design, code, and sound. Built to be atmospheric first: the systems exist to make a place feel wrong, not to fill a feature list.</p>
+            <dl class="props">
+              <dt>Role</dt><dd>Solo — writing, game design, development, sound design</dd>
+              <dt>Stack</dt><dd>Unity, C#, Blender, shader graph</dd>
+              <dt>Status</dt><dd>In active development</dd>
+            </dl>
+            <div class="actions">
+              <span class="unavailable">Devlog not public yet</span>
             </div>
-          </article>
+          </div>
+        </article>
 
-          <article class="game" id="drift-lander">
-            <button class="game-screen" type="button" data-launch="drift-lander" aria-label="Play Drift Lander">
-              <svg viewBox="0 0 160 100" aria-hidden="true">
-                <rect width="160" height="100" fill="#0E0D0C"/>
-                <circle cx="28" cy="18" r="1" fill="#EDE8DE" opacity=".5"/>
-                <circle cx="118" cy="12" r="1" fill="#EDE8DE" opacity=".4"/>
-                <circle cx="64" cy="26" r="1" fill="#EDE8DE" opacity=".35"/>
-                <circle cx="142" cy="30" r="1" fill="#EDE8DE" opacity=".5"/>
-                <path d="M0,100 L0,74 L20,62 L36,76 L52,68 L66,82 L96,82 L112,62 L132,76 L160,68 L160,100 Z" fill="#1B1917" stroke="#443E36"/>
-                <line x1="66" y1="82" x2="96" y2="82" stroke="#86C232" stroke-width="2.5"/>
-                <polygon points="80,40 86,52 74,52" fill="#EDE8DE"/>
-                <path d="M77,54 L74,58 M83,54 L86,58" stroke="#443E36" stroke-width="1.6"/>
-                <path d="M80,56 L80,64" stroke="#F0902E" stroke-width="2.5" opacity=".8"/>
-              </svg>
-              <span class="go"><span>Play</span></span>
-            </button>
-            <div class="game-plate">
-              <p class="game-kind"><span class="dot"></span>Physics arcade</p>
-              <h3>Drift Lander</h3>
-              <p>Procedural terrain, a fuel budget that never covers the descent, and pads that pay more the narrower they get. Fixed-timestep physics so a 144&nbsp;Hz panel plays the same as a laptop.</p>
-              <p class="game-meta">
-                <span>Touch or keyboard</span><span>Reflows</span>
-              </p>
+        <article class="entry" id="echolocate">
+          <div class="entry-head">
+            <span class="entry-kind">Game</span>
+            <h3>EchoLocate</h3>
+            <span class="pill wip">In development</span>
+          </div>
+          <div class="entry-body">
+            <p>A stealth game about escaping a district in the dark, played by a protagonist who has been blind since birth. You tap to send out an echolocation pulse; whatever it touches lights up and decays, and you build a map of a place you cannot see from what came back.</p>
+            <p>The whole design hangs off one trade: the pulse is both how you see and how you are seen. Everything hunting you hears it too, so every look costs you position. Decoys exist because without them the correct play was to stand still and make no noise, and a stealth game whose optimal move is to do nothing is not a game.</p>
+            <dl class="props">
+              <dt>Role</dt><dd>Solo &mdash; design, systems, code, shaders, audio</dd>
+              <dt>Stack</dt><dd>Unity 6000.5.5f1, URP, C#</dd>
+              <dt>Systems</dt><dd>Pulse echolocation and highlight shader, sight/hearing stealth split, three enemy archetypes, BSP + MST level generation, four-part dynamic weather</dd>
+              <dt>Scope</dt><dd>Twelve levels, PC, keyboard/mouse and gamepad</dd>
+              <dt>Progress</dt><dd>109 commits across 18 PRs since 27&nbsp;July 2026</dd>
+            </dl>
+            <div class="actions">
+              <a class="btn btn-go" href="devlog/echolocate/">Read the devlog</a>
+              <span class="unavailable">Repository private</span>
             </div>
-          </article>
+          </div>
+        </article>
 
-          <article class="game" id="circuit-breaker">
-            <button class="game-screen" type="button" data-launch="circuit-breaker" aria-label="Play Circuit Breaker">
-              <svg viewBox="0 0 160 100" aria-hidden="true">
-                <rect width="160" height="100" fill="#0E0D0C"/>
-                <g stroke-width="3" stroke-linecap="round" fill="none">
-                  <g stroke="#86C232">
-                    <path d="M52,30 L68,30 M60,30 L60,46"/>
-                    <path d="M84,30 L100,30 M92,30 L92,46"/>
-                    <path d="M60,46 L60,62 M60,54 L76,54"/>
-                    <path d="M92,46 L92,62"/>
-                    <path d="M76,54 L92,54"/>
-                  </g>
-                  <g stroke="#4A443A">
-                    <path d="M28,54 L44,54 M36,54 L36,70"/>
-                    <path d="M108,54 L124,54 M116,54 L116,38"/>
-                    <path d="M60,70 L60,84 M60,78 L76,78"/>
-                  </g>
-                </g>
-                <rect x="56" y="26" width="8" height="8" fill="#F0902E"/>
-                <circle cx="92" cy="62" r="4" fill="#86C232"/>
-                <circle cx="36" cy="70" r="4" fill="none" stroke="#4A443A" stroke-width="2"/>
-              </svg>
-              <span class="go"><span>Play</span></span>
-            </button>
-            <div class="game-plate">
-              <p class="game-kind"><span class="dot"></span>Routing puzzle</p>
-              <h3>Circuit Breaker</h3>
-              <p>Rotate every segment until the board goes live. Boards come out of a randomised spanning tree, so there is always a solution and never an unreachable corner &mdash; and the shuffle itself sets the par.</p>
-              <p class="game-meta">
-                <span>Touch or keyboard</span><span>Reflows</span>
-              </p>
+        <article class="entry">
+          <div class="entry-head">
+            <span class="entry-kind">Game</span>
+            <h3>BT-7274N</h3>
+            <span class="pill live">Playable now</span>
+          </div>
+          <div class="entry-body">
+            <p>A turn-based terminal roguelike. You type combat commands, the enemy answers, and the waves keep coming — twelve commands across attack, defence and support, all balanced against four competing resources you can never quite afford to spend.</p>
+            <p>The interesting problem was making a text interface feel like combat. Every command resolves into a readable console beat, wave modifiers change the rules rather than just the numbers, and a battery minigame runs alongside the fight so there is always a second decision competing for your attention.</p>
+            <dl class="props">
+              <dt>Role</dt><dd>Solo — design, systems, code, interface, copy</dd>
+              <dt>Stack</dt><dd>Vanilla JavaScript, Canvas, no dependencies</dd>
+              <dt>Systems</dt><dd>Infinite wave scaling, four-resource economy, cooldowns, four wave modifiers, boss encounters</dd>
+              <dt>Build</dt><dd>One self-contained HTML file, ~93&nbsp;KB, no build step</dd>
+              <dt>Note</dt><dd><em>Unofficial fan project, set in the Titanfall universe. Not affiliated with or endorsed by Respawn Entertainment or EA.</em></dd>
+            </dl>
+            <div class="actions">
+              <button class="btn btn-go" type="button" data-launch="bt-7274n">Play in browser</button>
+              <a class="btn" href="https://github.com/iudexryze/portfolio/tree/main/play/bt-7274n">Source</a>
             </div>
-          </article>
-
-          <article class="game" id="overclock">
-            <button class="game-screen" type="button" data-launch="overclock" aria-label="Play Overclock">
-              <svg viewBox="0 0 160 100" aria-hidden="true">
-                <rect width="160" height="100" fill="#0E0D0C"/>
-                <g stroke="#443E36" opacity=".45">
-                  <path d="M32,0 L32,100 M64,0 L64,100 M96,0 L96,100 M128,0 L128,100"/>
-                  <path d="M0,25 L160,25 M0,50 L160,50 M0,75 L160,75"/>
-                </g>
-                <rect x="106" y="24" width="12" height="12" fill="none" stroke="#F0902E" stroke-width="2.5"/>
-                <rect x="34" y="66" width="12" height="12" fill="none" stroke="#F0902E" stroke-width="2.5"/>
-                <polygon points="122,72 130,80 122,88 114,80" fill="#D9484B"/>
-                <rect x="42" y="26" width="11" height="11" fill="#86C232"/>
-                <g fill="#EDE8DE">
-                  <rect x="62" y="56" width="3" height="3" opacity=".2"/>
-                  <rect x="68" y="54" width="4" height="4" opacity=".35"/>
-                  <rect x="74" y="52" width="5" height="5" opacity=".55"/>
-                  <circle cx="84" cy="50" r="6.5"/>
-                </g>
-                <circle cx="84" cy="50" r="3" fill="#86C232"/>
-              </svg>
-              <span class="go"><span>Play</span></span>
-            </button>
-            <div class="game-plate">
-              <p class="game-kind"><span class="dot"></span>Arena dodger</p>
-              <h3>Overclock</h3>
-              <p>Scoring is the thing that speeds the arena up. Every packet raises the clock everything hunting you runs on, and the throttle that saves you is paid for out of the same clock.</p>
-              <p class="game-meta">
-                <span>Touch or keyboard</span><span>Reflows</span>
-              </p>
-            </div>
-          </article>
-
-          <article class="game" id="disco-race">
-            <button class="game-screen" type="button" data-launch="disco-race" aria-label="Play Disco Race">
-              <svg viewBox="0 0 160 100" aria-hidden="true">
-                <rect width="160" height="100" fill="#0E0D0C"/>
-                <rect x="46" y="0" width="68" height="100" fill="#141311"/>
-                <g fill="#17150F">
-                  <rect x="46" y="0" width="13.6" height="14"/><rect x="73.2" y="0" width="13.6" height="14"/>
-                  <rect x="100.4" y="0" width="13.6" height="14"/><rect x="59.6" y="14" width="13.6" height="14"/>
-                  <rect x="86.8" y="14" width="13.6" height="14"/><rect x="46" y="28" width="13.6" height="14"/>
-                  <rect x="73.2" y="28" width="13.6" height="14"/><rect x="100.4" y="28" width="13.6" height="14"/>
-                  <rect x="59.6" y="42" width="13.6" height="14"/><rect x="86.8" y="42" width="13.6" height="14"/>
-                  <rect x="46" y="56" width="13.6" height="14"/><rect x="73.2" y="56" width="13.6" height="14"/>
-                  <rect x="100.4" y="56" width="13.6" height="14"/><rect x="59.6" y="70" width="13.6" height="14"/>
-                  <rect x="86.8" y="70" width="13.6" height="14"/>
-                </g>
-                <g stroke="#3A352E" stroke-width="1" stroke-dasharray="5 6">
-                  <path d="M59.6,0 L59.6,100 M73.2,0 L73.2,100 M86.8,0 L86.8,100 M100.4,0 L100.4,100"/>
-                </g>
-                <g fill="#8A6FD8" opacity=".75">
-                  <rect x="26" y="16" width="9" height="11"/><rect x="26" y="58" width="9" height="11"/>
-                  <rect x="125" y="37" width="9" height="11"/>
-                </g>
-                <rect x="63" y="16" width="14" height="21" fill="#1E1B18" stroke="#8A6FD8" stroke-width="1.5"/>
-                <rect x="93" y="34" width="14" height="21" fill="#1E1B18" stroke="#5A5348" stroke-width="1.5"/>
-                <rect x="76.5" y="46" width="7" height="7" fill="#86C232" transform="rotate(45 80 49.5)"/>
-                <rect x="73" y="66" width="14" height="21" fill="#EDE8DE" stroke="#F0902E" stroke-width="1.5"/>
-                <rect x="76" y="69" width="8" height="5" fill="#86C232"/>
-                <rect x="66" y="72" width="3" height="9" fill="#86C232"/>
-                <rect x="91" y="72" width="3" height="9" fill="#86C232"/>
-              </svg>
-              <span class="go"><span>Play</span></span>
-            </button>
-            <div class="game-plate">
-              <p class="game-kind"><span class="dot"></span>Rhythm racer</p>
-              <h3>Disco Race</h3>
-              <p>A lane racer with a metronome under it. Steering keeps you alive; tapping on the beat is the only thing that makes you fast, so the two demands pull against each other at speed.</p>
-              <p class="game-meta">
-                <span>Touch or keyboard</span><span>124 BPM</span>
-              </p>
-            </div>
-          </article>
-
-          <article class="game" id="refactor">
-            <button class="game-screen" type="button" data-launch="refactor" aria-label="Play Refactor">
-              <svg viewBox="0 0 160 100" aria-hidden="true">
-                <rect width="160" height="100" fill="#0E0D0C"/>
-                <g stroke="#86C232" stroke-width="1.6" opacity=".55">
-                  <path d="M40,26 L70,18 M70,18 L104,30 M104,30 L118,58 M118,58 L86,74 M86,74 L48,66 M48,66 L40,26"/>
-                  <path d="M70,18 L86,74"/>
-                </g>
-                <g stroke="#F0902E" stroke-width="1.9">
-                  <path d="M40,26 L118,58 M104,30 L48,66"/>
-                </g>
-                <g fill="#1B1917" stroke="#EDE8DE" stroke-width="1.8">
-                  <circle cx="40" cy="26" r="5"/><circle cx="70" cy="18" r="5"/>
-                  <circle cx="104" cy="30" r="5"/><circle cx="118" cy="58" r="5"/>
-                  <circle cx="86" cy="74" r="5"/><circle cx="48" cy="66" r="5"/>
-                </g>
-                <circle cx="70" cy="18" r="9" fill="none" stroke="#F0902E" stroke-width="1.2" opacity=".6"/>
-              </svg>
-              <span class="go"><span>Play</span></span>
-            </button>
-            <div class="game-plate">
-              <p class="game-kind"><span class="dot"></span>Graph puzzle</p>
-              <h3>Refactor</h3>
-              <p>Drag the nodes until no edge crosses another. Boards are generated at a layout that is already flat and then scrambled, so a solution is known to exist rather than hoped for.</p>
-              <p class="game-meta">
-                <span>Drag</span><span>Reflows</span>
-              </p>
-            </div>
-          </article>
-
-          <article class="game" id="heap">
-            <button class="game-screen" type="button" data-launch="heap" aria-label="Play Heap">
-              <svg viewBox="0 0 160 100" aria-hidden="true">
-                <rect width="160" height="100" fill="#0E0D0C"/>
-                <path d="M80,0 L80,100" stroke="#322E28" stroke-width="1" stroke-dasharray="3 6"/>
-                <g stroke-width="1.8" fill="none">
-                  <rect x="46" y="84" width="68" height="10" stroke="#86C232"/>
-                  <rect x="49" y="72" width="62" height="10" stroke="#9DC53A"/>
-                  <rect x="53" y="60" width="54" height="10" stroke="#B4C63C"/>
-                  <rect x="58" y="48" width="45" height="10" stroke="#CBB93C"/>
-                  <rect x="62" y="36" width="37" height="10" stroke="#DFA637"/>
-                  <rect x="66" y="24" width="29" height="10" stroke="#F0902E"/>
-                </g>
-                <rect x="112" y="10" width="29" height="10" fill="#1B1917" stroke="#F0902E" stroke-width="2"/>
-                <path d="M126,22 L126,34" stroke="#F0902E" stroke-width="1" opacity=".45"/>
-                <rect x="20" y="70" width="12" height="9" fill="none" stroke="#D9484B" stroke-width="1.6" transform="rotate(-22 26 74)"/>
-              </svg>
-              <span class="go"><span>Play</span></span>
-            </button>
-            <div class="game-plate">
-              <p class="game-kind"><span class="dot"></span>Precision stacker</p>
-              <h3>Heap</h3>
-              <p>A block slides across the top of the tower; tap to drop it. Whatever hangs over is cut off for good, so only a dead-centre landing ever buys any width back.</p>
-              <p class="game-meta">
-                <span>One tap</span><span>Reflows</span>
-              </p>
-            </div>
-          </article>
-
-          <article class="game" id="mutex">
-            <button class="game-screen" type="button" data-launch="mutex" aria-label="Play Mutex">
-              <svg viewBox="0 0 160 100" aria-hidden="true">
-                <rect width="160" height="100" fill="#0E0D0C"/>
-                <g fill="none" stroke="#3A352E" stroke-width="6">
-                  <circle cx="80" cy="34" r="24"/><circle cx="59" cy="66" r="24"/><circle cx="101" cy="66" r="24"/>
-                </g>
-                <g fill="none" stroke="#4A443A" stroke-width="1">
-                  <circle cx="80" cy="34" r="24"/><circle cx="59" cy="66" r="24"/><circle cx="101" cy="66" r="24"/>
-                </g>
-                <circle cx="80" cy="10" r="7" fill="#17150F" stroke="#86C232" stroke-width="2.4"/>
-                <circle cx="80" cy="10" r="2.6" fill="#86C232"/>
-                <circle cx="35" cy="66" r="7" fill="#17150F" stroke="#F0902E" stroke-width="2.4"/>
-                <circle cx="35" cy="66" r="2.6" fill="#F0902E"/>
-                <path d="M35,66 m0,-11 a11,11 0 0 1 8,19" fill="none" stroke="#EDE8DE" stroke-width="2"/>
-                <circle cx="119" cy="76" r="7" fill="#17150F" stroke="#86C232" stroke-width="2.4"/>
-                <circle cx="119" cy="76" r="2.6" fill="#86C232"/>
-              </svg>
-              <span class="go"><span>Play</span></span>
-            </button>
-            <div class="game-plate">
-              <p class="game-kind"><span class="dot"></span>Timing game</p>
-              <h3>Mutex</h3>
-              <p>Runners lap rings that overlap, and where two rings cross only one may pass. Tap to hold one back &mdash; but a held runner is spending patience, so the lock is the scarce thing.</p>
-              <p class="game-meta">
-                <span>One tap</span><span>Reflows</span>
-              </p>
-            </div>
-          </article>
-
-        </div>
+          </div>
+        </article>
       </section>
 
       <!-- ══ TOOLS ═════════════════════════════════════════ -->
@@ -1369,6 +1163,266 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
         </article>
       </section>
 
+      <!-- ══ ARCADE ════════════════════════════════════════ -->
+      <section class="section" id="arcade">
+        <div class="section-bar">
+          <h2>Arcade</h2>
+          <span class="count">8 playable</span>
+        </div>
+        <p class="section-note">Side projects, not the main event &mdash; but they are the fastest way to read how I actually write code. Eight small games, each self-contained in a single HTML file with no build step and no dependencies. They run in this page: nothing installs, nothing downloads. Every one is short enough to read in an afternoon, which is rather the point.</p>
+
+        <!-- The one loud element on the page: a game you can actually play. -->
+        <div class="cabinet" id="bt7274n">
+          <div class="cab-bar">
+            <span class="cab-lights"><i></i><i></i><i></i></span>
+            <span class="name">BT-7274 // VANGUARD NEURAL LINK</span>
+            <span class="end"><span>NO INSTALL</span></span>
+          </div>
+
+          <div class="cab-stage">
+            <div class="attract" data-attract>
+              <div class="attract-log" data-log aria-hidden="true"></div>
+              <button class="cab-launch" type="button" data-launch="bt-7274n">Establish neural link</button>
+              <p class="cab-hint">Runs in this tab &middot; keyboard only &middot; <kbd>Esc</kbd> to exit</p>
+            </div>
+          </div>
+
+          <div class="cab-foot">
+            <span>Terminal roguelike</span>
+            <span>Vanilla JS, zero dependencies</span>
+            <span>One self-contained file</span>
+            <a class="end" href="#drift-lander">Seven more below</a>
+          </div>
+        </div>
+
+        <div class="arcade">
+
+          <article class="game" id="drift-lander">
+            <button class="game-screen" type="button" data-launch="drift-lander" aria-label="Play Drift Lander">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <circle cx="28" cy="18" r="1" fill="#EDE8DE" opacity=".5"/>
+                <circle cx="118" cy="12" r="1" fill="#EDE8DE" opacity=".4"/>
+                <circle cx="64" cy="26" r="1" fill="#EDE8DE" opacity=".35"/>
+                <circle cx="142" cy="30" r="1" fill="#EDE8DE" opacity=".5"/>
+                <path d="M0,100 L0,74 L20,62 L36,76 L52,68 L66,82 L96,82 L112,62 L132,76 L160,68 L160,100 Z" fill="#1B1917" stroke="#443E36"/>
+                <line x1="66" y1="82" x2="96" y2="82" stroke="#86C232" stroke-width="2.5"/>
+                <polygon points="80,40 86,52 74,52" fill="#EDE8DE"/>
+                <path d="M77,54 L74,58 M83,54 L86,58" stroke="#443E36" stroke-width="1.6"/>
+                <path d="M80,56 L80,64" stroke="#F0902E" stroke-width="2.5" opacity=".8"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Physics arcade</p>
+              <h3>Drift Lander</h3>
+              <p>Procedural terrain, a fuel budget that never covers the descent, and pads that pay more the narrower they get. Fixed-timestep physics so a 144&nbsp;Hz panel plays the same as a laptop.</p>
+              <p class="game-meta">
+                <span>Touch or keyboard</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="circuit-breaker">
+            <button class="game-screen" type="button" data-launch="circuit-breaker" aria-label="Play Circuit Breaker">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <g stroke-width="3" stroke-linecap="round" fill="none">
+                  <g stroke="#86C232">
+                    <path d="M52,30 L68,30 M60,30 L60,46"/>
+                    <path d="M84,30 L100,30 M92,30 L92,46"/>
+                    <path d="M60,46 L60,62 M60,54 L76,54"/>
+                    <path d="M92,46 L92,62"/>
+                    <path d="M76,54 L92,54"/>
+                  </g>
+                  <g stroke="#4A443A">
+                    <path d="M28,54 L44,54 M36,54 L36,70"/>
+                    <path d="M108,54 L124,54 M116,54 L116,38"/>
+                    <path d="M60,70 L60,84 M60,78 L76,78"/>
+                  </g>
+                </g>
+                <rect x="56" y="26" width="8" height="8" fill="#F0902E"/>
+                <circle cx="92" cy="62" r="4" fill="#86C232"/>
+                <circle cx="36" cy="70" r="4" fill="none" stroke="#4A443A" stroke-width="2"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Routing puzzle</p>
+              <h3>Circuit Breaker</h3>
+              <p>Rotate every segment until the board goes live. Boards come out of a randomised spanning tree, so there is always a solution and never an unreachable corner &mdash; and the shuffle itself sets the par.</p>
+              <p class="game-meta">
+                <span>Touch or keyboard</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="overclock">
+            <button class="game-screen" type="button" data-launch="overclock" aria-label="Play Overclock">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <g stroke="#443E36" opacity=".45">
+                  <path d="M32,0 L32,100 M64,0 L64,100 M96,0 L96,100 M128,0 L128,100"/>
+                  <path d="M0,25 L160,25 M0,50 L160,50 M0,75 L160,75"/>
+                </g>
+                <rect x="106" y="24" width="12" height="12" fill="none" stroke="#F0902E" stroke-width="2.5"/>
+                <rect x="34" y="66" width="12" height="12" fill="none" stroke="#F0902E" stroke-width="2.5"/>
+                <polygon points="122,72 130,80 122,88 114,80" fill="#D9484B"/>
+                <rect x="42" y="26" width="11" height="11" fill="#86C232"/>
+                <g fill="#EDE8DE">
+                  <rect x="62" y="56" width="3" height="3" opacity=".2"/>
+                  <rect x="68" y="54" width="4" height="4" opacity=".35"/>
+                  <rect x="74" y="52" width="5" height="5" opacity=".55"/>
+                  <circle cx="84" cy="50" r="6.5"/>
+                </g>
+                <circle cx="84" cy="50" r="3" fill="#86C232"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Arena dodger</p>
+              <h3>Overclock</h3>
+              <p>Scoring is the thing that speeds the arena up. Every packet raises the clock everything hunting you runs on, and the throttle that saves you is paid for out of the same clock.</p>
+              <p class="game-meta">
+                <span>Touch or keyboard</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="disco-race">
+            <button class="game-screen" type="button" data-launch="disco-race" aria-label="Play Disco Race">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <rect x="46" y="0" width="68" height="100" fill="#141311"/>
+                <g fill="#17150F">
+                  <rect x="46" y="0" width="13.6" height="14"/><rect x="73.2" y="0" width="13.6" height="14"/>
+                  <rect x="100.4" y="0" width="13.6" height="14"/><rect x="59.6" y="14" width="13.6" height="14"/>
+                  <rect x="86.8" y="14" width="13.6" height="14"/><rect x="46" y="28" width="13.6" height="14"/>
+                  <rect x="73.2" y="28" width="13.6" height="14"/><rect x="100.4" y="28" width="13.6" height="14"/>
+                  <rect x="59.6" y="42" width="13.6" height="14"/><rect x="86.8" y="42" width="13.6" height="14"/>
+                  <rect x="46" y="56" width="13.6" height="14"/><rect x="73.2" y="56" width="13.6" height="14"/>
+                  <rect x="100.4" y="56" width="13.6" height="14"/><rect x="59.6" y="70" width="13.6" height="14"/>
+                  <rect x="86.8" y="70" width="13.6" height="14"/>
+                </g>
+                <g stroke="#3A352E" stroke-width="1" stroke-dasharray="5 6">
+                  <path d="M59.6,0 L59.6,100 M73.2,0 L73.2,100 M86.8,0 L86.8,100 M100.4,0 L100.4,100"/>
+                </g>
+                <g fill="#8A6FD8" opacity=".75">
+                  <rect x="26" y="16" width="9" height="11"/><rect x="26" y="58" width="9" height="11"/>
+                  <rect x="125" y="37" width="9" height="11"/>
+                </g>
+                <rect x="63" y="16" width="14" height="21" fill="#1E1B18" stroke="#8A6FD8" stroke-width="1.5"/>
+                <rect x="93" y="34" width="14" height="21" fill="#1E1B18" stroke="#5A5348" stroke-width="1.5"/>
+                <rect x="76.5" y="46" width="7" height="7" fill="#86C232" transform="rotate(45 80 49.5)"/>
+                <rect x="73" y="66" width="14" height="21" fill="#EDE8DE" stroke="#F0902E" stroke-width="1.5"/>
+                <rect x="76" y="69" width="8" height="5" fill="#86C232"/>
+                <rect x="66" y="72" width="3" height="9" fill="#86C232"/>
+                <rect x="91" y="72" width="3" height="9" fill="#86C232"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Rhythm racer</p>
+              <h3>Disco Race</h3>
+              <p>A lane racer with a metronome under it. Steering keeps you alive; tapping on the beat is the only thing that makes you fast, so the two demands pull against each other at speed.</p>
+              <p class="game-meta">
+                <span>Touch or keyboard</span><span>124 BPM</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="refactor">
+            <button class="game-screen" type="button" data-launch="refactor" aria-label="Play Refactor">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <g stroke="#86C232" stroke-width="1.6" opacity=".55">
+                  <path d="M40,26 L70,18 M70,18 L104,30 M104,30 L118,58 M118,58 L86,74 M86,74 L48,66 M48,66 L40,26"/>
+                  <path d="M70,18 L86,74"/>
+                </g>
+                <g stroke="#F0902E" stroke-width="1.9">
+                  <path d="M40,26 L118,58 M104,30 L48,66"/>
+                </g>
+                <g fill="#1B1917" stroke="#EDE8DE" stroke-width="1.8">
+                  <circle cx="40" cy="26" r="5"/><circle cx="70" cy="18" r="5"/>
+                  <circle cx="104" cy="30" r="5"/><circle cx="118" cy="58" r="5"/>
+                  <circle cx="86" cy="74" r="5"/><circle cx="48" cy="66" r="5"/>
+                </g>
+                <circle cx="70" cy="18" r="9" fill="none" stroke="#F0902E" stroke-width="1.2" opacity=".6"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Graph puzzle</p>
+              <h3>Refactor</h3>
+              <p>Drag the nodes until no edge crosses another. Boards are generated at a layout that is already flat and then scrambled, so a solution is known to exist rather than hoped for.</p>
+              <p class="game-meta">
+                <span>Drag</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="heap">
+            <button class="game-screen" type="button" data-launch="heap" aria-label="Play Heap">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <path d="M80,0 L80,100" stroke="#322E28" stroke-width="1" stroke-dasharray="3 6"/>
+                <g stroke-width="1.8" fill="none">
+                  <rect x="46" y="84" width="68" height="10" stroke="#86C232"/>
+                  <rect x="49" y="72" width="62" height="10" stroke="#9DC53A"/>
+                  <rect x="53" y="60" width="54" height="10" stroke="#B4C63C"/>
+                  <rect x="58" y="48" width="45" height="10" stroke="#CBB93C"/>
+                  <rect x="62" y="36" width="37" height="10" stroke="#DFA637"/>
+                  <rect x="66" y="24" width="29" height="10" stroke="#F0902E"/>
+                </g>
+                <rect x="112" y="10" width="29" height="10" fill="#1B1917" stroke="#F0902E" stroke-width="2"/>
+                <path d="M126,22 L126,34" stroke="#F0902E" stroke-width="1" opacity=".45"/>
+                <rect x="20" y="70" width="12" height="9" fill="none" stroke="#D9484B" stroke-width="1.6" transform="rotate(-22 26 74)"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Precision stacker</p>
+              <h3>Heap</h3>
+              <p>A block slides across the top of the tower; tap to drop it. Whatever hangs over is cut off for good, so only a dead-centre landing ever buys any width back.</p>
+              <p class="game-meta">
+                <span>One tap</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="mutex">
+            <button class="game-screen" type="button" data-launch="mutex" aria-label="Play Mutex">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <g fill="none" stroke="#3A352E" stroke-width="6">
+                  <circle cx="80" cy="34" r="24"/><circle cx="59" cy="66" r="24"/><circle cx="101" cy="66" r="24"/>
+                </g>
+                <g fill="none" stroke="#4A443A" stroke-width="1">
+                  <circle cx="80" cy="34" r="24"/><circle cx="59" cy="66" r="24"/><circle cx="101" cy="66" r="24"/>
+                </g>
+                <circle cx="80" cy="10" r="7" fill="#17150F" stroke="#86C232" stroke-width="2.4"/>
+                <circle cx="80" cy="10" r="2.6" fill="#86C232"/>
+                <circle cx="35" cy="66" r="7" fill="#17150F" stroke="#F0902E" stroke-width="2.4"/>
+                <circle cx="35" cy="66" r="2.6" fill="#F0902E"/>
+                <path d="M35,66 m0,-11 a11,11 0 0 1 8,19" fill="none" stroke="#EDE8DE" stroke-width="2"/>
+                <circle cx="119" cy="76" r="7" fill="#17150F" stroke="#86C232" stroke-width="2.4"/>
+                <circle cx="119" cy="76" r="2.6" fill="#86C232"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Timing game</p>
+              <h3>Mutex</h3>
+              <p>Runners lap rings that overlap, and where two rings cross only one may pass. Tap to hold one back &mdash; but a held runner is spending patience, so the lock is the scarce thing.</p>
+              <p class="game-meta">
+                <span>One tap</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+        </div>
+      </section>
+
       <!-- ══ CODE ══════════════════════════════════════════ -->
       <section class="section" id="code">
         <div class="section-bar">
@@ -1454,53 +1508,6 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
         <p class="section-note" style="margin:22px 0 0">The seven Unity editor tools are internal to the studios they were built at and have no public repository.</p>
       </section>
 
-      <!-- ══ ABOUT ═════════════════════════════════════════ -->
-      <section class="section" id="about">
-        <div class="section-bar">
-          <h2>About</h2>
-        </div>
-
-        <div class="about-grid">
-          <div class="about-prose">
-            <p>I am a game developer and technical artist in Bangalore, currently at <strong>Gameberry Labs</strong> building games at scale. Before that I was at <strong>ZVKY Design Studio</strong>, where I shipped two commercial slot games solo — gameplay systems, shader graphs, and the whole delivery pipeline.</p>
-            <p>The work I care about sits between code and craft. In practice that means writing C# during the day and sculpting environments in Blender at night, and it means that when a project stalls on something unglamorous — a build that got too big, a dependency graph nobody can read — I tend to go build the tool that answers it. That is where the seven editor windows above came from.</p>
-            <p>Right now most of my own time goes into <strong>Project Phantom Parry</strong>, an eldritch horror game where I own the story, the design, the code and the sound.</p>
-          </div>
-
-          <div>
-            <ul class="track">
-              <li>
-                <span class="when">Mar 2026 —</span>
-                <span class="what"><b>Gameberry Labs</b><span>Game developer</span></span>
-              </li>
-              <li>
-                <span class="when">Prior</span>
-                <span class="what"><b>ZVKY Design Studio</b><span>Game developer — two slot titles shipped solo</span></span>
-              </li>
-              <li>
-                <span class="when">Degree</span>
-                <span class="what"><b>REVA University</b><span>B.Tech, Electronics &amp; Computer Engineering</span></span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="stack">
-          <div class="stack-group">
-            <h4>Engine</h4>
-            <p>Unity, C#, shader graph, Addressables, editor tooling, animation systems</p>
-          </div>
-          <div class="stack-group">
-            <h4>3D</h4>
-            <p>Blender, environment design, geometry nodes, shading and lookdev, modelling</p>
-          </div>
-          <div class="stack-group">
-            <h4>Also</h4>
-            <p>C and C++, Java and Kotlin, PostgreSQL, TypeScript and React, sound design</p>
-          </div>
-        </div>
-      </section>
-
       <!-- ══ CONTACT ═══════════════════════════════════════ -->
       <section class="section" id="contact">
         <div class="section-bar">
@@ -1517,7 +1524,7 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
         </ul>
 
         <p class="colophon">
-          Ground // Zero — Varun Saini, Bangalore, India<br>
+          Varun Saini — Bangalore, India<br>
           Built as one static page. IBM Plex, set in Condensed, Sans and Mono.<br>
           BT-7274N is an unofficial fan project and is not affiliated with Respawn Entertainment or EA.
         </p>
