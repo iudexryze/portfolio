@@ -61,6 +61,23 @@ body{
 html.no3d #gl{display:none}
 html.no3d .stage{background:radial-gradient(90% 70% at 50% 46%, #22272B 0%, var(--stage) 72%)}
 
+/* A photographic finish over the render. A frame that is perfectly even
+   corner to corner and perfectly free of grain is itself a tell: every
+   lens falls off at the edges and every sensor has noise. It sits at
+   z-index 1 after the canvas, so it covers the render and nothing else
+   — the chrome, the boot label and the cartridge overlay all sit above.
+   Static, so it costs one paint and never redraws. */
+body::after{
+  content:''; position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:
+    radial-gradient(116% 88% at 50% 43%,
+      rgba(0,0,0,0) 40%, rgba(0,0,0,.20) 72%, rgba(0,0,0,.46) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-size: cover, 140px 140px;
+}
+@media (prefers-reduced-motion: reduce){ body::after{ background-size: cover, 140px 140px } }
+html.no3d body::after{ background-image:none }
+
 /* ── page chrome ───────────────────────────────────────────────── */
 .chrome{position:fixed; inset:0; z-index:3; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:var(--pad-y) var(--pad-x)}
 .chrome a,.chrome button{pointer-events:auto}
@@ -522,12 +539,28 @@ function frame(){
 
 /* the faint grid a real dot-matrix panel has */
 function matrix(){
-  ctx.globalAlpha = 0.16;
+  ctx.globalAlpha = 0.22;
   ctx.fillStyle = shade(1);
   var step = G.cw / 2, x;
   for (x = step; x < CW_PX; x += step) ctx.fillRect(Math.round(x), 0, 1, CH_PX);
   for (x = step; x < CH_PX; x += step) ctx.fillRect(0, Math.round(x), CW_PX, 1);
   ctx.globalAlpha = 1;
+  falloff();
+}
+
+/* No LCD is evenly lit. The corners fall away from the viewing angle
+   and the reflector never quite reaches the edge of the glass, so an
+   even rectangle of colour is the giveaway that it is not a panel. */
+function falloff(){
+  var g = ctx.createRadialGradient(
+    CW_PX * 0.48, CH_PX * 0.44, Math.min(CW_PX, CH_PX) * 0.16,
+    CW_PX * 0.50, CH_PX * 0.50, Math.max(CW_PX, CH_PX) * 0.70);
+  g.addColorStop(0,    'rgba(18,26,8,0)');
+  g.addColorStop(0.58, 'rgba(18,26,8,.045)');
+  g.addColorStop(0.85, 'rgba(16,24,8,.13)');
+  g.addColorStop(1,    'rgba(14,22,6,.24)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, CW_PX, CH_PX);
 }
 
 /* ── screens ──────────────────────────────────────────────────── */
@@ -1004,8 +1037,8 @@ const BEV = 0.18;                               // shell edge round-off
 const BZ_W = 7.9, BZ_H = 6.9, BZ_Y = 3.85;      // bezel
 const LC_W = 6.0, LC_H = 5.40, LC_Y = 4.30;     // active screen
 
-const SHELL   = 0xCBC5B6, SHELL_DK = 0xB3ADA0;
-const BEZEL   = 0x45454E;
+const SHELL   = 0xC2BCAB, SHELL_DK = 0xA8A296;
+const BEZEL   = 0x2C2C34;
 const BUTTON  = 0x8E3350, DARK = 0x2B2B31, GREY = 0x55555C;
 const NAVY    = '#2B3B7A', MAROON = '#8E3350';
 
@@ -1053,14 +1086,31 @@ function pad2d(w, h){
 
 /* moulded plastic is never perfectly smooth */
 function plasticRoughness(){
-  const [c, g] = pad2d(256, 256), img = g.createImageData(256, 256);
-  for (let i=0;i<img.data.length;i+=4){
-    const v = 150 + (Math.random()*36|0);
-    img.data[i] = img.data[i+1] = img.data[i+2] = v; img.data[i+3] = 255;
+  const N = 512, [c, g] = pad2d(N, N);
+  g.fillStyle = '#9A9A9A'; g.fillRect(0, 0, N, N);
+
+  // slow blotching: the tool and the flow, not the surface
+  g.filter = 'blur(22px)';
+  for (let i = 0; i < 70; i++){
+    const v = Math.random() < 0.5 ? 255 : 0;
+    g.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',' + (0.05 + Math.random()*0.07).toFixed(3) + ')';
+    g.beginPath();
+    g.arc(Math.random()*N, Math.random()*N, 26 + Math.random()*90, 0, 7);
+    g.fill();
+  }
+  g.filter = 'none';
+
+  // fine grain on top
+  const img = g.getImageData(0, 0, N, N);
+  for (let i = 0; i < img.data.length; i += 4){
+    const d = (Math.random()*26|0) - 13;
+    img.data[i] = Math.max(0, Math.min(255, img.data[i] + d));
+    img.data[i+1] = img.data[i+2] = img.data[i];
   }
   g.putImageData(img, 0, 0);
+
   const t = tex(c, false);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(9, 15);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 5);
   return t;
 }
 
@@ -1087,9 +1137,10 @@ function shellPrint(){
   // moulded dishes under the controls
   const dish = (x, y, r) => {
     const grad = g.createRadialGradient(px(x), py(y), u(r*0.55), px(x), py(y), u(r));
-    grad.addColorStop(0,    'rgba(60,52,40,.10)');
-    grad.addColorStop(0.80, 'rgba(60,52,40,.16)');
-    grad.addColorStop(0.94, 'rgba(255,255,255,.22)');
+    grad.addColorStop(0,    'rgba(52,44,32,.16)');
+    grad.addColorStop(0.62, 'rgba(46,39,28,.24)');
+    grad.addColorStop(0.86, 'rgba(38,32,23,.34)');
+    grad.addColorStop(0.95, 'rgba(255,255,255,.26)');
     grad.addColorStop(1,    'rgba(255,255,255,0)');
     g.fillStyle = grad;
     g.beginPath(); g.arc(px(x), py(y), u(r), 0, 7); g.fill();
@@ -1097,6 +1148,70 @@ function shellPrint(){
   dish(P.dpad[0], P.dpad[1], 2.05);
   dish(P.a[0], P.a[1], 1.02);
   dish(P.b[0], P.b[1], 1.02);
+
+  /* Occlusion where the bezel meets the shell. The bezel stands proud
+     of this plane, so light never reaches the millimetre around its
+     foot and every real photograph shows a dark seam there. */
+  {
+    const bw = px(BZ_W/2) - px(-BZ_W/2), bh = py(BZ_Y - BZ_H/2) - py(BZ_Y + BZ_H/2);
+    const x0 = px(-BZ_W/2), y0 = py(BZ_Y + BZ_H/2);
+    g.save();
+    g.filter = 'blur(' + u(0.18).toFixed(1) + 'px)';
+    g.strokeStyle = 'rgba(38,32,24,.46)';
+    g.lineWidth = u(0.30);
+    g.beginPath(); g.roundRect(x0, y0, bw, bh, u(0.50)); g.stroke();
+    g.filter = 'none';
+    g.restore();
+  }
+
+  /* Occlusion into the outer edge: the shell curves away, so the rim
+     never faces the light squarely. */
+  {
+    g.save();
+    g.filter = 'blur(' + u(0.34).toFixed(1) + 'px)';
+    g.strokeStyle = 'rgba(30,26,20,.30)';
+    g.lineWidth = u(0.62);
+    g.beginPath();
+    g.roundRect(u(0.20), u(0.20), TW - u(0.40), TH - u(0.40), u(0.9));
+    g.stroke();
+    g.filter = 'none';
+    g.restore();
+  }
+
+  /* Colour is never even across a panel this size. */
+  {
+    g.save();
+    g.filter = 'blur(' + u(1.1).toFixed(1) + 'px)';
+    for (let i = 0; i < 22; i++){
+      const warm = Math.random() < 0.55;
+      g.fillStyle = warm ? 'rgba(126,104,66,.030)' : 'rgba(206,214,226,.024)';
+      g.beginPath();
+      g.arc(Math.random()*TW, Math.random()*TH, u(0.7 + Math.random()*2.4), 0, 7);
+      g.fill();
+    }
+    g.filter = 'none';
+    g.restore();
+  }
+
+  /* A moulding seam runs the height of the shell, and a machine that
+     has been picked up has fine scuffs where thumbs land. */
+  g.fillStyle = 'rgba(46,40,30,.13)';
+  g.fillRect(px(-W/2 + 0.06), 0, Math.max(1, u(0.020)), TH);
+  g.fillRect(px(W/2 - 0.08),  0, Math.max(1, u(0.020)), TH);
+
+  g.save();
+  g.lineCap = 'round';
+  for (let i = 0; i < 26; i++){
+    const x = Math.random()*TW, y = Math.random()*TH, a = Math.random()*Math.PI;
+    const len = u(0.12 + Math.random()*0.55);
+    g.strokeStyle = 'rgba(255,255,255,' + (0.05 + Math.random()*0.07).toFixed(3) + ')';
+    g.lineWidth = Math.max(1, u(0.010));
+    g.beginPath();
+    g.moveTo(x - Math.cos(a)*len, y - Math.sin(a)*len);
+    g.lineTo(x + Math.cos(a)*len, y + Math.sin(a)*len);
+    g.stroke();
+  }
+  g.restore();
 
   // speaker: thirty-six holes, on the tilt
   {
@@ -1190,6 +1305,19 @@ function glassSheen(){
   grad.addColorStop(0.87, 'rgba(255,255,255,.20)');
   grad.addColorStop(1,    'rgba(255,255,255,.34)');
   g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
+
+  /* Nothing anyone has owned has a perfectly clean cover. */
+  g.save();
+  g.filter = 'blur(7px)';
+  g.fillStyle = 'rgba(255,255,255,.05)';
+  g.beginPath(); g.ellipse(178, 96, 40, 24, -0.5, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(74, 188, 30, 17, 0.3, 0, 7); g.fill();
+  g.filter = 'none';
+  for (let i = 0; i < 26; i++){
+    g.fillStyle = 'rgba(255,255,255,' + (0.05 + Math.random()*0.11).toFixed(3) + ')';
+    g.beginPath(); g.arc(Math.random()*256, Math.random()*256, 0.5 + Math.random()*0.9, 0, 7); g.fill();
+  }
+  g.restore();
   return tex(c);
 }
 
@@ -1198,7 +1326,7 @@ const canvas   = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true, powerPreference:'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 0.94;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 /* Nothing here animates on its own once it has settled, so the shadow
@@ -1212,20 +1340,39 @@ camera.position.set(0, 0, 40);
 
 // a studio sky, so the plastic has something to reflect
 {
-  const [c, g] = pad2d(64, 64);
-  const grad = g.createLinearGradient(0, 0, 0, 64);
-  grad.addColorStop(0, '#8C9AA8'); grad.addColorStop(0.5, '#3A4149'); grad.addColorStop(1, '#101315');
-  g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+  /* A three-stop gradient gives plastic nothing to reflect but a smear.
+     Real product photography puts shaped sources in the room, and it is
+     the edges of those shapes travelling across a curve that read as
+     "shiny thing in a studio" rather than "material with a specular
+     value". */
+  const EW = 1024, EH = 512, [c, g] = pad2d(EW, EH);
+  const sky = g.createLinearGradient(0, 0, 0, EH);
+  sky.addColorStop(0,    '#78879A');
+  sky.addColorStop(0.40, '#3A424C');
+  sky.addColorStop(0.50, '#232A31');
+  sky.addColorStop(0.52, '#181D22');
+  sky.addColorStop(1,    '#090B0D');
+  g.fillStyle = sky; g.fillRect(0, 0, EW, EH);
+
+  g.filter = 'blur(24px)';
+  g.fillStyle = 'rgba(255,251,242,.95)';                       // key softbox
+  g.fillRect(EW*0.50, EH*0.08, EW*0.21, EH*0.24);
+  g.fillStyle = 'rgba(196,218,255,.50)';                       // cool fill
+  g.fillRect(EW*0.07, EH*0.13, EW*0.14, EH*0.18);
+  g.fillStyle = 'rgba(255,255,255,.30)';                       // kicker
+  g.fillRect(EW*0.82, EH*0.28, EW*0.09, EH*0.11);
+  g.filter = 'none';
+
   const env = tex(c); env.mapping = THREE.EquirectangularReflectionMapping;
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromEquirectangular(env).texture;
-  scene.environmentIntensity = 0.55;
+  scene.environmentIntensity = 0.68;
   pmrem.dispose(); env.dispose();
 }
 
 scene.add(new THREE.HemisphereLight(0x93A6B8, 0x14171A, 0.5));
 
-const key = new THREE.DirectionalLight(0xFFF3E2, 2.5);
+const key = new THREE.DirectionalLight(0xFFF3E2, 1.55);
 key.position.set(6, 10.5, 17); key.castShadow = true;
 /* The frustum was more than twice the size of the thing casting into
    it, so every texel covered a lot of world and the result was a hard
@@ -1242,8 +1389,12 @@ scene.add(key);
 const rim = new THREE.DirectionalLight(0x6E90D6, 2.1);
 rim.position.set(-12, 5, -4); scene.add(rim);
 
-const fill = new THREE.PointLight(0xFFD9B8, 60, 60, 2);
-fill.position.set(-8, -7, 11); scene.add(fill);
+const fill = new THREE.PointLight(0xFFD9B8, 150, 52, 2);
+fill.position.set(-9.5, -7.5, 10); scene.add(fill);
+
+/* The near source that actually shapes the face. */
+const shaper = new THREE.PointLight(0xFFF6EA, 260, 46, 2);
+shaper.position.set(7.5, 8.5, 12); scene.add(shaper);
 
 /* A pool of light behind the device. On a wide screen the machine is a
    portrait object in a landscape frame, and without this the space
@@ -1278,10 +1429,26 @@ const device = new THREE.Group();
 scene.add(device);
 
 const rough = plasticRoughness();
-const shellMat = new THREE.MeshStandardMaterial({ color:SHELL, roughness:0.58, metalness:0.0, roughnessMap:rough });
-const darkMat  = new THREE.MeshStandardMaterial({ color:DARK,  roughness:0.52, metalness:0.0 });
-const greyMat  = new THREE.MeshStandardMaterial({ color:GREY,  roughness:0.55, metalness:0.0 });
-const btnMat   = new THREE.MeshStandardMaterial({ color:BUTTON,roughness:0.42, metalness:0.0 });
+/* Moulded ABS has a thin, slightly rough lacquer-like top layer. It is
+   what puts a sheen on the rim of a curve at grazing angles, and it is
+   the difference between "plastic" and "a solid colour with a specular
+   highlight". */
+const shellMat = new THREE.MeshPhysicalMaterial({
+  color:SHELL, roughness:0.66, metalness:0.0, roughnessMap:rough,
+  clearcoat:0.34, clearcoatRoughness:0.58
+});
+const darkMat  = new THREE.MeshPhysicalMaterial({
+  color:DARK, roughness:0.52, metalness:0.0,
+  clearcoat:0.44, clearcoatRoughness:0.38
+});
+const greyMat  = new THREE.MeshPhysicalMaterial({
+  color:GREY, roughness:0.56, metalness:0.0,
+  clearcoat:0.30, clearcoatRoughness:0.48
+});
+const btnMat   = new THREE.MeshPhysicalMaterial({
+  color:BUTTON, roughness:0.38, metalness:0.0,
+  clearcoat:0.62, clearcoatRoughness:0.22
+});
 
 const CORNERS = {tl:0.55, tr:0.55, br:2.50, bl:0.55};
 
@@ -1292,7 +1459,8 @@ device.add(body);
 // back half, a shade darker so the seam reads
 const back = new THREE.Mesh(
   slab(roundedRect(W - 0.02, H - 0.02, CORNERS), D * 0.46, 0.14),
-  new THREE.MeshStandardMaterial({ color:SHELL_DK, roughness:0.62, roughnessMap:rough })
+  new THREE.MeshPhysicalMaterial({ color:SHELL_DK, roughness:0.68, roughnessMap:rough,
+                                   clearcoat:0.28, clearcoatRoughness:0.62 })
 );
 back.position.z = -D * 0.30; device.add(back);
 
@@ -1310,7 +1478,8 @@ shellDecal.position.z = FRONT + 0.004; device.add(shellDecal);
 const BZ_D = 0.26, BZ_BEV = 0.05;
 const bezel = new THREE.Mesh(
   slab(roundedRect(BZ_W, BZ_H, {tl:0.34, tr:0.34, br:1.25, bl:0.34}), BZ_D, BZ_BEV),
-  new THREE.MeshStandardMaterial({ color:BEZEL, roughness:0.38, metalness:0.06 })
+  new THREE.MeshPhysicalMaterial({ color:BEZEL, roughness:0.34, metalness:0.04,
+                                   clearcoat:0.70, clearcoatRoughness:0.18 })
 );
 bezel.position.set(0, BZ_Y, FRONT + 0.01);
 bezel.castShadow = true; device.add(bezel);
