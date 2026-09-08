@@ -44,7 +44,7 @@ const BEV = 0.18;                               // shell edge round-off
 const BZ_W = 7.9, BZ_H = 6.9, BZ_Y = 3.85;      // bezel
 const LC_W = 6.0, LC_H = 5.40, LC_Y = 4.30;     // active screen
 
-const SHELL   = 0xC2BCAB, SHELL_DK = 0xA8A296;
+const SHELL   = 0xAFA893, SHELL_DK = 0x938D7E;
 const BEZEL   = 0x2C2C34;
 const BUTTON  = 0x8E3350, DARK = 0x2B2B31, GREY = 0x55555C;
 const NAVY    = '#2B3B7A', MAROON = '#8E3350';
@@ -206,6 +206,72 @@ function shellPrint(){
   g.fillRect(px(-W/2 + 0.06), 0, Math.max(1, u(0.020)), TH);
   g.fillRect(px(W/2 - 0.08),  0, Math.max(1, u(0.020)), TH);
 
+  /* Grime settles where hands go and where the shell changes angle.
+     None of this is symmetrical, because nothing that has been used is. */
+  {
+    g.save();
+    g.filter = 'blur(' + u(0.9).toFixed(1) + 'px)';
+    const soil = (x, y, r, a) => {
+      g.fillStyle = 'rgba(38,30,18,' + a + ')';
+      g.beginPath(); g.arc(px(x), py(y), u(r), 0, 7); g.fill();
+    };
+    soil(-2.55, -3.55, 2.5, .16);          // around the d-pad
+    soil( 2.2,  -3.9,  2.1, .13);          // around A and B
+    soil(-3.9,  -6.6,  1.6, .10);
+    soil( 3.6,   1.2,  1.4, .09);
+    g.filter = 'none';
+    g.restore();
+  }
+
+  /* Dried, not fresh. It has been there long enough to go brown at the
+     edges and to have been half-wiped once, badly. */
+  {
+    g.save();
+    const DARK = 'rgba(46,9,9,';
+    const BROWN = 'rgba(74,22,14,';
+
+    // a smear dragged across the lower shell, thinning as it goes
+    g.filter = 'blur(' + u(0.05).toFixed(2) + 'px)';
+    for (let i = 0; i < 30; i++){
+      const t = i / 29;
+      const x = -3.5 + t * 5.2 + Math.sin(t * 7) * 0.10;
+      const y = -6.75 + Math.sin(t * 3.1) * 0.16;
+      g.fillStyle = BROWN + (0.52 * (1 - t * 0.78)).toFixed(3) + ')';
+      g.beginPath();
+      g.ellipse(px(x), py(y), u(0.30 - t * 0.16), u(0.16 - t * 0.08), 0.2, 0, 7);
+      g.fill();
+    }
+
+    // the edge of a hand, where someone held it too hard
+    for (let i = 0; i < 16; i++){
+      const t = i / 15;
+      const x = 3.72 + Math.sin(t * 2.0) * 0.06;
+      const y = -1.1 - t * 3.0;
+      g.fillStyle = DARK + (0.46 - t * 0.22).toFixed(3) + ')';
+      g.beginPath();
+      g.ellipse(px(x), py(y), u(0.20), u(0.30), 0, 0, 7);
+      g.fill();
+    }
+
+    // spatter, and two runs that dried before they got anywhere
+    for (let i = 0; i < 46; i++){
+      const x = -4.1 + Math.random() * 8.2, y = 1.6 - Math.random() * 8.6;
+      const r = 0.03 + Math.random() * 0.10;
+      g.fillStyle = (Math.random() < 0.5 ? DARK : BROWN) + (0.30 + Math.random()*0.42).toFixed(3) + ')';
+      g.beginPath(); g.ellipse(px(x), py(y), u(r), u(r * (1 + Math.random())), 0, 0, 7); g.fill();
+    }
+    [[-1.85, 0.30], [2.95, -0.15], [-3.10, -2.05], [1.40, 1.10]].forEach(([x, y]) => {
+      const len = 0.5 + Math.random() * 1.1;
+      const grad = g.createLinearGradient(px(x), py(y), px(x), py(y - len));
+      grad.addColorStop(0, DARK + '.52)');
+      grad.addColorStop(1, DARK + '0)');
+      g.fillStyle = grad;
+      g.fillRect(px(x) - u(0.045), py(y), u(0.09), u(len));
+    });
+    g.filter = 'none';
+    g.restore();
+  }
+
   g.save();
   g.lineCap = 'round';
   for (let i = 0; i < 26; i++){
@@ -244,7 +310,7 @@ function shellPrint(){
   g.fillText('VARUN SAINI', px(-3.62), py(0.06));
   g.letterSpacing = '0px';
   g.fillStyle = NAVY;
-  g.font = 'italic 600 ' + u(1.00) + 'px "IBM Plex Sans Condensed", sans-serif';
+  g.font = 'italic 600 ' + u(1.00) + 'px Neoradical, "IBM Plex Sans Condensed", sans-serif';
   g.fillText('IudexRzye', px(-3.68), py(-0.98));
   const wmw = g.measureText('IudexRzye').width;
   g.font = u(0.22) + 'px "IBM Plex Sans Condensed", sans-serif';
@@ -354,32 +420,34 @@ camera.position.set(0, 0, 40);
      value". */
   const EW = 1024, EH = 512, [c, g] = pad2d(EW, EH);
   const sky = g.createLinearGradient(0, 0, 0, EH);
-  sky.addColorStop(0,    '#78879A');
-  sky.addColorStop(0.40, '#3A424C');
-  sky.addColorStop(0.50, '#232A31');
-  sky.addColorStop(0.52, '#181D22');
-  sky.addColorStop(1,    '#090B0D');
+  sky.addColorStop(0,    '#3E4650');
+  sky.addColorStop(0.40, '#1A1F25');
+  sky.addColorStop(0.50, '#0E1216');
+  sky.addColorStop(0.52, '#0A0D10');
+  sky.addColorStop(1,    '#040506');
   g.fillStyle = sky; g.fillRect(0, 0, EW, EH);
 
-  g.filter = 'blur(24px)';
-  g.fillStyle = 'rgba(255,251,242,.95)';                       // key softbox
-  g.fillRect(EW*0.50, EH*0.08, EW*0.21, EH*0.24);
-  g.fillStyle = 'rgba(196,218,255,.50)';                       // cool fill
-  g.fillRect(EW*0.07, EH*0.13, EW*0.14, EH*0.18);
-  g.fillStyle = 'rgba(255,255,255,.30)';                       // kicker
-  g.fillRect(EW*0.82, EH*0.28, EW*0.09, EH*0.11);
+  g.filter = 'blur(30px)';
+  g.fillStyle = 'rgba(214,222,228,.55)';                       // the one lamp
+  g.fillRect(EW*0.50, EH*0.06, EW*0.15, EH*0.17);
+  g.fillStyle = 'rgba(120,150,178,.20)';                       // whatever is left
+  g.fillRect(EW*0.09, EH*0.16, EW*0.10, EH*0.12);
   g.filter = 'none';
 
   const env = tex(c); env.mapping = THREE.EquirectangularReflectionMapping;
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromEquirectangular(env).texture;
-  scene.environmentIntensity = 0.68;
+  scene.environmentIntensity = 0.30;
   pmrem.dispose(); env.dispose();
 }
 
-scene.add(new THREE.HemisphereLight(0x93A6B8, 0x14171A, 0.5));
+scene.add(new THREE.HemisphereLight(0x5C6C78, 0x080A0B, 0.22));
 
-const key = new THREE.DirectionalLight(0xFFF3E2, 1.55);
+/* Something sickly and low, off to one side, that should not be on. */
+const wrong = new THREE.PointLight(0x8FB55A, 13, 20, 2);
+wrong.position.set(-7.5, -9.5, 5.0); scene.add(wrong);
+
+const key = new THREE.DirectionalLight(0xD8E2E6, 1.25);
 key.position.set(6, 10.5, 17); key.castShadow = true;
 /* The frustum was more than twice the size of the thing casting into
    it, so every texel covered a lot of world and the result was a hard
@@ -393,14 +461,14 @@ key.shadow.radius = 7; key.shadow.blurSamples = 24;
 key.shadow.bias = 0; key.shadow.normalBias = 0.03;
 scene.add(key);
 
-const rim = new THREE.DirectionalLight(0x6E90D6, 2.1);
+const rim = new THREE.DirectionalLight(0x4A6E96, 1.5);
 rim.position.set(-12, 5, -4); scene.add(rim);
 
-const fill = new THREE.PointLight(0xFFD9B8, 150, 52, 2);
+const fill = new THREE.PointLight(0xC8B49A, 70, 44, 2);
 fill.position.set(-9.5, -7.5, 10); scene.add(fill);
 
 /* The near source that actually shapes the face. */
-const shaper = new THREE.PointLight(0xFFF6EA, 260, 46, 2);
+const shaper = new THREE.PointLight(0xE8ECEA, 175, 42, 2);
 shaper.position.set(7.5, 8.5, 12); scene.add(shaper);
 
 /* A pool of light behind the device. On a wide screen the machine is a
@@ -408,13 +476,27 @@ shaper.position.set(7.5, 8.5, 12); scene.add(shaper);
    either side is dead rather than composed. */
 function sweep(){
   const [c, g] = pad2d(512, 512);
-  g.fillStyle = '#0C0E10'; g.fillRect(0, 0, 512, 512);
-  const grad = g.createRadialGradient(256, 220, 16, 256, 244, 118);
-  grad.addColorStop(0,    '#333B44');
-  grad.addColorStop(0.40, '#1C222A');
-  grad.addColorStop(0.72, '#0E1216');
-  grad.addColorStop(1,    '#080A0C');
+  g.fillStyle = '#040506'; g.fillRect(0, 0, 512, 512);
+  /* One failing source overhead and nothing else. The pool is tighter
+     and colder than a studio would ever light it, and it dies to black
+     well before the edge of frame. */
+  const grad = g.createRadialGradient(256, 208, 10, 256, 236, 96);
+  grad.addColorStop(0,    '#232B2C');
+  grad.addColorStop(0.34, '#141A1B');
+  grad.addColorStop(0.66, '#080C0D');
+  grad.addColorStop(1,    '#030405');
   g.fillStyle = grad; g.fillRect(0, 0, 512, 512);
+
+  /* Damp on the wall behind. Nothing you can name, which is the point. */
+  g.filter = 'blur(26px)';
+  for (let i = 0; i < 14; i++){
+    g.fillStyle = 'rgba(30,26,18,' + (0.05 + Math.random()*0.09).toFixed(3) + ')';
+    g.beginPath();
+    g.ellipse(120 + Math.random()*272, 150 + Math.random()*240,
+              18 + Math.random()*54, 12 + Math.random()*40, Math.random()*3, 0, 7);
+    g.fill();
+  }
+  g.filter = 'none';
   return tex(c);
 }
 const backdrop = new THREE.Mesh(
