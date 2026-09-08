@@ -1,0 +1,142 @@
+/* The page around the machine: the stage it stands on, the corner
+   chrome, the cartridge overlay, and the flat fallback console.
+   Part of IudexRzye. See README.md for how the pieces fit. */
+
+/* ═══════════════════════════════════════════════════════════════════
+   IudexRzye — one page, one machine.
+   The stage is a studio sweep; the device is the only lit object;
+   the LCD is the only thing that glows. Everything else keeps quiet.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root{
+  --stage:#0F1113;
+  --pool:#1E2327;
+  --ink:#EAE6DC;
+  --dim:#8B8578;
+  --faint:#5C594F;
+  --rule:rgba(234,230,220,.13);
+  --live:#8FC93A;
+  --pad-x:clamp(16px,3.4vw,40px);
+  --pad-y:clamp(14px,2.6vh,26px);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--stage);
+  color:var(--ink);
+  font:400 15px/1.5 "IBM Plex Sans Condensed","Helvetica Neue",Arial,sans-serif;
+  overflow:hidden;
+  overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ── the stage ─────────────────────────────────────────────────── */
+.stage{
+  position:fixed; inset:0; z-index:0;
+  background:
+    radial-gradient(78% 62% at 50% 40%, var(--pool) 0%, #16191C 46%, var(--stage) 78%),
+    var(--stage);
+}
+#gl{position:fixed; inset:0; z-index:1; display:block; touch-action:none}
+html.no3d #gl{display:none}
+html.no3d .stage{background:radial-gradient(90% 70% at 50% 46%, #22272B 0%, var(--stage) 72%)}
+
+/* A photographic finish over the render. A frame that is perfectly even
+   corner to corner and perfectly free of grain is itself a tell: every
+   lens falls off at the edges and every sensor has noise. It sits at
+   z-index 1 after the canvas, so it covers the render and nothing else
+   — the chrome, the boot label and the cartridge overlay all sit above.
+   Static, so it costs one paint and never redraws. */
+body::after{
+  content:''; position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:
+    radial-gradient(116% 88% at 50% 43%,
+      rgba(0,0,0,0) 40%, rgba(0,0,0,.20) 72%, rgba(0,0,0,.46) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-size: cover, 140px 140px;
+}
+@media (prefers-reduced-motion: reduce){ body::after{ background-size: cover, 140px 140px } }
+html.no3d body::after{ background-image:none }
+
+/* ── page chrome ───────────────────────────────────────────────── */
+.chrome{position:fixed; inset:0; z-index:3; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:var(--pad-y) var(--pad-x)}
+.chrome a,.chrome button{pointer-events:auto}
+
+.masthead{display:flex; justify-content:space-between; align-items:flex-start; gap:20px}
+.who{margin:0; font-size:clamp(15px,1.5vw,18px); font-weight:600; letter-spacing:.005em; line-height:1.25}
+.who span{display:block; font-weight:400; font-size:.82em; color:var(--dim); letter-spacing:.01em}
+.reach{margin:0; text-align:right; font-size:13.5px; line-height:1.5; color:var(--dim)}
+.reach b{display:block; font-weight:400; color:var(--ink)}
+.reach .on{display:inline-flex; align-items:center; gap:7px; color:var(--ink)}
+.reach .on i{width:6px; height:6px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(143,201,58,.16)}
+.reach a{color:inherit; text-decoration:none; border-bottom:1px solid var(--rule); padding-bottom:1px}
+.reach a:hover{color:var(--ink); border-bottom-color:var(--dim)}
+
+.footbar{display:flex; justify-content:space-between; align-items:flex-end; gap:20px; font-size:13px; color:var(--faint)}
+.legend{margin:0; display:flex; flex-wrap:wrap; gap:4px 18px; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; letter-spacing:.04em; color:var(--dim)}
+.legend em{font-style:normal; color:var(--ink); margin-right:.45em}
+.escape{margin:0; display:flex; gap:16px; white-space:nowrap}
+.escape a{color:var(--faint); text-decoration:none; border-bottom:1px solid transparent}
+.escape a:hover{color:var(--ink); border-bottom-color:var(--rule)}
+
+/* ── the boot line, until the machine is on screen ─────────────── */
+.warming{position:fixed; z-index:4; left:50%; top:50%; margin:0; transform:translate(-50%,-50%); font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.12em; color:var(--faint); transition:opacity .5s}
+.warming[hidden]{display:none}
+
+/* ── keyboard / assistive control surface ──────────────────────────
+   Always real buttons. Clipped away while the 3D machine is on
+   screen — there, the machine itself is the control surface — and
+   promoted to a flat console when WebGL is unavailable.            */
+.shellwrap{display:none}
+canvas.lcd{display:none}
+.pad{position:fixed; z-index:2; left:0; bottom:0; width:1px; height:1px; overflow:hidden; clip-path:inset(50%)}
+.pad button{font:inherit; cursor:pointer}
+.pad button:focus-visible{outline:2px solid var(--live); outline-offset:3px}
+
+html.no3d body{overflow:auto}
+html.no3d .shellwrap{display:grid; position:relative; z-index:2; min-height:100%; place-items:center; align-content:center; gap:0; padding:96px 12px 120px}
+html.no3d .lcdmount{width:min(430px,92vw); padding:16px 16px 20px; background:linear-gradient(#D6D0C1,#C6C0B1); border-radius:12px 12px 4px 4px; box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+html.no3d .lcdmount .well{background:#4A4A52; border-radius:8px 8px 22px 8px; padding:14px 22px}
+html.no3d canvas.lcd{display:block; width:100%; height:auto}
+html.no3d .wordmark{margin:11px 2px 0; font:italic 600 20px/1 "IBM Plex Sans Condensed",sans-serif; color:#2B3B7A; letter-spacing:-.01em}
+html.no3d .pad{
+  position:relative; z-index:2; width:min(430px,92vw); height:auto; left:auto; bottom:auto;
+  clip-path:none; overflow:visible; display:grid; gap:20px; padding:22px 20px 26px;
+  background:linear-gradient(#C6C0B1,#B4AE9F); border-radius:0 0 12px 56px;
+  box-shadow:0 34px 60px -24px #000, inset 0 1px 0 rgba(255,255,255,.35);
+}
+html.no3d .row{display:flex; align-items:center; justify-content:space-between; gap:14px}
+html.no3d .dpad{display:grid; grid-template-columns:repeat(3,42px); grid-template-rows:repeat(3,42px)}
+html.no3d .dpad button{background:#2B2B30; border:0; color:#8C8C96; border-radius:4px}
+html.no3d .dpad .u{grid-area:1/2} html.no3d .dpad .l{grid-area:2/1} html.no3d .dpad .r{grid-area:2/3} html.no3d .dpad .d{grid-area:3/2}
+html.no3d .ab{display:flex; gap:14px; transform:rotate(-22deg)}
+html.no3d .ab button{width:52px; height:52px; border-radius:50%; border:0; background:#8E3350; color:#EDE7DC; font-weight:600; font-size:15px}
+html.no3d .se{display:flex; gap:16px; justify-content:center; transform:rotate(-22deg)}
+html.no3d .se button{padding:7px 14px; border:0; border-radius:9px; background:#55555C; color:#E7E3D9; font-weight:600; font-size:10px; line-height:1; letter-spacing:.14em}
+html.no3d .sys{display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
+html.no3d .sys button{padding:6px 12px; border:1px solid rgba(0,0,0,.22); border-radius:6px; background:transparent; color:#3C3931; font-family:"IBM Plex Mono",monospace; font-size:11px; line-height:1; letter-spacing:.1em}
+html.no3d .chrome{position:fixed; pointer-events:none}
+html.no3d .warming{display:none}
+
+/* ── cartridge overlay: a game running full-frame ──────────────── */
+.cart{position:fixed; inset:0; z-index:9; display:none; flex-direction:column; background:rgba(9,10,11,.95); backdrop-filter:blur(10px)}
+.cart[data-open]{display:flex}
+.cart-bar{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:11px var(--pad-x); border-bottom:1px solid var(--rule); font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.06em; color:var(--dim)}
+.cart-bar b{color:var(--ink); font-weight:500}
+.cart-bar button{background:none; border:1px solid var(--rule); color:var(--ink); font:inherit; letter-spacing:.06em; padding:5px 12px; border-radius:4px; cursor:pointer}
+.cart-bar button:hover{border-color:var(--dim)}
+.cart iframe{flex:1; width:100%; border:0; background:#0B0C0D}
+
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap}
+
+@media (max-width:760px){
+  .who{font-size:14px}
+  .reach{font-size:12px}
+  .legend{font-size:10px; gap:2px 12px}
+  .escape{font-size:11px; gap:12px}
+}
+@media (max-height:600px){ .legend{display:none} }
+@media (prefers-reduced-motion:reduce){ *{animation-duration:.01ms !important; transition-duration:.01ms !important} }
