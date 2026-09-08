@@ -50,7 +50,13 @@ body{
     radial-gradient(62% 48% at 50% 38%, var(--pool) 0%, #0B0F11 44%, var(--stage) 74%),
     var(--stage);
 }
-#gl{position:fixed; inset:0; z-index:1; display:block; touch-action:none}
+/* A canvas is a replaced element, so width:auto resolves to its intrinsic
+   buffer size and inset:0 does NOT stretch it. setSize(w,h,false) leaves
+   the CSS size alone, so on any display above 1x the element became twice
+   the viewport and the machine rendered as a zoomed crop. Every phone and
+   every Retina laptop hit this; at 1x the buffer happens to match the
+   viewport, which is why it looked fine on a plain monitor. */
+#gl{position:fixed; inset:0; width:100%; height:100%; z-index:1; display:block; touch-action:none}
 html.no3d #gl{display:none}
 html.no3d .stage{background:radial-gradient(90% 70% at 50% 46%, #22272B 0%, var(--stage) 72%)}
 
