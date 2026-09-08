@@ -6,6 +6,7 @@ Live at **https://iudexryze.github.io/portfolio/**
 
 ```
 index.html              the whole site: markup, styles, script
+console/index.html      the same portfolio as a handheld you operate
 play/
   bt-7274n/             terminal roguelike        typed, better with keys
   drift-lander/         physics lander            any device
@@ -33,6 +34,48 @@ folder over HTTP:
 ```sh
 npx serve .          # or: python -m http.server 8000
 ```
+
+## The console
+
+`console/index.html` is the same portfolio presented as a physical object:
+a handheld called **IudexRzye**, built in Three.js, where every control is on
+the machine. The D-pad moves and scrolls, A opens, B goes back, START returns
+to the menu, SELECT fires an item's second action or cycles the screen palette,
+the contrast dial cycles palettes, the volume dial mutes, and the power switch
+genuinely turns it off. Keyboard mirrors all of it (arrows or WASD, Z/Enter,
+X/Esc, Shift, P), and the buttons are real focusable `<button>` elements for
+anyone driving it by keyboard or screen reader.
+
+It is one self-contained file like everything else here. The only dependency is
+Three.js, imported as a pinned ES module from cdnjs.
+
+Three things are worth knowing before editing it:
+
+- **Content lives in one `SECTIONS` array** at the top of the first script.
+  Every section is a list of items; an item is `{id, name, tag, status, body,
+  props, actions}`, and an action is either `{label, href}` or `{label, launch}`
+  where `launch` is an arcade slug. Adding an entry needs nothing else.
+- **The screen is a character grid drawn to a canvas**, used as a texture on the
+  screen mesh. Arrows and cursors are drawn as triangles rather than typed,
+  because one missing glyph would throw a whole row off the grid. The grid size
+  is chosen from how many *real pixels* the panel occupies on screen, not from
+  the window — `fit()` measures it and calls `IRZ.fitGrid()`. A row under about
+  13 pixels stops being readable however large the browser is.
+- **The flat fallback is not a placeholder.** If WebGL is missing or the Three.js
+  import fails, the page adds `.no3d` and the same engine drives a CSS console
+  with the same buttons. That path is worth testing when you change the layout:
+
+  ```sh
+  # any Chromium, with the CDN blackholed
+  chrome --host-resolver-rules="MAP cdnjs.cloudflare.com 127.0.0.1" \
+         http://localhost:8000/console/
+  ```
+
+Sections and items deep-link: `console/#arcade`, `console/#work/echolocate`.
+
+`index.html` is still the front door. To make the console the front door
+instead, move it to the root and change its one `BASE` constant from `'../'`
+to `'./'`.
 
 ## The arcade
 
