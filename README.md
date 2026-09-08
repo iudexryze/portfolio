@@ -11,9 +11,17 @@ work as an ordinary scrolling document, for anyone who would rather read
 than press A.
 
 ```
-index.html              the console — the site itself
+index.html              the console — markup only, about 5 KB
 page.html               the same work as plain text, linked from the console
 console/index.html      a redirect, so old /console/ links still land
+assets/css/
+  console.css           the page around the machine
+  page.css              the reading version
+assets/js/
+  content.js            EVERYTHING THE SITE SAYS — edit this one
+  console.js            screen engine, state, sound, navigation, input
+  device.js             the machine in three dimensions (Three.js)
+  page.js               the text version's arcade and scroll spy
 play/
   bt-7274n/             terminal roguelike        typed, better with keys
   drift-lander/         physics lander            any device
@@ -54,15 +62,37 @@ genuinely turns it off. Keyboard mirrors all of it (arrows or WASD, Z/Enter,
 X/Esc, Shift, P), and the buttons are real focusable `<button>` elements for
 anyone driving it by keyboard or screen reader.
 
-It is one self-contained file like everything else here. The only dependency is
-Three.js, imported as a pinned ES module from cdnjs.
+The only dependency is Three.js, imported as a pinned ES module from cdnjs.
 
-Three things are worth knowing before editing it:
+The console used to be one 84 KB file holding markup, styles, the screen
+engine, the content and the whole 3D scene. It is now split along the seams
+that actually exist, because they are different jobs with different reasons
+to change:
 
-- **Content lives in one `SECTIONS` array** at the top of the first script.
-  Every section is a list of items; an item is `{id, name, tag, status, body,
-  props, actions}`, and an action is either `{label, href}` or `{label, launch}`
-  where `launch` is an arcade slug. Adding an entry needs nothing else.
+| file | what changes it |
+| --- | --- |
+| `assets/js/content.js` | you shipped something, or a link moved |
+| `assets/js/console.js` | how the screen draws or the controls behave |
+| `assets/js/device.js` | how the object looks |
+| `assets/css/console.css` | the page around the machine |
+| `index.html` | almost never — it is markup and two script tags |
+
+`content.js` also owns `BASE`, the one constant saying where the rest of
+the site is relative to the page, because the content builds its links off
+it and the cartridge slot loads games from it.
+
+**The games under `play/` are deliberately NOT split.** A game being one
+file is the whole premise: a folder is a complete runnable copy, splitting
+one into its own repository is a one-command job, and the arcade copy
+promises each is short enough to read in an afternoon. Do not tidy those.
+
+Three more things worth knowing before editing:
+
+- **Content lives in one `SECTIONS` array** in `content.js`. Every section
+  is a list of items; an item is `{id, name, tag, status, body, props,
+  actions}`, and an action is either `{label, href}` or `{label, launch}`
+  where `launch` is an arcade slug. Adding an entry needs nothing else,
+  anywhere.
 - **The screen is a character grid drawn to a canvas**, used as a texture on the
   screen mesh. Arrows and cursors are drawn as triangles rather than typed,
   because one missing glyph would throw a whole row off the grid. The grid size
@@ -79,9 +109,7 @@ Three things are worth knowing before editing it:
          http://localhost:8000/
   ```
 
-Sections and items deep-link: `#arcade`, `#work/echolocate`. One `BASE`
-constant at the top of the first script says where the rest of the site
-sits relative to the page; it is `'./'` now that the console is the root.
+Sections and items deep-link: `#arcade`, `#work/echolocate`.
 
 ### It costs nothing while nobody is using it
 
@@ -126,9 +154,9 @@ Each game is a single self-contained HTML file: markup, styles and code in one
 document, no imports beyond the IBM Plex webfont. A folder under `play/` is a
 complete, runnable copy of that game.
 
-The text version reads them from one manifest, `GAMES`, near the bottom of
-`page.html`. The console carries the same slugs in its `SECTIONS` array and
-loads them through `BASE`:
+The text version reads them from one manifest, `GAMES`, in
+`assets/js/page.js`. The console carries the same slugs in `content.js`
+and loads them through `BASE`:
 
 ```js
 'drift-lander': {
@@ -163,8 +191,8 @@ and a resize or rotation re-evaluates it without anyone backing out.
 
 1. Drop `play/<slug>/index.html` in.
 2. Add an entry to `GAMES`, including `input`, `shape` and `minWidth`.
-3. Add an item to the ARCADE section of `SECTIONS` in `index.html`, with an
-   action of `{label:"PLAY", launch:"<slug>"}`. That is all the console needs.
+3. Add an item to the ARCADE section of `SECTIONS` in `assets/js/content.js`,
+   with an action of `{label:"PLAY", launch:"<slug>"}`. That is all the console needs.
 4. In `page.html`, add a card to the `.arcade` grid with `data-launch="<slug>"`
    on the `.game-screen` button, a row to `#code`, and a link in the rail.
 
