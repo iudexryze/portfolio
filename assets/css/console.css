@@ -8,22 +8,17 @@
    the LCD is the only thing that glows. Everything else keeps quiet.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* Neoradical carries the display type — the wordmark on the shell, the
-   masthead, the boot screen. Drop neoradical.woff2 (or .ttf) into
-   assets/fonts/ and it takes over; until then the stack below it holds
-   the layout exactly as it is, so nothing breaks by it being absent.
+/* Rubik Distressed carries the display type: the wordmark screened onto
+   the shell and the boot line. A grotesque eaten by noise, which is what
+   printing on a machine this old and this handled actually looks like.
+   OFL, served from the same font link as everything else.
 
    It deliberately does NOT touch the panel. That is a character grid:
-   setGrid() measures glyph advance and lays every string on fixed
-   cells, so the screen font has to be monospace or the layout collapses. */
-@font-face{
-  font-family:'Neoradical';
-  src:url('../fonts/neoradical.woff2') format('woff2');
-  font-display:swap;
-}
+   setGrid() measures glyph advance and lays every string on fixed cells,
+   so the screen font has to be monospace or the layout collapses. */
 
 :root{
-  --f-display:'Neoradical','IBM Plex Sans Condensed',system-ui,sans-serif;
+  --f-display:'Rubik Distressed','IBM Plex Sans Condensed',system-ui,sans-serif;
   --stage:#07080A;
   --pool:#13181A;
   --ink:#DDD8CC;
@@ -81,8 +76,8 @@ html.no3d body::after{ background-image:none }
 .chrome a,.chrome button{pointer-events:auto}
 
 .masthead{display:flex; justify-content:space-between; align-items:flex-start; gap:20px}
-.who{margin:0; font-family:var(--f-display); font-size:clamp(15px,1.5vw,18px); font-weight:600; letter-spacing:.005em; line-height:1.25}
-.who span{display:block; font-weight:400; font-size:.82em; color:var(--dim); letter-spacing:.01em}
+.who{margin:0; font-family:var(--f-display); font-size:clamp(17px,1.7vw,21px); font-weight:400; letter-spacing:.01em; line-height:1.3}
+.who span{display:block; font-family:"IBM Plex Sans Condensed",sans-serif; font-weight:400; font-size:.72em; color:var(--dim); letter-spacing:.012em; margin-top:2px}
 .reach{margin:0; text-align:right; font-size:13.5px; line-height:1.5; color:var(--dim)}
 .reach b{display:block; font-weight:400; color:var(--ink)}
 .reach .on{display:inline-flex; align-items:center; gap:7px; color:var(--ink)}

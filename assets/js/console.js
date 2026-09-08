@@ -366,7 +366,7 @@ function drawBoot(t){
   ctx.save();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = shade(3);
-  ctx.font = 'italic 600 ' + Math.round(CW_PX*0.115) + 'px Neoradical, "IBM Plex Sans Condensed", sans-serif';
+  ctx.font = Math.round(CW_PX*0.115) + 'px "Rubik Distressed", "IBM Plex Sans Condensed", sans-serif';
   ctx.fillText('IudexRzye', CW_PX/2, y);
   if (t > 1050){
     ctx.font = screenFont(Math.round(CW_PX*0.030));

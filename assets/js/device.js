@@ -32,6 +32,14 @@ else {
   try {
     THREE = await import('https://cdnjs.cloudflare.com/ajax/libs/three.js/0.185.1/three.module.min.js');
   } catch(e){ fallback(); }
+  /* The shell print is painted into a canvas once and used as a texture
+     for the life of the page. Canvas silently falls back to the next
+     face in the stack if the webfont has not arrived yet, so waiting
+     here is the difference between the wordmark being screen-printed
+     and it being Plex Condensed forever. */
+  if (document.fonts && document.fonts.ready) {
+    try { await document.fonts.ready; } catch(e){}
+  }
   if (THREE) build(THREE);
 }
 
@@ -310,7 +318,7 @@ function shellPrint(){
   g.fillText('VARUN SAINI', px(-3.62), py(0.06));
   g.letterSpacing = '0px';
   g.fillStyle = NAVY;
-  g.font = 'italic 600 ' + u(1.00) + 'px Neoradical, "IBM Plex Sans Condensed", sans-serif';
+  g.font = u(1.06) + 'px "Rubik Distressed", "IBM Plex Sans Condensed", sans-serif';
   g.fillText('IudexRzye', px(-3.68), py(-0.98));
   const wmw = g.measureText('IudexRzye').width;
   g.font = u(0.22) + 'px "IBM Plex Sans Condensed", sans-serif';
