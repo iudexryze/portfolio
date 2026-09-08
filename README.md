@@ -4,12 +4,6 @@ Varun Saini's portfolio — one static page, plus the arcade it serves.
 
 Live at **https://iudexryze.github.io/portfolio/**
 
-The page carries no accent colour of its own. Its palette is a single
-value ramp from a cold blue-black up to a warm bone, so every hue a
-visitor sees belongs to a render or to a running game. Introducing a
-brand colour would take the light off the work, which is the only thing
-the page is for.
-
 ```
 index.html              the whole site: markup, styles, script
 console/index.html      the same portfolio as a handheld you operate
@@ -40,66 +34,6 @@ folder over HTTP:
 ```sh
 npx serve .          # or: python -m http.server 8000
 ```
-
-The hero is an iframe too, so over `file://` the front page loses its
-opening shot as well as the arcade.
-
-## The front page
-
-Three things carry the design, and each of them is load-bearing rather
-than decorative.
-
-**The name leads.** This is a portfolio, so the largest thing on the
-page by a wide margin is *Varun Saini*, followed by the role, the
-positioning line, and the three facts anyone checks first — where he is,
-who he is with, and whether he is available — then the contact links.
-Everything else on the page is subordinate to that block.
-
-**A real game runs behind it, quietly.** The backdrop is
-`play/drift-lander/` loaded with `?demo=1`, which hands the controls to
-an autopilot inside the game and suppresses its modal panels. The
-autopilot writes the same keys a player would hold, so it is bound by
-every rule a player is: one thruster, a tank that does not refill, and
-the same landing tolerances. It crosses to the pad at altitude, holds
-above the tallest ground in between, and only starts the descent once
-the pad is underneath — descending on a diagonal is what puts a lander
-in the dirt short of the mark. It lands about 97% of the time across
-window shapes and takes roughly six seconds a level.
-
-It is deliberately hard to notice. The stage runs at half opacity under
-a heavy scrim, stops well short of the copy, and is pulled up past the
-top edge (`inset: -78px 0 42% 0`, and `-86px`/`44%` on a narrow screen)
-so that the game's own telemetry row is clipped away — that HUD is the
-loudest thing in the picture and the part that made the page read as an
-arcade rather than a portfolio. A one-line footnote at the bottom of the
-hero says what it is and offers the controls.
-
-The iframe is only loaded while it is on screen, and is dropped when a
-visitor opens a game or scrolls away — a canvas game left running behind
-something else keeps a rAF loop and a fan going for nobody. Under
-`prefers-reduced-motion` it is never loaded at all; a still of the same
-scene stands in, and the copy stops claiming anything is running.
-
-**Two typefaces, one of them variable.** Archivo carries every heading
-and all UI, and its width axis carries the hierarchy: the larger the
-type, the wider it is set, and metadata is compressed. Newsreader sets
-the prose. Nothing is set in capitals anywhere on the page. The nav
-marks the current section by *widening* its label rather than
-recolouring it, and an invisible copy of each label at the widest
-setting reserves the space so the bar never reflows as you scroll.
-
-**Hierarchy is spatial, and the arcade is not the point.** A shipped
-title gets a two-column spread; the seven editor tools get one dense
-list with disclosures, because they are a body of practice rather than
-seven products; the eight playables get small tiles with a single line
-each, because they are side projects and the page says so. The renders
-run at their own aspect ratios rather than being cropped into a uniform
-grid — two are vertical and one is a letterbox, and that unevenness is
-the rhythm of the section.
-
-If you are editing this page, the standing rule is that nothing may
-out-weigh the hero block. Growing the arcade is the easiest way to break
-it, which is exactly how it broke the first time.
 
 ## The console
 
@@ -186,12 +120,10 @@ and a resize or rotation re-evaluates it without anyone backing out.
 1. Drop `play/<slug>/index.html` in.
 2. Add an entry to `GAMES`, including `input`, `shape` and `minWidth`.
 3. Add a card to the `.arcade` grid in the `#arcade` section, with
-   `data-launch="<slug>"` on the `.game-screen` button.
-4. Add a row to `#source` and a link in the top nav.
+   `data-launch="<slug>"` on the `.game-screen` button. The badge is injected.
+4. Add a row to `#code` and a link in the rail.
 
-Tile art is a hand-drawn SVG diagram of the mechanic, set in the page's
-greys — never a screenshot. A drawing cannot pretend to be footage, and
-the colour arriving only when the real game loads is the point.
+The status-bar counts read from the DOM, so they update themselves.
 
 ### Writing one that works on a phone
 
