@@ -8,12 +8,22 @@
    the LCD is the only thing that glows. Everything else keeps quiet.
    ═══════════════════════════════════════════════════════════════════ */
 
+/* Rubik Distressed carries the display type: the wordmark screened onto
+   the shell and the boot line. A grotesque eaten by noise, which is what
+   printing on a machine this old and this handled actually looks like.
+   OFL, served from the same font link as everything else.
+
+   It deliberately does NOT touch the panel. That is a character grid:
+   setGrid() measures glyph advance and lays every string on fixed cells,
+   so the screen font has to be monospace or the layout collapses. */
+
 :root{
-  --stage:#0F1113;
-  --pool:#1E2327;
-  --ink:#EAE6DC;
-  --dim:#8B8578;
-  --faint:#5C594F;
+  --f-display:'Rubik Distressed','IBM Plex Sans Condensed',system-ui,sans-serif;
+  --stage:#07080A;
+  --pool:#13181A;
+  --ink:#DDD8CC;
+  --dim:#7A756A;
+  --faint:#4E4B44;
   --rule:rgba(234,230,220,.13);
   --live:#8FC93A;
   --pad-x:clamp(16px,3.4vw,40px);
@@ -37,7 +47,7 @@ body{
 .stage{
   position:fixed; inset:0; z-index:0;
   background:
-    radial-gradient(78% 62% at 50% 40%, var(--pool) 0%, #16191C 46%, var(--stage) 78%),
+    radial-gradient(62% 48% at 50% 38%, var(--pool) 0%, #0B0F11 44%, var(--stage) 74%),
     var(--stage);
 }
 #gl{position:fixed; inset:0; z-index:1; display:block; touch-action:none}
@@ -53,8 +63,8 @@ html.no3d .stage{background:radial-gradient(90% 70% at 50% 46%, #22272B 0%, var(
 body::after{
   content:''; position:fixed; inset:0; z-index:1; pointer-events:none;
   background:
-    radial-gradient(116% 88% at 50% 43%,
-      rgba(0,0,0,0) 40%, rgba(0,0,0,.20) 72%, rgba(0,0,0,.46) 100%),
+    radial-gradient(104% 80% at 50% 41%,
+      rgba(0,0,0,0) 26%, rgba(0,0,0,.42) 66%, rgba(0,0,0,.80) 100%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
   background-size: cover, 140px 140px;
 }
@@ -66,8 +76,8 @@ html.no3d body::after{ background-image:none }
 .chrome a,.chrome button{pointer-events:auto}
 
 .masthead{display:flex; justify-content:space-between; align-items:flex-start; gap:20px}
-.who{margin:0; font-size:clamp(15px,1.5vw,18px); font-weight:600; letter-spacing:.005em; line-height:1.25}
-.who span{display:block; font-weight:400; font-size:.82em; color:var(--dim); letter-spacing:.01em}
+.who{margin:0; font-family:var(--f-display); font-size:clamp(17px,1.7vw,21px); font-weight:400; letter-spacing:.01em; line-height:1.3}
+.who span{display:block; font-family:"IBM Plex Sans Condensed",sans-serif; font-weight:400; font-size:.72em; color:var(--dim); letter-spacing:.012em; margin-top:2px}
 .reach{margin:0; text-align:right; font-size:13.5px; line-height:1.5; color:var(--dim)}
 .reach b{display:block; font-weight:400; color:var(--ink)}
 .reach .on{display:inline-flex; align-items:center; gap:7px; color:var(--ink)}

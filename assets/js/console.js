@@ -13,10 +13,14 @@ import { SECTIONS, BASE } from './content.js';
 
 /* ── screen palettes, cycled by the contrast dial ─────────────── */
 var PALETTES = [
-  { name:'DMG',      a:'#9BBC0F', b:'#8BAC0F', c:'#306230', d:'#0F380F', glow:'#9BBC0F' },
-  { name:'POCKET',   a:'#C7CBB4', b:'#AAAF98', c:'#5A5D4C', d:'#22241C', glow:'#C7CBB4' },
-  { name:'AMBER',    a:'#22160A', b:'#4A2E0C', c:'#B87418', d:'#FFC24B', glow:'#FFB43C' },
-  { name:'VANGUARD', a:'#0E1108', b:'#1C2A10', c:'#4E7A1F', d:'#8FC93A', glow:'#8FC93A' }
+  /* The panel is not well. Sickly olive, the backlight uneven, the text
+     pale enough to read but never bright. DMG is still in the list —
+     the contrast dial gets you out of here. */
+  { name:'DREAD',    a:'#2A2E1B', b:'#3A3F26', c:'#949F52', d:'#C6D084', glow:'#6F7C39' },
+  { name:'DMG',      a:'#9BBC0F', b:'#8BAC0F', c:'#1D4A1A', d:'#0F380F', glow:'#9BBC0F' },
+  { name:'POCKET',   a:'#C7CBB4', b:'#AAAF98', c:'#3E4133', d:'#22241C', glow:'#C7CBB4' },
+  { name:'AMBER',    a:'#22160A', b:'#4A2E0C', c:'#D9922B', d:'#FFC24B', glow:'#FFB43C' },
+  { name:'VANGUARD', a:'#0E1108', b:'#1C2A10', c:'#6FA82C', d:'#8FC93A', glow:'#8FC93A' }
 ];
 
 /* ── the screen ───────────────────────────────────────────────── */
@@ -28,6 +32,15 @@ var CW_PX = cv.width, CH_PX = cv.height;
 var G = { cols:60, rows:27, cw:16, ch:32, fs:26 };
 var pal = PALETTES[0];
 
+/* The panel font, in one place. setGrid measures the glyph advance with
+   it and every draw call sets it, so the two disagreeing would drift the
+   whole grid without ever looking like an error. Weight is part of that:
+   600 is what carries through a green LCD, and weight changes the advance,
+   so it has to be in the measurement too. Monospace is not a style choice
+   here — the character grid depends on it. */
+var SCREEN_FONT = '600 SIZEpx "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace';
+function screenFont(px){ return SCREEN_FONT.replace('SIZE', px); }
+
 function setGrid(cols, rows){
   if (G.cols === cols && G.rows === rows) return;
   G.cols = cols; G.rows = rows;
@@ -35,7 +48,7 @@ function setGrid(cols, rows){
   // Match the glyph advance to the cell so whole strings sit on the grid,
   // whatever font actually resolved.
   var fs = G.cw / 0.6;
-  ctx.font = fs + 'px "IBM Plex Mono", ui-monospace, monospace';
+  ctx.font = screenFont(fs);
   var adv = ctx.measureText('MMMMMMMMMM').width / 10;
   if (adv > 0) fs = fs * (G.cw / adv);
   G.fs = fs;
@@ -62,7 +75,7 @@ function fillCells(col, row, w, h, s){
 function put(col, row, str, s){
   if (!str) return;
   ctx.fillStyle = shade(s === undefined ? 3 : s);
-  ctx.font = G.fs + 'px "IBM Plex Mono", ui-monospace, monospace';
+  ctx.font = screenFont(G.fs);
   ctx.textBaseline = 'alphabetic';
   ctx.fillText(str, col*G.cw, row*G.ch + G.ch*0.74);
 }
@@ -130,7 +143,7 @@ function viewport(){ return { top:2, rows:G.rows - 4 }; }      // row 0 bar, row
 function titleBar(left, right){
   fillCells(0, 0, G.cols, 1, 3);
   ctx.fillStyle = shade(0);
-  ctx.font = G.fs + 'px "IBM Plex Mono", ui-monospace, monospace';
+  ctx.font = screenFont(G.fs);
   ctx.fillText(left, G.cw, G.ch*0.74);
   if (right) ctx.fillText(right, (G.cols - 1 - right.length)*G.cw, G.ch*0.74);
 }
@@ -180,13 +193,19 @@ function matrix(){
    and the reflector never quite reaches the edge of the glass, so an
    even rectangle of colour is the giveaway that it is not a panel. */
 function falloff(){
+  /* On DREAD the backlight is going: the hot spot is off-centre and the
+     corners are much further gone. Every other palette gets an evenly
+     lit panel, so the contrast dial is a way out of here. */
+  var sick = pal.name === 'DREAD', k = sick ? 2.2 : 1;
   var g = ctx.createRadialGradient(
-    CW_PX * 0.48, CH_PX * 0.44, Math.min(CW_PX, CH_PX) * 0.16,
-    CW_PX * 0.50, CH_PX * 0.50, Math.max(CW_PX, CH_PX) * 0.70);
-  g.addColorStop(0,    'rgba(18,26,8,0)');
-  g.addColorStop(0.58, 'rgba(18,26,8,.045)');
-  g.addColorStop(0.85, 'rgba(16,24,8,.13)');
-  g.addColorStop(1,    'rgba(14,22,6,.24)');
+    CW_PX * (sick ? 0.42 : 0.48), CH_PX * (sick ? 0.39 : 0.44),
+    Math.min(CW_PX, CH_PX) * (sick ? 0.07 : 0.16),
+    CW_PX * 0.50, CH_PX * 0.50,
+    Math.max(CW_PX, CH_PX) * (sick ? 0.60 : 0.70));
+  g.addColorStop(0,    'rgba(10,14,5,0)');
+  g.addColorStop(0.58, 'rgba(10,14,5,' + (0.045 * k).toFixed(3) + ')');
+  g.addColorStop(0.85, 'rgba(9,13,4,'  + (0.130 * k).toFixed(3) + ')');
+  g.addColorStop(1,    'rgba(8,12,4,'  + (0.240 * k).toFixed(3) + ')');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, CW_PX, CH_PX);
 }
@@ -347,15 +366,15 @@ function drawBoot(t){
   ctx.save();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = shade(3);
-  ctx.font = 'italic 600 ' + Math.round(CW_PX*0.115) + 'px "IBM Plex Sans Condensed", sans-serif';
+  ctx.font = Math.round(CW_PX*0.115) + 'px "Rubik Distressed", "IBM Plex Sans Condensed", sans-serif';
   ctx.fillText('IudexRzye', CW_PX/2, y);
   if (t > 1050){
-    ctx.font = Math.round(CW_PX*0.030) + 'px "IBM Plex Mono", monospace';
+    ctx.font = screenFont(Math.round(CW_PX*0.030));
     ctx.fillStyle = shade(2);
     ctx.fillText('P O R T F O L I O   S Y S T E M', CW_PX/2, mid + CH_PX*0.10);
   }
   if (t > 1350){
-    ctx.font = Math.round(CW_PX*0.026) + 'px "IBM Plex Mono", monospace';
+    ctx.font = screenFont(Math.round(CW_PX*0.026));
     ctx.fillStyle = shade(2);
     ctx.fillText('(C) 2026  VARUN SAINI   BANGALORE', CW_PX/2, CH_PX - G.ch);
   }
