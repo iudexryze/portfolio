@@ -98,12 +98,6 @@ if (window.ResizeObserver) new ResizeObserver(fit).observe(stage);
 
 function font(size, weight) { return (weight || 400) + ' ' + (size * UI).toFixed(1) + 'px ' + FONT; }
 
-/* ── Demo ────────────────────────────────────────────────
-   ?demo=1 hands the controls to an autopilot and drops the modal
-   panels, so the game can be embedded as an attract loop that flies
-   itself. It changes nothing about how the game plays for a person. */
-var DEMO = /[?&]demo=1/.test(location.search);
-
 /* ── Input ─────────────────────────────────────────────────────── */
 var keys = Object.create(null);
 var BLOCK = { ArrowLeft:1, ArrowRight:1, ArrowUp:1, ArrowDown:1, Space:1 };
@@ -116,9 +110,7 @@ addEventListener('keydown', function (e) {
 addEventListener('keyup', function (e) { keys[e.code] = false; });
 addEventListener('blur', function () {
   keys = Object.create(null);
-  /* An attract loop lives in an iframe that never holds focus, so
-     pausing on blur would stop it before anyone saw it move. */
-  if (state === 'play' && !DEMO) state = 'pause';
+  if (state === 'play') state = 'pause';
 });
 
 function held() {
@@ -287,67 +279,8 @@ function burst(x, y, n, spread, col, life, speed) {
   }
 }
 
-/* Flies the lander by writing the same keys a person would hold, so
-   the autopilot lives under every rule the player does: one thruster,
-   a tank that does not refill, the same landing tolerances.
-
-   Order is the whole trick. Cross to the pad at altitude, holding
-   above the tallest ground in between, and only start the descent
-   once the pad is underneath. Coming down on a diagonal is what puts
-   a lander in the dirt ten metres short of the mark. */
-function autopilot() {
-  var s = ship;
-  keys.ArrowLeft = keys.ArrowRight = keys.ArrowUp = false;
-  if (!s || !s.alive) return;
-
-  /* Nearest pad, discounted by what it pays — a narrow pad is worth
-     crossing the map for, a wide one is not. */
-  var best = null, cost = Infinity, i;
-  for (i = 0; i < pads.length; i++) {
-    var p = pads[i], c = Math.abs((p.i0 + p.i1) / 2 * CW - s.x) - p.mult * 22;
-    if (c < cost) { cost = c; best = p; }
-  }
-  if (!best) return;
-
-  var tx = (best.i0 + best.i1) / 2 * CW;
-  var half = (best.i1 - best.i0) * CW / 2;
-  var dx = tx - s.x, alt = best.y - s.y;
-
-  /* The tallest ground between here and the pad, ignoring the pad
-     itself — that is what the crossing has to clear. */
-  var lo = Math.min(s.x, tx), hi = Math.max(s.x, tx), ridge = best.y;
-  for (var x = lo; x <= hi; x += CW) {
-    if (x >= best.i0 * CW && x <= best.i1 * CW) continue;
-    ridge = Math.min(ridge, groundAt(x));
-  }
-
-  var vxWant = alt < 110 ? Math.max(-0.45, Math.min(0.45, dx * 0.040))
-                         : Math.max(-2.2,  Math.min(2.2,  dx * 0.030));
-
-  var vyWant = Math.max(0.30, Math.min(2.2, alt * 0.012));
-  /* Trade descent for alignment near the ground rather than climbing:
-     slowing down does most of the correction, and costs a fraction of
-     the fuel that going back up does. */
-  if (alt < 260) vyWant *= Math.max(0.12, 1 - Math.abs(dx) / (half + 60));
-  if (Math.abs(dx) > half && s.y > ridge - 66) vyWant = -0.55;
-
-  /* Tilt is the only way to steer, so lean into the lateral error —
-     then stand back up, because the touchdown angle is checked too. */
-  var lean = (vxWant - s.vx) * 0.62;
-  if (alt < 30 && Math.abs(dx) < half * 0.6) lean = 0;
-  var angWant = Math.max(-0.6, Math.min(0.6, lean));
-
-  if (s.ang < angWant - TURN * 0.5) keys.ArrowRight = true;
-  else if (s.ang > angWant + TURN * 0.5) keys.ArrowLeft = true;
-
-  if ((s.vy > vyWant && Math.abs(s.ang - angWant) < 0.32) || s.vy > 2.5) {
-    keys.ArrowUp = true;
-  }
-}
-
 function step() {
   if (state !== 'play') return;
-  if (DEMO) autopilot();
   var s = ship;
 
   if (held('ArrowLeft', 'KeyA'))  s.ang -= TURN;
@@ -619,9 +552,6 @@ function panel(items, accent) {
 }
 
 function drawOverlay() {
-  /* No panels in an attract loop. The pause between runs is the ship
-     sitting on the pad, or the wreck burning — not a dialog. */
-  if (DEMO) return;
   if (state === 'title') {
     panel([
       { t:'DRIFT LANDER', big:true },
@@ -656,11 +586,8 @@ function drawOverlay() {
    as it does on a laptop. */
 var acc = 0, last = 0, STEP = 1000 / 60;
 
-var demoWait = 110;
-
 function frame(now) {
   if (!last) last = now;
-  if (DEMO && state !== 'play' && --demoWait <= 0) { demoWait = 110; onPress('Space'); }
   acc += Math.min(now - last, 100);
   last = now;
   while (acc >= STEP) { step(); acc -= STEP; }
@@ -670,10 +597,9 @@ function frame(now) {
 
 makeStars();
 buildLevel();
-state = DEMO ? 'play' : 'title';
+state = 'title';
 requestAnimationFrame(frame);
-/* An embedded attract loop must never pull focus off the host page. */
-if (!DEMO) { try { window.focus(); } catch (e) {} }
+try { window.focus(); } catch (e) {}
 })();
 </script>
 </body>

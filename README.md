@@ -4,15 +4,16 @@ Varun Saini's portfolio — one static page, plus the arcade it serves.
 
 Live at **https://iudexryze.github.io/portfolio/**
 
-The page carries no accent colour of its own. Its palette is a single
-value ramp from a cold blue-black up to a warm bone, so every hue a
-visitor sees belongs to a render or to a running game. Introducing a
-brand colour would take the light off the work, which is the only thing
-the page is for.
+The front door is a machine. `index.html` is **IudexRzye**, a handheld
+console built in Three.js that you operate with its own D-pad and
+buttons; the portfolio is what is on its screen. `page.html` is the same
+work as an ordinary scrolling document, for anyone who would rather read
+than press A.
 
 ```
-index.html              the whole site: markup, styles, script
-console/index.html      the same portfolio as a handheld you operate
+index.html              the console — the site itself
+page.html               the same work as plain text, linked from the console
+console/index.html      a redirect, so old /console/ links still land
 play/
   bt-7274n/             terminal roguelike        typed, better with keys
   drift-lander/         physics lander            any device
@@ -29,8 +30,9 @@ Five of the eight have standalone repositories: `disco-race`, `refactor`,
 `heap` and `mutex` under `iudexryze/`, plus `architectus` elsewhere. The copy
 under `play/` is always what the site actually serves.
 
-No build step, no dependencies, no package manager. Open `index.html` and it
-works; push to `main` and Pages serves it.
+No build step and no package manager. The console needs Three.js, pinned
+from cdnjs, and everything else is self-contained. Serve the folder over
+HTTP and it works; push to `main` and Pages serves it.
 
 ## Running it locally
 
@@ -41,70 +43,10 @@ folder over HTTP:
 npx serve .          # or: python -m http.server 8000
 ```
 
-The hero is an iframe too, so over `file://` the front page loses its
-opening shot as well as the arcade.
-
-## The front page
-
-Three things carry the design, and each of them is load-bearing rather
-than decorative.
-
-**The name leads.** This is a portfolio, so the largest thing on the
-page by a wide margin is *Varun Saini*, followed by the role, the
-positioning line, and the three facts anyone checks first — where he is,
-who he is with, and whether he is available — then the contact links.
-Everything else on the page is subordinate to that block.
-
-**A real game runs behind it, quietly.** The backdrop is
-`play/drift-lander/` loaded with `?demo=1`, which hands the controls to
-an autopilot inside the game and suppresses its modal panels. The
-autopilot writes the same keys a player would hold, so it is bound by
-every rule a player is: one thruster, a tank that does not refill, and
-the same landing tolerances. It crosses to the pad at altitude, holds
-above the tallest ground in between, and only starts the descent once
-the pad is underneath — descending on a diagonal is what puts a lander
-in the dirt short of the mark. It lands about 97% of the time across
-window shapes and takes roughly six seconds a level.
-
-It is deliberately hard to notice. The stage runs at half opacity under
-a heavy scrim, stops well short of the copy, and is pulled up past the
-top edge (`inset: -78px 0 42% 0`, and `-86px`/`44%` on a narrow screen)
-so that the game's own telemetry row is clipped away — that HUD is the
-loudest thing in the picture and the part that made the page read as an
-arcade rather than a portfolio. A one-line footnote at the bottom of the
-hero says what it is and offers the controls.
-
-The iframe is only loaded while it is on screen, and is dropped when a
-visitor opens a game or scrolls away — a canvas game left running behind
-something else keeps a rAF loop and a fan going for nobody. Under
-`prefers-reduced-motion` it is never loaded at all; a still of the same
-scene stands in, and the copy stops claiming anything is running.
-
-**Two typefaces, one of them variable.** Archivo carries every heading
-and all UI, and its width axis carries the hierarchy: the larger the
-type, the wider it is set, and metadata is compressed. Newsreader sets
-the prose. Nothing is set in capitals anywhere on the page. The nav
-marks the current section by *widening* its label rather than
-recolouring it, and an invisible copy of each label at the widest
-setting reserves the space so the bar never reflows as you scroll.
-
-**Hierarchy is spatial, and the arcade is not the point.** A shipped
-title gets a two-column spread; the seven editor tools get one dense
-list with disclosures, because they are a body of practice rather than
-seven products; the eight playables get small tiles with a single line
-each, because they are side projects and the page says so. The renders
-run at their own aspect ratios rather than being cropped into a uniform
-grid — two are vertical and one is a letterbox, and that unevenness is
-the rhythm of the section.
-
-If you are editing this page, the standing rule is that nothing may
-out-weigh the hero block. Growing the arcade is the easiest way to break
-it, which is exactly how it broke the first time.
-
 ## The console
 
-`console/index.html` is the same portfolio presented as a physical object:
-a handheld called **IudexRzye**, built in Three.js, where every control is on
+`index.html` is the portfolio presented as a physical object: a handheld
+called **IudexRzye**, built in Three.js, where every control is on
 the machine. The D-pad moves and scrolls, A opens, B goes back, START returns
 to the menu, SELECT fires an item's second action or cycles the screen palette,
 the contrast dial cycles palettes, the volume dial mutes, and the power switch
@@ -134,14 +76,49 @@ Three things are worth knowing before editing it:
   ```sh
   # any Chromium, with the CDN blackholed
   chrome --host-resolver-rules="MAP cdnjs.cloudflare.com 127.0.0.1" \
-         http://localhost:8000/console/
+         http://localhost:8000/
   ```
 
-Sections and items deep-link: `console/#arcade`, `console/#work/echolocate`.
+Sections and items deep-link: `#arcade`, `#work/echolocate`. One `BASE`
+constant at the top of the first script says where the rest of the site
+sits relative to the page; it is `'./'` now that the console is the root.
 
-`index.html` is still the front door. To make the console the front door
-instead, move it to the root and change its one `BASE` constant from `'../'`
-to `'./'`.
+### It costs nothing while nobody is using it
+
+A handheld sitting still is a still image, so the scene is drawn only on
+frames where something actually changed. Everything that can change — a
+keypress, a button animation, the intro settling, the pointer parallax,
+the power switch sliding, any repaint of the screen — calls
+`invalidate()`, and `frame()` returns without touching the GPU
+otherwise. Two details make that real rather than merely plausible:
+
+- **Easing has to actually arrive.** Exponential smoothing approaches its
+  target forever, so the parallax and the power switch snap once they are
+  within a fraction of a pixel. Without that the scene is always "still
+  moving" and never stops redrawing.
+- **The shadow map is manual.** `shadowMap.autoUpdate` is off, and the map
+  is re-rendered only on frames where the geometry under the light moved.
+
+Measured with the WebGL draw calls hooked, after boot and intro settle:
+**zero draw calls over four seconds idle**, and about 33 for one keypress
+and the animation that follows it.
+
+### Lighting notes
+
+Two things here were worth getting right, and both were counter-intuitive:
+
+- **`PCFSoftShadowMap` ignores `shadow.radius`.** The shadow was a
+  hard-edged rectangle, and raising the map size only sharpened it.
+  `VSMShadowMap` blurs the shadow map itself and is the only built-in type
+  that gives a genuinely soft edge here.
+- **A flat slab lit from well off-axis throws its whole silhouette
+  sideways**, which reads as a second object rather than as depth. The key
+  light therefore sits closer to the camera than it looks like it should,
+  so most of the shadow tucks behind the machine and only the halo shows.
+
+The backdrop is a radial sweep sized to the band the camera can actually
+see. A gradient scaled to the whole plane is mostly off-screen, and what
+is left on screen reads as a flat grey wall.
 
 ## The arcade
 
@@ -149,8 +126,9 @@ Each game is a single self-contained HTML file: markup, styles and code in one
 document, no imports beyond the IBM Plex webfont. A folder under `play/` is a
 complete, runnable copy of that game.
 
-The site reads them from one manifest, `GAMES`, near the bottom of
-`index.html`:
+The text version reads them from one manifest, `GAMES`, near the bottom of
+`page.html`. The console carries the same slugs in its `SECTIONS` array and
+loads them through `BASE`:
 
 ```js
 'drift-lander': {
@@ -185,13 +163,13 @@ and a resize or rotation re-evaluates it without anyone backing out.
 
 1. Drop `play/<slug>/index.html` in.
 2. Add an entry to `GAMES`, including `input`, `shape` and `minWidth`.
-3. Add a card to the `.arcade` grid in the `#arcade` section, with
-   `data-launch="<slug>"` on the `.game-screen` button.
-4. Add a row to `#source` and a link in the top nav.
+3. Add an item to the ARCADE section of `SECTIONS` in `index.html`, with an
+   action of `{label:"PLAY", launch:"<slug>"}`. That is all the console needs.
+4. In `page.html`, add a card to the `.arcade` grid with `data-launch="<slug>"`
+   on the `.game-screen` button, a row to `#code`, and a link in the rail.
 
-Tile art is a hand-drawn SVG diagram of the mechanic, set in the page's
-greys — never a screenshot. A drawing cannot pretend to be footage, and
-the colour arriving only when the real game loads is the point.
+The status-bar counts in `page.html` read from the DOM, so they keep
+themselves honest.
 
 ### Writing one that works on a phone
 
