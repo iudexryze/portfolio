@@ -4,9 +4,16 @@ Varun Saini's portfolio — one static page, plus the arcade it serves.
 
 Live at **https://iudexryze.github.io/portfolio/**
 
+The front door is a machine. `index.html` is **IudexRzye**, a handheld
+console built in Three.js that you operate with its own D-pad and
+buttons; the portfolio is what is on its screen. `page.html` is the same
+work as an ordinary scrolling document, for anyone who would rather read
+than press A.
+
 ```
-index.html              the whole site: markup, styles, script
-console/index.html      the same portfolio as a handheld you operate
+index.html              the console — the site itself
+page.html               the same work as plain text, linked from the console
+console/index.html      a redirect, so old /console/ links still land
 play/
   bt-7274n/             terminal roguelike        typed, better with keys
   drift-lander/         physics lander            any device
@@ -23,8 +30,9 @@ Five of the eight have standalone repositories: `disco-race`, `refactor`,
 `heap` and `mutex` under `iudexryze/`, plus `architectus` elsewhere. The copy
 under `play/` is always what the site actually serves.
 
-No build step, no dependencies, no package manager. Open `index.html` and it
-works; push to `main` and Pages serves it.
+No build step and no package manager. The console needs Three.js, pinned
+from cdnjs, and everything else is self-contained. Serve the folder over
+HTTP and it works; push to `main` and Pages serves it.
 
 ## Running it locally
 
@@ -37,8 +45,8 @@ npx serve .          # or: python -m http.server 8000
 
 ## The console
 
-`console/index.html` is the same portfolio presented as a physical object:
-a handheld called **IudexRzye**, built in Three.js, where every control is on
+`index.html` is the portfolio presented as a physical object: a handheld
+called **IudexRzye**, built in Three.js, where every control is on
 the machine. The D-pad moves and scrolls, A opens, B goes back, START returns
 to the menu, SELECT fires an item's second action or cycles the screen palette,
 the contrast dial cycles palettes, the volume dial mutes, and the power switch
@@ -68,14 +76,49 @@ Three things are worth knowing before editing it:
   ```sh
   # any Chromium, with the CDN blackholed
   chrome --host-resolver-rules="MAP cdnjs.cloudflare.com 127.0.0.1" \
-         http://localhost:8000/console/
+         http://localhost:8000/
   ```
 
-Sections and items deep-link: `console/#arcade`, `console/#work/echolocate`.
+Sections and items deep-link: `#arcade`, `#work/echolocate`. One `BASE`
+constant at the top of the first script says where the rest of the site
+sits relative to the page; it is `'./'` now that the console is the root.
 
-`index.html` is still the front door. To make the console the front door
-instead, move it to the root and change its one `BASE` constant from `'../'`
-to `'./'`.
+### It costs nothing while nobody is using it
+
+A handheld sitting still is a still image, so the scene is drawn only on
+frames where something actually changed. Everything that can change — a
+keypress, a button animation, the intro settling, the pointer parallax,
+the power switch sliding, any repaint of the screen — calls
+`invalidate()`, and `frame()` returns without touching the GPU
+otherwise. Two details make that real rather than merely plausible:
+
+- **Easing has to actually arrive.** Exponential smoothing approaches its
+  target forever, so the parallax and the power switch snap once they are
+  within a fraction of a pixel. Without that the scene is always "still
+  moving" and never stops redrawing.
+- **The shadow map is manual.** `shadowMap.autoUpdate` is off, and the map
+  is re-rendered only on frames where the geometry under the light moved.
+
+Measured with the WebGL draw calls hooked, after boot and intro settle:
+**zero draw calls over four seconds idle**, and about 33 for one keypress
+and the animation that follows it.
+
+### Lighting notes
+
+Two things here were worth getting right, and both were counter-intuitive:
+
+- **`PCFSoftShadowMap` ignores `shadow.radius`.** The shadow was a
+  hard-edged rectangle, and raising the map size only sharpened it.
+  `VSMShadowMap` blurs the shadow map itself and is the only built-in type
+  that gives a genuinely soft edge here.
+- **A flat slab lit from well off-axis throws its whole silhouette
+  sideways**, which reads as a second object rather than as depth. The key
+  light therefore sits closer to the camera than it looks like it should,
+  so most of the shadow tucks behind the machine and only the halo shows.
+
+The backdrop is a radial sweep sized to the band the camera can actually
+see. A gradient scaled to the whole plane is mostly off-screen, and what
+is left on screen reads as a flat grey wall.
 
 ## The arcade
 
@@ -83,8 +126,9 @@ Each game is a single self-contained HTML file: markup, styles and code in one
 document, no imports beyond the IBM Plex webfont. A folder under `play/` is a
 complete, runnable copy of that game.
 
-The site reads them from one manifest, `GAMES`, near the bottom of
-`index.html`:
+The text version reads them from one manifest, `GAMES`, near the bottom of
+`page.html`. The console carries the same slugs in its `SECTIONS` array and
+loads them through `BASE`:
 
 ```js
 'drift-lander': {
@@ -119,11 +163,13 @@ and a resize or rotation re-evaluates it without anyone backing out.
 
 1. Drop `play/<slug>/index.html` in.
 2. Add an entry to `GAMES`, including `input`, `shape` and `minWidth`.
-3. Add a card to the `.arcade` grid in the `#arcade` section, with
-   `data-launch="<slug>"` on the `.game-screen` button. The badge is injected.
-4. Add a row to `#code` and a link in the rail.
+3. Add an item to the ARCADE section of `SECTIONS` in `index.html`, with an
+   action of `{label:"PLAY", launch:"<slug>"}`. That is all the console needs.
+4. In `page.html`, add a card to the `.arcade` grid with `data-launch="<slug>"`
+   on the `.game-screen` button, a row to `#code`, and a link in the rail.
 
-The status-bar counts read from the DOM, so they update themselves.
+The status-bar counts in `page.html` read from the DOM, so they keep
+themselves honest.
 
 ### Writing one that works on a phone
 

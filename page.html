@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Varun Saini — Game Developer &amp; Technical Artist</title>
+<meta name="description" content="Varun Saini builds games and the Unity tooling that ships them. Seven editor tools, commercial slot games, and an eight-game arcade you can boot in the browser — no install, no download.">
+<meta name="author" content="Varun Saini">
+<link rel="canonical" href="https://iudexryze.github.io/portfolio/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Varun Saini">
+<meta property="og:title" content="Varun Saini — Game Developer &amp; Technical Artist">
+<meta property="og:description" content="I build games and the tools that ship them. Unity, C#, shaders, Blender. Eight playables boot straight in the browser.">
+<meta property="og:url" content="https://iudexryze.github.io/portfolio/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Varun Saini — Game Developer &amp; Technical Artist">
+<meta name="twitter:description" content="I build games and the tools that ship them. Eight playables boot straight in the browser.">
+<meta name="theme-color" content="#131211">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23131211'/><rect x='5' y='6' width='22' height='4' fill='%23F0902E'/><rect x='5' y='14' width='13' height='4' fill='%23EDE8DE'/><rect x='5' y='22' width='18' height='4' fill='%236E6659'/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ══ TOKENS ═══════════════════════════════════════════════════
+   Surfaces are a warm charcoal ramp taken from the DCC apps this
+   work actually happens in — Unity's editor chrome and Blender's
+   viewport are both warm-neutral, not blue-black. Two accents,
+   each with exactly one job: amber = active/selected (Blender's
+   selection outline), lime = live/running (Unity play mode).
+   ═════════════════════════════════════════════════════════════ */
+:root{
+  --ink:      #131211;
+  --panel:    #1B1917;
+  --raised:   #24211D;
+  --sunken:   #0E0D0C;
+  --rule:     #322E28;
+  --rule-hi:  #443E36;
+  --dim:      #8C8577;
+  --mid:      #B4AC9D;
+  --bone:     #EDE8DE;
+  --amber:    #F0902E;
+  --live:     #86C232;
+
+  --f-disp: 'IBM Plex Sans Condensed', 'Arial Narrow', sans-serif;
+  --f-ui:   'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+
+  --bar-h: 44px;
+  --rail-w: 234px;
+  --status-h: 26px;
+  --pad: clamp(20px, 4vw, 56px);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--ink); color:var(--mid);
+  font-family:var(--f-ui); font-size:16px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+a{color:inherit}
+::selection{background:var(--amber); color:var(--ink)}
+:focus-visible{outline:2px solid var(--amber); outline-offset:2px; border-radius:1px}
+
+.skip{
+  position:absolute; left:-9999px; top:0; z-index:100;
+  padding:10px 16px; background:var(--amber); color:var(--ink);
+  font-family:var(--f-mono); font-size:12px; text-decoration:none;
+}
+.skip:focus{left:8px; top:8px}
+
+.app{display:flex; flex-direction:column; height:100vh; height:100dvh}
+
+/* ══ TOP BAR ══════════════════════════════════════════════════ */
+.topbar{
+  flex:0 0 var(--bar-h); display:flex; align-items:stretch;
+  background:var(--raised); border-bottom:1px solid var(--rule);
+  padding-left:var(--pad); padding-right:clamp(12px,3vw,24px); gap:4px;
+}
+.brand{
+  display:flex; align-items:center; margin-right:clamp(14px,4vw,44px);
+  font-family:var(--f-disp); font-weight:700; font-size:16.5px;
+  letter-spacing:.015em; color:var(--bone); text-decoration:none; white-space:nowrap;
+}
+.brand i{color:var(--amber); font-style:normal; padding:0 1px}
+
+.tabs{display:flex; align-items:stretch; gap:2px; min-width:0; overflow-x:auto; scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  display:flex; align-items:center; padding:0 15px; white-space:nowrap;
+  font-size:13.5px; font-weight:500; color:var(--dim);
+  background:none; border:0; border-top:2px solid transparent;
+  text-decoration:none; cursor:pointer;
+}
+.tab:hover{color:var(--bone); background:var(--panel)}
+.tab[aria-current="true"]{color:var(--bone); background:var(--panel); border-top-color:var(--amber)}
+
+.topbar-end{display:flex; align-items:center; margin-left:auto; padding-left:14px}
+
+/* The only control on the page that runs something, shaped like the
+   transport control it is. */
+.boot{
+  display:inline-flex; align-items:center; gap:9px; height:28px; padding:0 14px 0 12px;
+  font-family:var(--f-mono); font-size:11.5px; font-weight:500; letter-spacing:.06em;
+  color:var(--ink); background:var(--live); border:0; border-radius:2px;
+  cursor:pointer; text-decoration:none; white-space:nowrap;
+}
+.boot:hover{background:#9BD848}
+.boot::before{
+  content:''; flex:none; width:0; height:0;
+  border:5px solid transparent; border-left:8px solid var(--ink);
+}
+/* Same shape, but it opens a mail client rather than a game, so it
+   loses the transport triangle. */
+.boot.plain::before{
+  content:'\2192'; width:auto; height:auto; border:0;
+  font-size:13px; line-height:1; transform:translateY(-.5px);
+}
+
+/* ══ WORKSPACE ════════════════════════════════════════════════ */
+.workspace{flex:1; display:flex; min-height:0}
+
+/* ── Outline rail: a genuine index of every entry below ── */
+.rail{
+  flex:0 0 var(--rail-w); background:var(--panel); border-right:1px solid var(--rule);
+  overflow-y:auto; overscroll-behavior:contain; padding:16px 0 28px;
+}
+.rail-group{margin-bottom:13px}
+.rail-head{
+  display:flex; align-items:center; gap:7px; width:100%;
+  padding:5px 16px; background:none; border:0; cursor:pointer;
+  font-family:var(--f-mono); font-size:10.5px; font-weight:500; letter-spacing:.13em;
+  color:var(--dim); text-transform:uppercase; text-align:left;
+}
+.rail-head:hover{color:var(--mid)}
+.rail-head::before{
+  content:''; flex:none; width:0; height:0;
+  border:4px solid transparent; border-top:6px solid currentColor;
+  transform:translateY(2px);
+}
+.rail-head[aria-expanded="false"]::before{transform:rotate(-90deg)}
+.rail-head .n{margin-left:auto; font-size:10px; opacity:.55; letter-spacing:.04em}
+.rail-list{list-style:none; margin:2px 0 0; padding:0}
+.rail-head[aria-expanded="false"] + .rail-list{display:none}
+.rail-link{
+  display:flex; align-items:center; gap:9px; padding:4px 14px 4px 31px;
+  font-family:var(--f-mono); font-size:12px; color:var(--mid);
+  text-decoration:none; border-left:2px solid transparent;
+}
+.rail-link:hover{background:var(--raised); color:var(--bone)}
+.rail-link[aria-current="true"]{background:var(--raised); color:var(--bone); border-left-color:var(--amber)}
+.rail-link .dot{width:5px; height:5px; border-radius:50%; flex:none; background:var(--rule-hi)}
+.rail-link .dot.live{background:var(--live)}
+.rail-link .dot.wip{background:var(--amber)}
+
+/* ── Content column ── */
+.content{
+  flex:1; min-width:0; overflow-y:auto; overscroll-behavior:contain;
+  scroll-behavior:smooth; padding:0 var(--pad) 34vh;
+}
+.content::-webkit-scrollbar{width:11px}
+.content::-webkit-scrollbar-track{background:var(--ink)}
+.content::-webkit-scrollbar-thumb{background:var(--rule); border:3px solid var(--ink); border-radius:6px}
+.content::-webkit-scrollbar-thumb:hover{background:var(--rule-hi)}
+
+/* ══ STATUS BAR — real state only, nothing invented ═══════════ */
+.statusbar{
+  flex:0 0 var(--status-h); display:flex; align-items:center; gap:20px;
+  padding:0 var(--pad); background:var(--raised); border-top:1px solid var(--rule);
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.05em; color:var(--dim);
+  overflow:hidden; white-space:nowrap;
+}
+.statusbar b{color:var(--mid); font-weight:500}
+.statusbar .end{margin-left:auto}
+.statusbar .hide-sm{display:inline}
+
+/* ══ TYPE SCALE ═══════════════════════════════════════════════ */
+h1,h2,h3{margin:0; color:var(--bone); font-weight:600; letter-spacing:-.005em}
+h1{font-family:var(--f-disp); font-weight:700; font-size:clamp(2.4rem,5.2vw,3.9rem); line-height:1; letter-spacing:-.02em}
+h2{font-family:var(--f-disp); font-weight:700; font-size:clamp(1.5rem,2.6vw,2rem); line-height:1.1}
+h3{font-family:var(--f-disp); font-weight:700; font-size:clamp(1.25rem,2vw,1.6rem); line-height:1.15}
+p{margin:0 0 1.1em; max-width:64ch}
+p:last-child{margin-bottom:0}
+strong{color:var(--bone); font-weight:600}
+
+.lede{font-size:clamp(1.05rem,1.55vw,1.22rem); line-height:1.55; color:var(--mid); max-width:56ch}
+code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
+
+/* ══ SECTION ══════════════════════════════════════════════════ */
+.section{padding-top:clamp(56px,8vw,104px); scroll-margin-top:20px}
+.section-bar{
+  display:flex; align-items:baseline; gap:16px;
+  padding-bottom:12px; margin-bottom:clamp(26px,4vw,40px);
+  border-bottom:1px solid var(--rule);
+}
+.section-bar .count{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.08em; color:var(--dim);
+  margin-left:auto; flex:none;
+}
+.section-note{max-width:62ch; margin:-16px 0 clamp(26px,4vw,40px); color:var(--dim); font-size:15px}
+
+/* ══ HERO ═════════════════════════════════════════════════════ */
+.hero{padding-top:clamp(38px,6vw,62px)}
+.hero-id{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 14px;
+  font-family:var(--f-mono); font-size:12px; letter-spacing:.05em; color:var(--dim);
+  margin-bottom:18px;
+}
+.hero-id .here{color:var(--mid)}
+.hero h1{margin-bottom:16px}
+.hero h1 span{display:block}
+.hero-sub{
+  font-size:clamp(1.08rem,1.7vw,1.32rem); line-height:1.45; color:var(--bone);
+  font-weight:400; max-width:40ch; margin:0 0 22px;
+}
+/* Grid, not flex: flex items shrink their box but not their text,
+   which pushed the whole column wider than the viewport on phones. */
+.hero-facts{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  gap:0; margin-bottom:clamp(22px,3.2vw,34px); border-top:1px solid var(--rule);
+}
+.hero-fact{padding:11px 22px 11px 0; border-right:1px solid var(--rule); min-width:0}
+.hero-fact:last-child{border-right:0}
+.hero-fact dt{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); margin-bottom:3px;
+}
+.hero-fact dd{margin:0; color:var(--bone); font-size:14.5px; font-weight:500}
+
+/* The hero closes on the two things a visitor actually came for: the
+   work, and a way to reach me. The arcade is a footnote here, not the
+   headline — it gets its own section further down. */
+.hero-actions{display:flex; flex-wrap:wrap; gap:9px; margin-bottom:clamp(20px,2.8vw,28px)}
+.btn.btn-key{color:var(--ink); background:var(--live); border-color:var(--live); font-weight:600}
+.btn.btn-key:hover{color:var(--ink); background:#9BD848; border-color:#9BD848}
+.hero-tail{
+  max-width:64ch; margin:0; padding-top:16px; border-top:1px solid var(--rule);
+  color:var(--dim); font-size:14.5px;
+}
+.hero-tail a{color:var(--mid); text-decoration:none; border-bottom:1px solid var(--rule-hi)}
+.hero-tail a:hover{color:var(--amber); border-color:var(--amber)}
+
+/* ══ THE CABINET — the one loud thing on the page ═════════════ */
+.cabinet{
+  position:relative; background:var(--sunken);
+  border:1px solid var(--rule); border-top:2px solid var(--amber);
+  border-radius:2px; overflow:hidden;
+}
+.cab-bar{
+  display:flex; align-items:center; gap:12px; height:32px; padding:0 12px;
+  background:var(--raised); border-bottom:1px solid var(--rule);
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.08em; color:var(--dim);
+}
+.cab-bar .name{color:var(--bone); letter-spacing:.06em}
+.cab-bar .end{margin-left:auto; display:flex; align-items:center; gap:9px}
+.cab-lights{display:flex; gap:5px}
+.cab-lights i{width:7px; height:7px; border-radius:50%; background:var(--rule-hi); display:block}
+.cab-lights i:first-child{background:var(--live)}
+
+/* Fixed height rather than an aspect ratio: the cabinet has to clear
+   the fold on a laptop, and 16/9 across a wide column does not. */
+.cab-stage{
+  position:relative; height:clamp(268px, 38vh, 348px);
+  display:grid; place-items:center; background:var(--sunken);
+}
+
+/* Attract screen: a real console boot, typed once on load. */
+.attract{
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  justify-content:center; align-items:center; gap:22px; padding:22px;
+  background:
+    radial-gradient(120% 90% at 50% 42%, rgba(240,144,46,.055), transparent 62%),
+    var(--sunken);
+}
+.attract::after{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(180deg, rgba(255,255,255,.018) 0 1px, transparent 1px 3px);
+}
+.attract-log{
+  font-family:var(--f-mono); font-size:clamp(10px,1.15vw,12.5px); line-height:1.85;
+  color:var(--dim); text-align:left; width:min(430px,86%); min-height:9.3em;
+}
+.attract-log b{color:var(--live); font-weight:400}
+.attract-log i{color:var(--amber); font-style:normal}
+.attract-log .cur{
+  display:inline-block; width:.55em; height:1em; background:var(--amber);
+  vertical-align:-.13em; animation:blink 1.1s steps(2) infinite;
+}
+@keyframes blink{50%{opacity:0}}
+
+.cab-launch{
+  display:inline-flex; align-items:center; gap:12px; padding:14px 26px 14px 22px;
+  font-family:var(--f-mono); font-size:13px; font-weight:500; letter-spacing:.1em;
+  color:var(--ink); background:var(--live); border:0; border-radius:2px; cursor:pointer;
+  text-transform:uppercase;
+}
+.cab-launch:hover{background:#9BD848}
+.cab-launch::before{content:''; flex:none; width:0; height:0; border:7px solid transparent; border-left:11px solid var(--ink)}
+.cab-hint{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.05em; color:var(--dim); text-align:center;
+}
+.cab-hint kbd{
+  font-family:inherit; font-size:10.5px; color:var(--mid);
+  border:1px solid var(--rule-hi); border-radius:2px; padding:1px 5px; background:var(--panel);
+}
+.cab-frame{position:absolute; inset:0; width:100%; height:100%; border:0; display:block; background:var(--sunken)}
+
+.cab-foot{
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px 20px;
+  padding:11px 14px; background:var(--panel); border-top:1px solid var(--rule);
+  font-family:var(--f-mono); font-size:11px; color:var(--dim);
+}
+.cab-foot a{color:var(--mid); text-decoration:none; border-bottom:1px solid var(--rule-hi)}
+.cab-foot a:hover{color:var(--amber); border-color:var(--amber)}
+.cab-foot .end{margin-left:auto}
+
+/* ══ ENTRY — the inspector block that every project uses ══════ */
+.entry{
+  border:1px solid var(--rule); border-radius:2px; background:var(--panel);
+  margin-bottom:16px; scroll-margin-top:20px;
+}
+.entry-head{
+  display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px;
+  padding:15px 18px; border-bottom:1px solid var(--rule); background:var(--raised);
+}
+.entry-head h3{flex:1 1 auto; min-width:0}
+.entry-kind{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); flex:none;
+}
+.pill{
+  display:inline-flex; align-items:center; gap:7px; flex:none;
+  padding:4px 11px; border-radius:2px; border:1px solid var(--rule-hi);
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--dim);
+}
+.pill::before{content:''; width:6px; height:6px; border-radius:50%; background:currentColor}
+.pill.live{color:var(--live); border-color:rgba(134,194,50,.4); background:rgba(134,194,50,.07)}
+.pill.wip{color:var(--amber); border-color:rgba(240,144,46,.4); background:rgba(240,144,46,.07)}
+.pill.shipped{color:var(--mid); border-color:var(--rule-hi)}
+
+.entry-body{padding:18px}
+.entry-body > p{color:var(--mid); font-size:15.5px}
+
+/* Label-left / value-right property rows — Unity's Inspector,
+   because these are properties, not marketing copy. */
+.props{margin:16px 0 0; display:grid; grid-template-columns:132px 1fr; gap:0; border-top:1px solid var(--rule)}
+.props dt{
+  padding:8px 14px 8px 0; border-bottom:1px solid var(--rule);
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--dim);
+}
+.props dd{
+  margin:0; padding:8px 0; border-bottom:1px solid var(--rule);
+  font-size:14.5px; color:var(--bone);
+}
+.props dd em{font-style:normal; color:var(--dim)}
+@media (max-width:560px){
+  .props{grid-template-columns:1fr; border-top:0}
+  .props dt{padding:10px 0 1px; border-bottom:0; border-top:1px solid var(--rule)}
+  .props dd{padding:0 0 10px; border-bottom:0}
+}
+
+.actions{display:flex; flex-wrap:wrap; gap:9px; margin-top:18px}
+.btn{
+  display:inline-flex; align-items:center; gap:8px; padding:8px 15px;
+  font-family:var(--f-mono); font-size:11.5px; letter-spacing:.06em;
+  color:var(--mid); background:var(--raised);
+  border:1px solid var(--rule-hi); border-radius:2px;
+  text-decoration:none; cursor:pointer;
+}
+.btn:hover{color:var(--bone); border-color:var(--dim); background:var(--rule)}
+.btn-go{color:var(--ink); background:var(--live); border-color:var(--live)}
+.btn-go:hover{color:var(--ink); background:#9BD848; border-color:#9BD848}
+.btn-go::before{content:''; flex:none; width:0; height:0; border:4px solid transparent; border-left:7px solid currentColor}
+
+/* An honest empty state instead of a link that goes nowhere. */
+.unavailable{
+  display:inline-flex; align-items:center; gap:9px; padding:8px 14px;
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.05em; color:var(--dim);
+  border:1px dashed var(--rule-hi); border-radius:2px;
+}
+
+/* ══ TOOL TABLE — seven variations on one idea, so one table ══ */
+.tools{border:1px solid var(--rule); border-radius:2px; overflow:hidden; background:var(--panel)}
+.tool{border-bottom:1px solid var(--rule)}
+.tool:last-child{border-bottom:0}
+.tool-btn{
+  display:grid; grid-template-columns:104px 1fr auto; align-items:center; gap:18px;
+  width:100%; padding:15px 18px; background:none; border:0; cursor:pointer;
+  text-align:left; color:var(--mid); font-family:inherit; font-size:15px;
+}
+.tool-btn:hover{background:var(--raised)}
+.tool-btn[aria-expanded="true"]{background:var(--raised)}
+.tool-name{
+  font-family:var(--f-disp); font-weight:700; font-size:17px; letter-spacing:.02em;
+  color:var(--bone);
+}
+.tool-btn[aria-expanded="true"] .tool-name{color:var(--amber)}
+.tool-what{color:var(--mid); font-size:14.5px; min-width:0}
+.tool-btn .chev{
+  flex:none; width:0; height:0; border:4px solid transparent;
+  border-top:6px solid var(--dim); transform:translateY(2px);
+}
+.tool-btn[aria-expanded="true"] .chev{border-top-color:var(--amber); transform:rotate(180deg)}
+.tool-panel{padding:0 18px 20px 140px; background:var(--raised)}
+.tool-panel[hidden]{display:none}
+.tool-panel p{font-size:14.5px; color:var(--mid); max-width:70ch}
+.tool-panel .props{margin-top:14px}
+@media (max-width:680px){
+  .tool-btn{grid-template-columns:1fr auto; gap:4px 14px}
+  .tool-name{grid-column:1}
+  .tool-what{grid-column:1; grid-row:2}
+  .tool-btn .chev{grid-row:1; grid-column:2}
+  .tool-panel{padding-left:18px}
+}
+
+/* ══ ARCADE ═══════════════════════════════════════════════════
+   Eight playables, so a grid rather than the stacked inspector the
+   long-form work entries use. Each card is a cabinet in miniature:
+   screen on top, plate underneath, one control that runs it. */
+.arcade{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(288px,1fr));
+  gap:14px;
+}
+.game{
+  position:relative; display:flex; flex-direction:column;
+  border:1px solid var(--rule); border-radius:2px; background:var(--panel);
+  scroll-margin-top:20px; overflow:hidden;
+}
+.game:hover{border-color:var(--rule-hi)}
+
+.game-screen{
+  position:relative; display:block; width:100%; aspect-ratio:8/5;
+  background:var(--sunken); color:inherit; font:inherit;
+  border:0; border-bottom:1px solid var(--rule);
+  padding:0; margin:0; cursor:pointer; overflow:hidden;
+}
+.game-screen svg{position:absolute; inset:0; width:100%; height:100%; display:block}
+.game-screen::after{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(180deg, rgba(255,255,255,.02) 0 1px, transparent 1px 3px);
+}
+.game-screen .go{
+  position:absolute; inset:0; z-index:1; display:grid; place-items:center;
+  background:rgba(14,13,12,.55); opacity:0;
+}
+.game-screen:hover .go, .game-screen:focus-visible .go{opacity:1}
+.game-screen .go span{
+  display:inline-flex; align-items:center; gap:9px; padding:9px 17px;
+  font-family:var(--f-mono); font-size:11.5px; font-weight:500; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink); background:var(--live); border-radius:2px;
+}
+.game-screen .go span::before{
+  content:''; width:0; height:0; border:5px solid transparent; border-left:8px solid var(--ink);
+}
+
+.game-plate{display:flex; flex-direction:column; flex:1; padding:14px 16px 16px}
+.game-kind{
+  display:flex; align-items:center; gap:8px; margin-bottom:6px;
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--dim);
+}
+.game-kind .dot{width:5px; height:5px; border-radius:50%; background:var(--live); flex:none}
+.game h3{font-size:1.15rem; margin-bottom:6px}
+.game p{font-size:14px; color:var(--mid); margin:0 0 12px; max-width:none}
+.game-meta{
+  margin:auto 0 0; padding-top:11px; border-top:1px solid var(--rule);
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px;
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.05em; color:var(--dim);
+}
+/* No links out of a card: the screen above it is the way in, and a
+   second route to the same game only made people choose. */
+
+/* What each game actually wants to be played on, stated on the card so
+   nobody taps through on a phone only to be told to go away. */
+.fits{
+  position:absolute; z-index:1; top:9px; right:9px;
+  display:inline-flex; align-items:center; gap:6px;
+  padding:3px 8px; border-radius:2px;
+  border:1px solid var(--rule-hi); background:rgba(14,13,12,.82);
+  font-family:var(--f-mono); font-size:9.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); white-space:nowrap;
+}
+.fits::before{content:''; width:5px; height:5px; border-radius:50%; background:currentColor}
+.fits.any{color:var(--live); border-color:rgba(134,194,50,.45)}
+.fits.wide{color:var(--mid)}
+.fits.desk{color:var(--amber); border-color:rgba(240,144,46,.45)}
+
+/* ══ GALLERY ══════════════════════════════════════════════════
+   Real work, so it gets real pictures — the one place on the page
+   that does. Masonry columns rather than a grid, because the renders
+   are not one aspect ratio and forcing them into one would throw away
+   the composition that is the point of them. The height cap only bites
+   on the two near-vertical pieces, which would otherwise run a column
+   two screens long on their own. */
+.gallery{columns:3 260px; column-gap:14px; margin-bottom:20px}
+.shot{
+  break-inside:avoid; margin:0 0 14px; position:relative; display:block;
+  border:1px solid var(--rule); border-radius:2px; overflow:hidden;
+  background:var(--sunken); text-decoration:none;
+}
+.shot:hover{border-color:var(--rule-hi)}
+.shot img{
+  display:block; width:100%; height:auto; background:var(--sunken);
+  max-height:min(58vh,520px); object-fit:cover; object-position:center;
+}
+.shot figcaption{
+  display:flex; align-items:baseline; gap:10px;
+  padding:9px 12px; border-top:1px solid var(--rule); background:var(--panel);
+  font-family:var(--f-mono); font-size:11.5px; color:var(--mid);
+}
+.shot figcaption .yr{margin-left:auto; color:var(--dim); font-size:10.5px; flex:none}
+.shot:hover figcaption{color:var(--bone)}
+
+/* ══ REPOSITORIES ═════════════════════════════════════════════ */
+.repos{border:1px solid var(--rule); border-radius:2px; overflow:hidden; background:var(--panel)}
+.repo{
+  display:grid; grid-template-columns:190px 1fr 118px auto; align-items:baseline; gap:8px 18px;
+  padding:14px 18px; border-bottom:1px solid var(--rule); text-decoration:none;
+}
+.repo:last-child{border-bottom:0}
+.repo:hover{background:var(--raised)}
+.repo .n{
+  font-family:var(--f-mono); font-size:13.5px; color:var(--bone);
+  display:flex; align-items:center; gap:8px; min-width:0;
+}
+.repo:hover .n{color:var(--amber)}
+.repo .n .slash{color:var(--dim)}
+.repo .d{font-size:14px; color:var(--mid); min-width:0}
+.repo .t{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--dim);
+}
+.repo .go{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.06em; color:var(--dim); white-space:nowrap}
+.repo[data-private] .go{color:var(--rule-hi)}
+@media (max-width:760px){
+  .repo{grid-template-columns:1fr auto; gap:3px 12px}
+  .repo .n{grid-column:1}
+  .repo .d{grid-column:1/-1; grid-row:2}
+  .repo .t{grid-column:1/-1; grid-row:3}
+  .repo .go{grid-column:2; grid-row:1}
+}
+
+/* ══ ABOUT ════════════════════════════════════════════════════ */
+.about-grid{display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:clamp(28px,5vw,64px); align-items:start}
+@media (max-width:860px){ .about-grid{grid-template-columns:1fr} }
+.about-prose p{font-size:16.5px; line-height:1.68}
+.about-prose a{color:var(--bone); text-decoration:none; border-bottom:1px solid var(--rule-hi)}
+.about-prose a:hover{color:var(--amber); border-color:var(--amber)}
+
+.track{list-style:none; margin:0; padding:0}
+.track li{
+  display:grid; grid-template-columns:88px 1fr; gap:16px;
+  padding:13px 0; border-top:1px solid var(--rule);
+}
+.track li:last-child{border-bottom:1px solid var(--rule)}
+.track .when{font-family:var(--f-mono); font-size:11.5px; color:var(--dim); letter-spacing:.03em; padding-top:2px}
+.track .what b{display:block; color:var(--bone); font-weight:600; font-size:15px}
+.track .what span{font-size:14px; color:var(--dim)}
+
+.stack{margin-top:clamp(30px,4vw,44px)}
+.stack-group{padding:14px 0; border-top:1px solid var(--rule)}
+.stack-group:last-child{border-bottom:1px solid var(--rule)}
+.stack-group h4{
+  margin:0 0 8px; font-family:var(--f-mono); font-size:11px; font-weight:500;
+  letter-spacing:.11em; text-transform:uppercase; color:var(--dim);
+}
+.stack-group p{margin:0; font-size:15px; color:var(--bone); max-width:none}
+
+/* ══ CONTACT ══════════════════════════════════════════════════ */
+.contact-list{list-style:none; margin:0; padding:0; max-width:640px}
+.contact-list li{border-top:1px solid var(--rule)}
+.contact-list li:last-child{border-bottom:1px solid var(--rule)}
+.contact-list a{
+  display:grid; grid-template-columns:104px 1fr auto; align-items:baseline; gap:16px;
+  padding:15px 4px 15px 0; text-decoration:none;
+}
+.contact-list a:hover{background:var(--panel)}
+.contact-list .k{font-family:var(--f-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim)}
+.contact-list .v{color:var(--bone); font-size:16px; word-break:break-word}
+.contact-list a:hover .v{color:var(--amber)}
+.contact-list .go{font-family:var(--f-mono); font-size:11px; color:var(--dim)}
+@media (max-width:560px){
+  .contact-list a{grid-template-columns:1fr; gap:2px}
+  .contact-list .go{display:none}
+}
+.colophon{
+  margin-top:clamp(40px,6vw,72px); padding-top:16px; border-top:1px solid var(--rule);
+  font-family:var(--f-mono); font-size:11px; color:var(--dim); line-height:1.9;
+}
+
+/* ══ LAUNCHER OVERLAY ═════════════════════════════════════════ */
+.launcher{
+  position:fixed; inset:0; z-index:80; display:none;
+  flex-direction:column; background:var(--ink);
+}
+.launcher[data-open="true"]{display:flex}
+.launcher-bar{
+  flex:0 0 38px; display:flex; align-items:center; gap:14px; padding:0 14px;
+  background:var(--raised); border-bottom:1px solid var(--rule);
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.06em; color:var(--dim);
+}
+.launcher-bar .name{color:var(--bone); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.launcher-bar .end{margin-left:auto; display:flex; align-items:center; gap:8px; flex:none}
+/* On a phone the chrome must not eat the game. Below 560 px the title
+   goes and the buttons shrink to what a thumb still needs. */
+@media (max-width:560px){
+  .launcher-bar{gap:8px; padding:0 9px}
+  .launcher-bar .name{display:none}
+  .launcher-bar .btn{padding:7px 10px; font-size:11px}
+  .launcher-bar .end{margin-left:0; width:100%; justify-content:space-between}
+}
+.launcher-frame{flex:1; width:100%; border:0; display:block; background:var(--sunken)}
+
+/* Some games want a keyboard, and the older four lay out at a fixed 8:5.
+   Rather than block anyone, say what the game wants and let them decide —
+   the conditions vary per game, so JS raises the flag, not a media query. */
+.notice{display:none; place-content:center; padding:32px 22px; text-align:center}
+.launcher[data-notice="true"] .launcher-frame{display:none}
+.launcher[data-notice="true"] .notice{display:grid}
+.notice h2{
+  font-family:var(--f-mono); font-size:13px; font-weight:500; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--amber); margin-bottom:16px;
+}
+.notice .what{font-size:17px; color:var(--bone); max-width:34ch; margin:0 auto 14px}
+.notice ul{
+  list-style:none; margin:0 auto 24px; padding:0; max-width:40ch;
+  font-family:var(--f-mono); font-size:12.5px; color:var(--mid); text-align:left;
+}
+.notice li{padding:7px 0 7px 20px; border-top:1px solid var(--rule); position:relative}
+.notice li:last-child{border-bottom:1px solid var(--rule)}
+.notice li::before{content:'—'; position:absolute; left:0; color:var(--dim)}
+.notice .row{display:flex; flex-wrap:wrap; gap:9px; justify-content:center}
+
+/* ══ RESPONSIVE ═══════════════════════════════════════════════ */
+@media (max-width:1040px){
+  :root{--rail-w:198px}
+}
+@media (max-width:880px){
+  .rail{display:none}
+  .statusbar .hide-sm{display:none}
+  .statusbar{gap:16px}
+}
+@media (max-width:620px){
+  .tab{padding:0 11px; font-size:13px}
+  .brand{font-size:15px; margin-right:12px}
+  .boot span{display:none}
+  .boot{padding:0 11px 0 12px}
+  .hero-fact{padding-right:18px; margin-right:18px}
+}
+
+/* ══ MOTION ═══════════════════════════════════════════════════
+   One orchestrated moment on this page: the cabinet boot log.
+   Everything else changes state instantly, the way editor UI does. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important}
+  .content{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="app">
+
+  <header class="topbar">
+    <a class="brand" href="#top">VARUN<i>//</i>SAINI</a>
+    <nav class="tabs" aria-label="Sections">
+      <a class="tab" href="#about"   data-tab="about">About</a>
+      <a class="tab" href="#work"    data-tab="work">Work</a>
+      <a class="tab" href="#tools"   data-tab="tools">Tools</a>
+      <a class="tab" href="#art"     data-tab="art">Art</a>
+      <a class="tab" href="#arcade"  data-tab="arcade">Arcade</a>
+      <a class="tab" href="#code"    data-tab="code">Code</a>
+      <a class="tab" href="#contact" data-tab="contact">Contact</a>
+    </nav>
+    <div class="topbar-end">
+      <a class="boot plain" href="mailto:varun2002saini19@gmail.com">Email <span>me</span></a>
+    </div>
+  </header>
+
+  <div class="workspace">
+
+    <nav class="rail" aria-label="Project index">
+      <div class="rail-group">
+        <button class="rail-head" type="button" aria-expanded="true">Games<span class="n">4</span></button>
+        <ul class="rail-list">
+          <li><a class="rail-link" href="#mega-bank-2"><span class="dot"></span>Mega Bank 2</a></li>
+          <li><a class="rail-link" href="#cash-hog"><span class="dot"></span>Cash Hog</a></li>
+          <li><a class="rail-link" href="#phantom-parry"><span class="dot wip"></span>Phantom Parry</a></li>
+          <li><a class="rail-link" href="#echolocate"><span class="dot wip"></span>EchoLocate</a></li>
+        </ul>
+      </div>
+      <div class="rail-group">
+        <button class="rail-head" type="button" aria-expanded="true">Editor tools<span class="n">7</span></button>
+        <ul class="rail-list">
+          <li><a class="rail-link" href="#tool-vanguard"><span class="dot"></span>Vanguard</a></li>
+          <li><a class="rail-link" href="#tool-viper"><span class="dot"></span>Viper</a></li>
+          <li><a class="rail-link" href="#tool-jemiah"><span class="dot"></span>Jemiah</a></li>
+          <li><a class="rail-link" href="#tool-eson"><span class="dot"></span>Eson</a></li>
+          <li><a class="rail-link" href="#tool-nezarr"><span class="dot"></span>Nezarr</a></li>
+          <li><a class="rail-link" href="#tool-hargen"><span class="dot"></span>Hargen</a></li>
+          <li><a class="rail-link" href="#tool-oneg"><span class="dot"></span>Oneg</a></li>
+        </ul>
+      </div>
+      <div class="rail-group">
+        <button class="rail-head" type="button" aria-expanded="true">Art &amp; other<span class="n">3</span></button>
+        <ul class="rail-list">
+          <li><a class="rail-link" href="#architectus"><span class="dot live"></span>Architectus</a></li>
+          <li><a class="rail-link" href="#final-boss"><span class="dot"></span>Final Boss</a></li>
+          <li><a class="rail-link" href="#artstation"><span class="dot"></span>3D artwork</a></li>
+        </ul>
+      </div>
+      <div class="rail-group">
+        <button class="rail-head" type="button" aria-expanded="true">Playable<span class="n">8</span></button>
+        <ul class="rail-list">
+          <li><a class="rail-link" href="#bt7274n"><span class="dot live"></span>BT-7274N</a></li>
+          <li><a class="rail-link" href="#drift-lander"><span class="dot live"></span>Drift Lander</a></li>
+          <li><a class="rail-link" href="#circuit-breaker"><span class="dot live"></span>Circuit Breaker</a></li>
+          <li><a class="rail-link" href="#overclock"><span class="dot live"></span>Overclock</a></li>
+          <li><a class="rail-link" href="#disco-race"><span class="dot live"></span>Disco Race</a></li>
+          <li><a class="rail-link" href="#refactor"><span class="dot live"></span>Refactor</a></li>
+          <li><a class="rail-link" href="#heap"><span class="dot live"></span>Heap</a></li>
+          <li><a class="rail-link" href="#mutex"><span class="dot live"></span>Mutex</a></li>
+        </ul>
+      </div>
+      <div class="rail-group">
+        <button class="rail-head" type="button" aria-expanded="true">Repositories<span class="n">10</span></button>
+        <ul class="rail-list">
+          <li><a class="rail-link" href="#repo-portfolio"><span class="dot live"></span>portfolio</a></li>
+          <li><a class="rail-link" href="#repo-bt"><span class="dot live"></span>bt-7274n</a></li>
+          <li><a class="rail-link" href="#repo-lander"><span class="dot live"></span>drift-lander</a></li>
+          <li><a class="rail-link" href="#repo-circuit"><span class="dot live"></span>circuit-breaker</a></li>
+          <li><a class="rail-link" href="#repo-overclock"><span class="dot live"></span>overclock</a></li>
+          <li><a class="rail-link" href="#repo-disco"><span class="dot live"></span>disco-race</a></li>
+          <li><a class="rail-link" href="#repo-refactor"><span class="dot live"></span>refactor</a></li>
+          <li><a class="rail-link" href="#repo-heap"><span class="dot live"></span>heap</a></li>
+          <li><a class="rail-link" href="#repo-mutex"><span class="dot live"></span>mutex</a></li>
+          <li><a class="rail-link" href="#repo-architectus"><span class="dot live"></span>architectus</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <main class="content" id="main" tabindex="-1">
+
+      <!-- ══ HERO ══════════════════════════════════════════ -->
+      <section class="hero section" id="top">
+        <div class="hero-id">
+          <span class="here">Varun Saini</span>
+          <span>Bangalore, India</span>
+          <span>Available for work</span>
+        </div>
+
+        <h1><span>Games, and the</span><span>tools that ship them.</span></h1>
+
+        <p class="hero-sub">Game developer and technical artist. Unity and C# by day, Blender at night.</p>
+
+        <dl class="hero-facts">
+          <div class="hero-fact"><dt>Now</dt><dd>Gameberry Labs</dd></div>
+          <div class="hero-fact"><dt>Shipped</dt><dd>Commercial slot games, solo</dd></div>
+          <div class="hero-fact"><dt>Built</dt><dd>7 Unity editor tools</dd></div>
+          <div class="hero-fact"><dt>Degree</dt><dd>B.Tech ECE, REVA University</dd></div>
+        </dl>
+
+        <div class="hero-actions">
+          <a class="btn btn-key" href="#work">Read the work</a>
+          <a class="btn" href="mailto:varun2002saini19@gmail.com">Email</a>
+          <a class="btn" href="https://github.com/iudexryze" rel="noopener">GitHub</a>
+          <a class="btn" href="https://linkedin.com/in/varun-saini" rel="noopener">LinkedIn</a>
+          <a class="btn" href="https://www.artstation.com/notryze" rel="noopener">ArtStation</a>
+        </div>
+
+        <p class="hero-tail">Further down: seven editor tools I wrote to unblock my own projects, 3D and environment work, and an <a href="#arcade">arcade of eight browser games</a> whose source is the point.</p>
+      </section>
+
+      <!-- ══ ABOUT ═════════════════════════════════════════ -->
+      <section class="section" id="about">
+        <div class="section-bar">
+          <h2>About</h2>
+        </div>
+
+        <div class="about-grid">
+          <div class="about-prose">
+            <p>I am a game developer and technical artist in Bangalore, currently at <strong>Gameberry Labs</strong> building games at scale. Before that I was at <strong>ZVKY Design Studio</strong>, where I shipped two commercial slot games solo — gameplay systems, shader graphs, and the whole delivery pipeline.</p>
+            <p>The work I care about sits between code and craft. In practice that means writing C# during the day and sculpting environments in Blender at night, and it means that when a project stalls on something unglamorous — a build that got too big, a dependency graph nobody can read — I tend to go build the tool that answers it. That is where the <a href="#tools">seven editor windows below</a> came from.</p>
+            <p>Right now most of my own time goes into <strong>Project Phantom Parry</strong>, an eldritch horror game where I own the story, the design, the code and the sound.</p>
+          </div>
+
+          <div>
+            <ul class="track">
+              <li>
+                <span class="when">Mar 2026 —</span>
+                <span class="what"><b>Gameberry Labs</b><span>Game developer</span></span>
+              </li>
+              <li>
+                <span class="when">Prior</span>
+                <span class="what"><b>ZVKY Design Studio</b><span>Game developer — two slot titles shipped solo</span></span>
+              </li>
+              <li>
+                <span class="when">Degree</span>
+                <span class="what"><b>REVA University</b><span>B.Tech, Electronics &amp; Computer Engineering</span></span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="stack-group">
+            <h4>Engine</h4>
+            <p>Unity, C#, shader graph, Addressables, editor tooling, animation systems</p>
+          </div>
+          <div class="stack-group">
+            <h4>3D</h4>
+            <p>Blender, environment design, geometry nodes, shading and lookdev, modelling</p>
+          </div>
+          <div class="stack-group">
+            <h4>Also</h4>
+            <p>C and C++, Java and Kotlin, PostgreSQL, TypeScript and React, sound design</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ WORK ══════════════════════════════════════════ -->
+      <section class="section" id="work">
+        <div class="section-bar">
+          <h2>Work</h2>
+          <span class="count">5 entries</span>
+        </div>
+
+        <article class="entry" id="mega-bank-2">
+          <div class="entry-head">
+            <span class="entry-kind">Game</span>
+            <h3>Mega Bank 2</h3>
+            <span class="pill shipped">Shipped</span>
+          </div>
+          <div class="entry-body">
+            <p>A commercial slot game built and shipped solo at ZVKY Design Studio. I owned the whole pipeline — gameplay systems, UI, shader effects, animation, and build delivery — from first commit to live release.</p>
+            <dl class="props">
+              <dt>Role</dt><dd>Solo developer</dd>
+              <dt>Stack</dt><dd>Unity, C#, shader graph</dd>
+              <dt>Studio</dt><dd>ZVKY Design Studio</dd>
+              <dt>Scope</dt><dd>Gameplay, UI, VFX, animation, release builds</dd>
+            </dl>
+          </div>
+        </article>
+
+        <article class="entry" id="cash-hog">
+          <div class="entry-head">
+            <span class="entry-kind">Game</span>
+            <h3>Cash Hog</h3>
+            <span class="pill shipped">Shipped</span>
+          </div>
+          <div class="entry-body">
+            <p>A second commercial slot title at ZVKY, same solo ownership. Shipping two of these back to back is where most of what I know about release discipline came from — art budgets, platform builds, and the difference between a feature being done and being shippable.</p>
+            <dl class="props">
+              <dt>Role</dt><dd>Solo developer</dd>
+              <dt>Stack</dt><dd>Unity, C#, shader graph</dd>
+              <dt>Studio</dt><dd>ZVKY Design Studio</dd>
+            </dl>
+          </div>
+        </article>
+
+        <article class="entry" id="phantom-parry">
+          <div class="entry-head">
+            <span class="entry-kind">Game</span>
+            <h3>Project Phantom Parry</h3>
+            <span class="pill wip">In development</span>
+          </div>
+          <div class="entry-body">
+            <p>An eldritch horror game I own end to end — story, design, code, and sound. Built to be atmospheric first: the systems exist to make a place feel wrong, not to fill a feature list.</p>
+            <dl class="props">
+              <dt>Role</dt><dd>Solo — writing, game design, development, sound design</dd>
+              <dt>Stack</dt><dd>Unity, C#, Blender, shader graph</dd>
+              <dt>Status</dt><dd>In active development</dd>
+            </dl>
+            <div class="actions">
+              <span class="unavailable">Devlog not public yet</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="entry" id="echolocate">
+          <div class="entry-head">
+            <span class="entry-kind">Game</span>
+            <h3>EchoLocate</h3>
+            <span class="pill wip">In development</span>
+          </div>
+          <div class="entry-body">
+            <p>A stealth game about escaping a district in the dark, played by a protagonist who has been blind since birth. You tap to send out an echolocation pulse; whatever it touches lights up and decays, and you build a map of a place you cannot see from what came back.</p>
+            <p>The whole design hangs off one trade: the pulse is both how you see and how you are seen. Everything hunting you hears it too, so every look costs you position. Decoys exist because without them the correct play was to stand still and make no noise, and a stealth game whose optimal move is to do nothing is not a game.</p>
+            <dl class="props">
+              <dt>Role</dt><dd>Solo &mdash; design, systems, code, shaders, audio</dd>
+              <dt>Stack</dt><dd>Unity 6000.5.5f1, URP, C#</dd>
+              <dt>Systems</dt><dd>Pulse echolocation and highlight shader, sight/hearing stealth split, three enemy archetypes, BSP + MST level generation, four-part dynamic weather</dd>
+              <dt>Scope</dt><dd>Twelve levels, PC, keyboard/mouse and gamepad</dd>
+              <dt>Progress</dt><dd>109 commits across 18 PRs since 27&nbsp;July 2026</dd>
+            </dl>
+            <div class="actions">
+              <a class="btn btn-go" href="devlog/echolocate/">Read the devlog</a>
+              <span class="unavailable">Repository private</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="entry">
+          <div class="entry-head">
+            <span class="entry-kind">Game</span>
+            <h3>BT-7274N</h3>
+            <span class="pill live">Playable now</span>
+          </div>
+          <div class="entry-body">
+            <p>A turn-based terminal roguelike. You type combat commands, the enemy answers, and the waves keep coming — twelve commands across attack, defence and support, all balanced against four competing resources you can never quite afford to spend.</p>
+            <p>The interesting problem was making a text interface feel like combat. Every command resolves into a readable console beat, wave modifiers change the rules rather than just the numbers, and a battery minigame runs alongside the fight so there is always a second decision competing for your attention.</p>
+            <dl class="props">
+              <dt>Role</dt><dd>Solo — design, systems, code, interface, copy</dd>
+              <dt>Stack</dt><dd>Vanilla JavaScript, Canvas, no dependencies</dd>
+              <dt>Systems</dt><dd>Infinite wave scaling, four-resource economy, cooldowns, four wave modifiers, boss encounters</dd>
+              <dt>Build</dt><dd>One self-contained HTML file, ~93&nbsp;KB, no build step</dd>
+              <dt>Note</dt><dd><em>Unofficial fan project, set in the Titanfall universe. Not affiliated with or endorsed by Respawn Entertainment or EA.</em></dd>
+            </dl>
+            <div class="actions">
+              <button class="btn btn-go" type="button" data-launch="bt-7274n">Play in browser</button>
+              <a class="btn" href="https://github.com/iudexryze/portfolio/tree/main/play/bt-7274n">Source</a>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ══ TOOLS ═════════════════════════════════════════ -->
+      <section class="section" id="tools">
+        <div class="section-bar">
+          <h2>Editor tools</h2>
+          <span class="count">7 tools</span>
+        </div>
+        <p class="section-note">Seven Unity editor windows I built to answer questions the engine will not answer for you: what is actually in this build, what is duplicated, what is broken, and what nothing references any more. All internal so far.</p>
+
+        <div class="tools">
+
+          <div class="tool" id="tool-vanguard">
+            <button class="tool-btn" type="button" aria-expanded="true" aria-controls="p-vanguard">
+              <span class="tool-name">Vanguard</span>
+              <span class="tool-what">Addressable asset integrity, four scan passes</span>
+              <span class="chev"></span>
+            </button>
+            <div class="tool-panel" id="p-vanguard">
+              <p>Validates Addressables from four angles at once: GUID and address health, hard references leaking into scenes, the same asset living in multiple groups, and addressables that end up bundled as direct prefab dependencies. Exports the whole audit as Markdown or CSV with size breakdowns.</p>
+              <dl class="props">
+                <dt>Passes</dt><dd>Addressable validator, scene ref checker, duplicate finder, prefab ref checker</dd>
+                <dt>Output</dt><dd>Markdown or CSV report with per-asset size</dd>
+              </dl>
+            </div>
+          </div>
+
+          <div class="tool" id="tool-viper">
+            <button class="tool-btn" type="button" aria-expanded="false" aria-controls="p-viper">
+              <span class="tool-name">Viper</span>
+              <span class="tool-what">Finds assets nothing in the project references</span>
+              <span class="chev"></span>
+            </button>
+            <div class="tool-panel" id="p-viper" hidden>
+              <p>Walks the full dependency graph and surfaces every asset with no reference from code, scenes, or other assets. Results come back filterable and sortable with file sizes, per-row accent bars for reference state, and a dismiss-filtered action. Scan results persist between sessions so a long audit survives a restart.</p>
+              <dl class="props">
+                <dt>Method</dt><dd>Full AssetDatabase dependency graph</dd>
+                <dt>Interface</dt><dd>IMGUI, filterable and sortable, persistent results</dd>
+              </dl>
+            </div>
+          </div>
+
+          <div class="tool" id="tool-jemiah">
+            <button class="tool-btn" type="button" aria-expanded="false" aria-controls="p-jemiah">
+              <span class="tool-name">Jemiah</span>
+              <span class="tool-what">Addressables auditor with one-click fixes</span>
+              <span class="chev"></span>
+            </button>
+            <div class="tool-panel" id="p-jemiah" hidden>
+              <p>Detects implicit dependency duplication across Addressable groups, and finds orphaned addresses never invoked anywhere in code by regex-scanning every <code>.cs</code> file. Promote to Shared moves duplicates into a shared group in one click; Purge Orphans clears dead registry entries.</p>
+              <dl class="props">
+                <dt>Detects</dt><dd>Implicit duplication across groups, orphaned addresses</dd>
+                <dt>Fixes</dt><dd>Promote to shared group, purge orphan entries</dd>
+                <dt>Output</dt><dd>CSV export, per-group size breakdown</dd>
+              </dl>
+            </div>
+          </div>
+
+          <div class="tool" id="tool-eson">
+            <button class="tool-btn" type="button" aria-expanded="false" aria-controls="p-eson">
+              <span class="tool-name">Eson</span>
+              <span class="tool-what">Missing reference scanner for prefabs and SOs</span>
+              <span class="chev"></span>
+            </button>
+            <div class="tool-panel" id="p-eson" hidden>
+              <p>Scans every prefab and ScriptableObject for broken serialized references — missing MonoBehaviour scripts and object references pointing at deleted assets. Loads prefabs safely through PrefabUtility rather than instantiating them, catches both missing scripts and null instance ID refs, and pings straight to the asset on click.</p>
+              <dl class="props">
+                <dt>Detects</dt><dd>Missing scripts, null instance ID references</dd>
+                <dt>Built on</dt><dd>SerializedProperty traversal, PrefabUtility</dd>
+              </dl>
+            </div>
+          </div>
+
+          <div class="tool" id="tool-nezarr">
+            <button class="tool-btn" type="button" aria-expanded="false" aria-controls="p-nezarr">
+              <span class="tool-name">Nezarr</span>
+              <span class="tool-what">Reads the build report out of Editor.log</span>
+              <span class="chev"></span>
+            </button>
+            <div class="tool-panel" id="p-nezarr" hidden>
+              <p>Parses the build report Unity writes into Editor.log after every build, then breaks asset mass down by category with proportional size bars and lists every included asset by size with type-coloured badges and percentage share. Locates Editor.log automatically on macOS, Windows and Linux.</p>
+              <dl class="props">
+                <dt>Source</dt><dd>Editor.log build report, auto-located per platform</dd>
+                <dt>Shows</dt><dd>Category mass breakdown, per-asset size and share, build date</dd>
+              </dl>
+            </div>
+          </div>
+
+          <div class="tool" id="tool-hargen">
+            <button class="tool-btn" type="button" aria-expanded="false" aria-controls="p-hargen">
+              <span class="tool-name">Hargen</span>
+              <span class="tool-what">Texture import auditor with batch fixes</span>
+              <span class="chev"></span>
+            </button>
+            <div class="tool-panel" id="p-hargen" hidden>
+              <p>Flags every Texture2D in the project for the import mistakes that quietly cost memory: Read/Write left enabled, which doubles runtime cost; uncompressed formats; anything over 2K; and missing mipmaps on non-UI textures. Selected rows can be fixed in batch with automatic reimport.</p>
+              <dl class="props">
+                <dt>Flags</dt><dd>Read/Write enabled, uncompressed format, over 2K, missing mipmaps</dd>
+                <dt>Fixes</dt><dd>Batch fix R/W and compress, with auto-reimport</dd>
+              </dl>
+            </div>
+          </div>
+
+          <div class="tool" id="tool-oneg">
+            <button class="tool-btn" type="button" aria-expanded="false" aria-controls="p-oneg">
+              <span class="tool-name">Oneg</span>
+              <span class="tool-what">Two-way dependency browser</span>
+              <span class="chev"></span>
+            </button>
+            <div class="tool-panel" id="p-oneg" hidden>
+              <p>Pick any asset and see both directions at once: everything it pulls in, and everything that pulls it in, side by side. Direct dependencies sit at full opacity and indirect ones drop back. Double-click any row to drill into that asset's own web, with a recursive/direct toggle and independent search per panel.</p>
+              <dl class="props">
+                <dt>Shows</dt><dd>Forward and reverse dependencies, direct vs indirect</dd>
+                <dt>Navigation</dt><dd>Double-click to drill in, per-panel search, recursive toggle</dd>
+              </dl>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ══ ART & OTHER ═══════════════════════════════════ -->
+      <section class="section" id="art">
+        <div class="section-bar">
+          <h2>Art &amp; other</h2>
+          <span class="count">3 entries &middot; 10 renders</span>
+        </div>
+
+        <article class="entry" id="architectus">
+          <div class="entry-head">
+            <span class="entry-kind">Extension</span>
+            <h3>Architectus</h3>
+            <span class="pill live">Open source</span>
+          </div>
+          <div class="entry-body">
+            <p>A VS Code extension that rebuilds the editor as a cyberpunk workstation — a control panel sidebar, glitch effects on keypress, per-token syntax glow, custom cursors and scanline overlays, all injected live into the running editor.</p>
+            <dl class="props">
+              <dt>Role</dt><dd>Solo</dd>
+              <dt>Stack</dt><dd>JavaScript, VS Code API, live CSS injection</dd>
+              <dt>Licence</dt><dd>Open source</dd>
+            </dl>
+            <div class="actions">
+              <a class="btn" href="https://github.com/iudexryze/architectus">Source</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="entry" id="final-boss">
+          <div class="entry-head">
+            <span class="entry-kind">3D art</span>
+            <h3>Final Boss</h3>
+            <span class="pill shipped">Challenge entry</span>
+          </div>
+          <div class="entry-body">
+            <p>An entry for the Pwnisher community challenge, a global 3D art event run to a shared brief. Built with Aman Singh — a high-fidelity boss scene pushed as far as real-time rendering would take it.</p>
+            <dl class="props">
+              <dt>Role</dt><dd>Co-creator with Aman Singh</dd>
+              <dt>Stack</dt><dd>Blender, shaders, environment art</dd>
+              <dt>Context</dt><dd>Pwnisher community challenge</dd>
+            </dl>
+            <div class="actions">
+              <a class="btn" href="https://www.artstation.com/artwork/1xaKn2" rel="noopener">View on ArtStation</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="entry" id="artstation">
+          <div class="entry-head">
+            <span class="entry-kind">3D art</span>
+            <h3>Environment &amp; shader work</h3>
+            <span class="pill shipped">Ongoing</span>
+          </div>
+          <div class="entry-body">
+            <p>An ongoing body of 3D work — environment design, shader experiments, and procedural scenes driven by geometry nodes. This is the night half of the job, and it is where most of what I know about lighting and material response actually got learned.</p>
+            <dl class="props">
+              <dt>Stack</dt><dd>Blender, geometry nodes, shader editor</dd>
+              <dt>Subjects</dt><dd>Environment design, procedural scenes, material studies</dd>
+              <dt>Body of work</dt><dd>52 pieces on ArtStation, 2023 &ndash; 2024</dd>
+            </dl>
+
+            <!-- Ten of the fifty-two, picked for the dark interiors the
+                 rest of this page is built out of. -->
+            <div class="gallery">
+              <a class="shot" href="https://www.artstation.com/artwork/rJxEXL" rel="noopener">
+                <img src="assets/art/spatial-ruins.jpg" alt="Spatial Ruins — a cavernous ruined interior lit from a single opening" loading="lazy" decoding="async">
+                <figcaption>Spatial Ruins<span class="yr">2024</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/WByNNN" rel="noopener">
+                <img src="assets/art/horror-in-space-station.jpg" alt="Horror in space station — a dim corridor aboard an abandoned station" loading="lazy" decoding="async">
+                <figcaption>Horror in Space Station<span class="yr">2024</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/29w48v" rel="noopener">
+                <img src="assets/art/asylum-escape.jpg" alt="Asylum Escape — a corridor lit by failing overhead lights" loading="lazy" decoding="async">
+                <figcaption>Asylum Escape<span class="yr">2024</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/PXwyVn" rel="noopener">
+                <img src="assets/art/escaping-the-dead.jpg" alt="Escaping the Dead — an overgrown street scene at night" loading="lazy" decoding="async">
+                <figcaption>Escaping the Dead<span class="yr">2024</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/04woay" rel="noopener">
+                <img src="assets/art/witch-house.jpg" alt="Witch house — a lantern-lit cabin interior" loading="lazy" decoding="async">
+                <figcaption>Witch House<span class="yr">2024</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/1xaKn2" rel="noopener">
+                <img src="assets/art/bossfight.jpg" alt="BossFight — the Pwnisher challenge boss scene" loading="lazy" decoding="async">
+                <figcaption>BossFight<span class="yr">2023</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/xDvxKY" rel="noopener">
+                <img src="assets/art/cannibal-cave.jpg" alt="Cannibal Cave — a firelit cave interior" loading="lazy" decoding="async">
+                <figcaption>Cannibal Cave<span class="yr">2023</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/046YDe" rel="noopener">
+                <img src="assets/art/open-area-in-backrooms.jpg" alt="Open area in Backrooms — a vast fluorescent-lit empty room" loading="lazy" decoding="async">
+                <figcaption>Open Area in Backrooms<span class="yr">2023</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/m8EQv8" rel="noopener">
+                <img src="assets/art/ruins.jpg" alt="Ruins — a weathered stone structure in low light" loading="lazy" decoding="async">
+                <figcaption>Ruins<span class="yr">2023</span></figcaption>
+              </a>
+              <a class="shot" href="https://www.artstation.com/artwork/49a50n" rel="noopener">
+                <img src="assets/art/ancient-spell-book.jpg" alt="Ancient Spell Book — a lit book on a dark surface" loading="lazy" decoding="async">
+                <figcaption>Ancient Spell Book<span class="yr">2023</span></figcaption>
+              </a>
+            </div>
+
+            <div class="actions">
+              <a class="btn" href="https://www.artstation.com/notryze" rel="noopener">All 52 on ArtStation</a>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ══ ARCADE ════════════════════════════════════════ -->
+      <section class="section" id="arcade">
+        <div class="section-bar">
+          <h2>Arcade</h2>
+          <span class="count">8 playable</span>
+        </div>
+        <p class="section-note">Side projects, not the main event &mdash; but they are the fastest way to read how I actually write code. Eight small games, each self-contained in a single HTML file with no build step and no dependencies. They run in this page: nothing installs, nothing downloads. Every one is short enough to read in an afternoon, which is rather the point.</p>
+
+        <!-- The one loud element on the page: a game you can actually play. -->
+        <div class="cabinet" id="bt7274n">
+          <div class="cab-bar">
+            <span class="cab-lights"><i></i><i></i><i></i></span>
+            <span class="name">BT-7274 // VANGUARD NEURAL LINK</span>
+            <span class="end"><span>NO INSTALL</span></span>
+          </div>
+
+          <div class="cab-stage">
+            <div class="attract" data-attract>
+              <div class="attract-log" data-log aria-hidden="true"></div>
+              <button class="cab-launch" type="button" data-launch="bt-7274n">Establish neural link</button>
+              <p class="cab-hint">Runs in this tab &middot; keyboard only &middot; <kbd>Esc</kbd> to exit</p>
+            </div>
+          </div>
+
+          <div class="cab-foot">
+            <span>Terminal roguelike</span>
+            <span>Vanilla JS, zero dependencies</span>
+            <span>One self-contained file</span>
+            <a class="end" href="#drift-lander">Seven more below</a>
+          </div>
+        </div>
+
+        <div class="arcade">
+
+          <article class="game" id="drift-lander">
+            <button class="game-screen" type="button" data-launch="drift-lander" aria-label="Play Drift Lander">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <circle cx="28" cy="18" r="1" fill="#EDE8DE" opacity=".5"/>
+                <circle cx="118" cy="12" r="1" fill="#EDE8DE" opacity=".4"/>
+                <circle cx="64" cy="26" r="1" fill="#EDE8DE" opacity=".35"/>
+                <circle cx="142" cy="30" r="1" fill="#EDE8DE" opacity=".5"/>
+                <path d="M0,100 L0,74 L20,62 L36,76 L52,68 L66,82 L96,82 L112,62 L132,76 L160,68 L160,100 Z" fill="#1B1917" stroke="#443E36"/>
+                <line x1="66" y1="82" x2="96" y2="82" stroke="#86C232" stroke-width="2.5"/>
+                <polygon points="80,40 86,52 74,52" fill="#EDE8DE"/>
+                <path d="M77,54 L74,58 M83,54 L86,58" stroke="#443E36" stroke-width="1.6"/>
+                <path d="M80,56 L80,64" stroke="#F0902E" stroke-width="2.5" opacity=".8"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Physics arcade</p>
+              <h3>Drift Lander</h3>
+              <p>Procedural terrain, a fuel budget that never covers the descent, and pads that pay more the narrower they get. Fixed-timestep physics so a 144&nbsp;Hz panel plays the same as a laptop.</p>
+              <p class="game-meta">
+                <span>Touch or keyboard</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="circuit-breaker">
+            <button class="game-screen" type="button" data-launch="circuit-breaker" aria-label="Play Circuit Breaker">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <g stroke-width="3" stroke-linecap="round" fill="none">
+                  <g stroke="#86C232">
+                    <path d="M52,30 L68,30 M60,30 L60,46"/>
+                    <path d="M84,30 L100,30 M92,30 L92,46"/>
+                    <path d="M60,46 L60,62 M60,54 L76,54"/>
+                    <path d="M92,46 L92,62"/>
+                    <path d="M76,54 L92,54"/>
+                  </g>
+                  <g stroke="#4A443A">
+                    <path d="M28,54 L44,54 M36,54 L36,70"/>
+                    <path d="M108,54 L124,54 M116,54 L116,38"/>
+                    <path d="M60,70 L60,84 M60,78 L76,78"/>
+                  </g>
+                </g>
+                <rect x="56" y="26" width="8" height="8" fill="#F0902E"/>
+                <circle cx="92" cy="62" r="4" fill="#86C232"/>
+                <circle cx="36" cy="70" r="4" fill="none" stroke="#4A443A" stroke-width="2"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Routing puzzle</p>
+              <h3>Circuit Breaker</h3>
+              <p>Rotate every segment until the board goes live. Boards come out of a randomised spanning tree, so there is always a solution and never an unreachable corner &mdash; and the shuffle itself sets the par.</p>
+              <p class="game-meta">
+                <span>Touch or keyboard</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="overclock">
+            <button class="game-screen" type="button" data-launch="overclock" aria-label="Play Overclock">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <g stroke="#443E36" opacity=".45">
+                  <path d="M32,0 L32,100 M64,0 L64,100 M96,0 L96,100 M128,0 L128,100"/>
+                  <path d="M0,25 L160,25 M0,50 L160,50 M0,75 L160,75"/>
+                </g>
+                <rect x="106" y="24" width="12" height="12" fill="none" stroke="#F0902E" stroke-width="2.5"/>
+                <rect x="34" y="66" width="12" height="12" fill="none" stroke="#F0902E" stroke-width="2.5"/>
+                <polygon points="122,72 130,80 122,88 114,80" fill="#D9484B"/>
+                <rect x="42" y="26" width="11" height="11" fill="#86C232"/>
+                <g fill="#EDE8DE">
+                  <rect x="62" y="56" width="3" height="3" opacity=".2"/>
+                  <rect x="68" y="54" width="4" height="4" opacity=".35"/>
+                  <rect x="74" y="52" width="5" height="5" opacity=".55"/>
+                  <circle cx="84" cy="50" r="6.5"/>
+                </g>
+                <circle cx="84" cy="50" r="3" fill="#86C232"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Arena dodger</p>
+              <h3>Overclock</h3>
+              <p>Scoring is the thing that speeds the arena up. Every packet raises the clock everything hunting you runs on, and the throttle that saves you is paid for out of the same clock.</p>
+              <p class="game-meta">
+                <span>Touch or keyboard</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="disco-race">
+            <button class="game-screen" type="button" data-launch="disco-race" aria-label="Play Disco Race">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <rect x="46" y="0" width="68" height="100" fill="#141311"/>
+                <g fill="#17150F">
+                  <rect x="46" y="0" width="13.6" height="14"/><rect x="73.2" y="0" width="13.6" height="14"/>
+                  <rect x="100.4" y="0" width="13.6" height="14"/><rect x="59.6" y="14" width="13.6" height="14"/>
+                  <rect x="86.8" y="14" width="13.6" height="14"/><rect x="46" y="28" width="13.6" height="14"/>
+                  <rect x="73.2" y="28" width="13.6" height="14"/><rect x="100.4" y="28" width="13.6" height="14"/>
+                  <rect x="59.6" y="42" width="13.6" height="14"/><rect x="86.8" y="42" width="13.6" height="14"/>
+                  <rect x="46" y="56" width="13.6" height="14"/><rect x="73.2" y="56" width="13.6" height="14"/>
+                  <rect x="100.4" y="56" width="13.6" height="14"/><rect x="59.6" y="70" width="13.6" height="14"/>
+                  <rect x="86.8" y="70" width="13.6" height="14"/>
+                </g>
+                <g stroke="#3A352E" stroke-width="1" stroke-dasharray="5 6">
+                  <path d="M59.6,0 L59.6,100 M73.2,0 L73.2,100 M86.8,0 L86.8,100 M100.4,0 L100.4,100"/>
+                </g>
+                <g fill="#8A6FD8" opacity=".75">
+                  <rect x="26" y="16" width="9" height="11"/><rect x="26" y="58" width="9" height="11"/>
+                  <rect x="125" y="37" width="9" height="11"/>
+                </g>
+                <rect x="63" y="16" width="14" height="21" fill="#1E1B18" stroke="#8A6FD8" stroke-width="1.5"/>
+                <rect x="93" y="34" width="14" height="21" fill="#1E1B18" stroke="#5A5348" stroke-width="1.5"/>
+                <rect x="76.5" y="46" width="7" height="7" fill="#86C232" transform="rotate(45 80 49.5)"/>
+                <rect x="73" y="66" width="14" height="21" fill="#EDE8DE" stroke="#F0902E" stroke-width="1.5"/>
+                <rect x="76" y="69" width="8" height="5" fill="#86C232"/>
+                <rect x="66" y="72" width="3" height="9" fill="#86C232"/>
+                <rect x="91" y="72" width="3" height="9" fill="#86C232"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Rhythm racer</p>
+              <h3>Disco Race</h3>
+              <p>A lane racer with a metronome under it. Steering keeps you alive; tapping on the beat is the only thing that makes you fast, so the two demands pull against each other at speed.</p>
+              <p class="game-meta">
+                <span>Touch or keyboard</span><span>124 BPM</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="refactor">
+            <button class="game-screen" type="button" data-launch="refactor" aria-label="Play Refactor">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <g stroke="#86C232" stroke-width="1.6" opacity=".55">
+                  <path d="M40,26 L70,18 M70,18 L104,30 M104,30 L118,58 M118,58 L86,74 M86,74 L48,66 M48,66 L40,26"/>
+                  <path d="M70,18 L86,74"/>
+                </g>
+                <g stroke="#F0902E" stroke-width="1.9">
+                  <path d="M40,26 L118,58 M104,30 L48,66"/>
+                </g>
+                <g fill="#1B1917" stroke="#EDE8DE" stroke-width="1.8">
+                  <circle cx="40" cy="26" r="5"/><circle cx="70" cy="18" r="5"/>
+                  <circle cx="104" cy="30" r="5"/><circle cx="118" cy="58" r="5"/>
+                  <circle cx="86" cy="74" r="5"/><circle cx="48" cy="66" r="5"/>
+                </g>
+                <circle cx="70" cy="18" r="9" fill="none" stroke="#F0902E" stroke-width="1.2" opacity=".6"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Graph puzzle</p>
+              <h3>Refactor</h3>
+              <p>Drag the nodes until no edge crosses another. Boards are generated at a layout that is already flat and then scrambled, so a solution is known to exist rather than hoped for.</p>
+              <p class="game-meta">
+                <span>Drag</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="heap">
+            <button class="game-screen" type="button" data-launch="heap" aria-label="Play Heap">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <path d="M80,0 L80,100" stroke="#322E28" stroke-width="1" stroke-dasharray="3 6"/>
+                <g stroke-width="1.8" fill="none">
+                  <rect x="46" y="84" width="68" height="10" stroke="#86C232"/>
+                  <rect x="49" y="72" width="62" height="10" stroke="#9DC53A"/>
+                  <rect x="53" y="60" width="54" height="10" stroke="#B4C63C"/>
+                  <rect x="58" y="48" width="45" height="10" stroke="#CBB93C"/>
+                  <rect x="62" y="36" width="37" height="10" stroke="#DFA637"/>
+                  <rect x="66" y="24" width="29" height="10" stroke="#F0902E"/>
+                </g>
+                <rect x="112" y="10" width="29" height="10" fill="#1B1917" stroke="#F0902E" stroke-width="2"/>
+                <path d="M126,22 L126,34" stroke="#F0902E" stroke-width="1" opacity=".45"/>
+                <rect x="20" y="70" width="12" height="9" fill="none" stroke="#D9484B" stroke-width="1.6" transform="rotate(-22 26 74)"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Precision stacker</p>
+              <h3>Heap</h3>
+              <p>A block slides across the top of the tower; tap to drop it. Whatever hangs over is cut off for good, so only a dead-centre landing ever buys any width back.</p>
+              <p class="game-meta">
+                <span>One tap</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+          <article class="game" id="mutex">
+            <button class="game-screen" type="button" data-launch="mutex" aria-label="Play Mutex">
+              <svg viewBox="0 0 160 100" aria-hidden="true">
+                <rect width="160" height="100" fill="#0E0D0C"/>
+                <g fill="none" stroke="#3A352E" stroke-width="6">
+                  <circle cx="80" cy="34" r="24"/><circle cx="59" cy="66" r="24"/><circle cx="101" cy="66" r="24"/>
+                </g>
+                <g fill="none" stroke="#4A443A" stroke-width="1">
+                  <circle cx="80" cy="34" r="24"/><circle cx="59" cy="66" r="24"/><circle cx="101" cy="66" r="24"/>
+                </g>
+                <circle cx="80" cy="10" r="7" fill="#17150F" stroke="#86C232" stroke-width="2.4"/>
+                <circle cx="80" cy="10" r="2.6" fill="#86C232"/>
+                <circle cx="35" cy="66" r="7" fill="#17150F" stroke="#F0902E" stroke-width="2.4"/>
+                <circle cx="35" cy="66" r="2.6" fill="#F0902E"/>
+                <path d="M35,66 m0,-11 a11,11 0 0 1 8,19" fill="none" stroke="#EDE8DE" stroke-width="2"/>
+                <circle cx="119" cy="76" r="7" fill="#17150F" stroke="#86C232" stroke-width="2.4"/>
+                <circle cx="119" cy="76" r="2.6" fill="#86C232"/>
+              </svg>
+              <span class="go"><span>Play</span></span>
+            </button>
+            <div class="game-plate">
+              <p class="game-kind"><span class="dot"></span>Timing game</p>
+              <h3>Mutex</h3>
+              <p>Runners lap rings that overlap, and where two rings cross only one may pass. Tap to hold one back &mdash; but a held runner is spending patience, so the lock is the scarce thing.</p>
+              <p class="game-meta">
+                <span>One tap</span><span>Reflows</span>
+              </p>
+            </div>
+          </article>
+
+        </div>
+      </section>
+
+      <!-- ══ CODE ══════════════════════════════════════════ -->
+      <section class="section" id="code">
+        <div class="section-bar">
+          <h2>Code</h2>
+          <span class="count">10 repositories</span>
+        </div>
+        <p class="section-note">Everything above that has readable source, and where to read it. The arcade games each live in <code>play/</code> in this repository so the site can serve them directly; each is a single file with no build step, so a folder is a complete, runnable copy and splitting one into its own repository is a one-command job.</p>
+
+        <div class="repos">
+
+          <a class="repo" id="repo-portfolio" href="https://github.com/iudexryze/portfolio" rel="noopener">
+            <span class="n">iudexryze<span class="slash">/</span>portfolio</span>
+            <span class="d">This site, and the eight playables it serves. One static page, no framework.</span>
+            <span class="t">HTML</span>
+            <span class="go">GitHub &rarr;</span>
+          </a>
+
+          <a class="repo" id="repo-bt" href="https://github.com/iudexryze/portfolio/tree/main/play/bt-7274n" rel="noopener">
+            <span class="n">play<span class="slash">/</span>bt-7274n</span>
+            <span class="d">Terminal roguelike &mdash; wave scaling, four-resource economy, boss encounters. The standalone repository is not public; this is the copy the site runs.</span>
+            <span class="t">JavaScript</span>
+            <span class="go">Read source &rarr;</span>
+          </a>
+
+          <a class="repo" id="repo-lander" href="https://github.com/iudexryze/portfolio/tree/main/play/drift-lander" rel="noopener">
+            <span class="n">play<span class="slash">/</span>drift-lander</span>
+            <span class="d">Midpoint-displacement terrain, fixed-timestep physics, and a landing check measured at the feet rather than the hull.</span>
+            <span class="t">JavaScript</span>
+            <span class="go">Read source &rarr;</span>
+          </a>
+
+          <a class="repo" id="repo-circuit" href="https://github.com/iudexryze/portfolio/tree/main/play/circuit-breaker" rel="noopener">
+            <span class="n">play<span class="slash">/</span>circuit-breaker</span>
+            <span class="d">Boards generated as randomised spanning trees, so every shuffle is solvable and the shuffle itself yields the par score.</span>
+            <span class="t">JavaScript</span>
+            <span class="go">Read source &rarr;</span>
+          </a>
+
+          <a class="repo" id="repo-overclock" href="https://github.com/iudexryze/portfolio/tree/main/play/overclock" rel="noopener">
+            <span class="n">play<span class="slash">/</span>overclock</span>
+            <span class="d">One number &mdash; the clock &mdash; is the score multiplier, the enemy speed and the cost of braking, which is the whole design.</span>
+            <span class="t">JavaScript</span>
+            <span class="go">Read source &rarr;</span>
+          </a>
+
+          <a class="repo" id="repo-disco" href="https://github.com/iudexryze/disco-race" rel="noopener">
+            <span class="n">iudexryze<span class="slash">/</span>disco-race</span>
+            <span class="d">Rhythm racer. One 124&nbsp;BPM counter drives the floor, the spawns and the scoring window, so the picture and the score can never disagree.</span>
+            <span class="t">JavaScript</span>
+            <span class="go">GitHub &rarr;</span>
+          </a>
+
+          <a class="repo" id="repo-refactor" href="https://github.com/iudexryze/refactor" rel="noopener">
+            <span class="n">iudexryze<span class="slash">/</span>refactor</span>
+            <span class="d">Planarity puzzle. Boards are built at a flat layout and then scrambled, which is what makes every one of them provably solvable.</span>
+            <span class="t">JavaScript</span>
+            <span class="go">GitHub &rarr;</span>
+          </a>
+
+          <a class="repo" id="repo-heap" href="https://github.com/iudexryze/heap" rel="noopener">
+            <span class="n">iudexryze<span class="slash">/</span>heap</span>
+            <span class="d">Stacking game. Blocks are stored as fractions of the canvas, so rotating the phone rescales a run instead of ending it.</span>
+            <span class="t">JavaScript</span>
+            <span class="go">GitHub &rarr;</span>
+          </a>
+
+          <a class="repo" id="repo-mutex" href="https://github.com/iudexryze/mutex" rel="noopener">
+            <span class="n">iudexryze<span class="slash">/</span>mutex</span>
+            <span class="d">Timing game. Collision is plain proximity, so the danger is exactly where the drawing says it is and there is no invisible rule.</span>
+            <span class="t">JavaScript</span>
+            <span class="go">GitHub &rarr;</span>
+          </a>
+
+          <a class="repo" id="repo-architectus" href="https://github.com/iudexryze/architectus" rel="noopener">
+            <span class="n">iudexryze<span class="slash">/</span>architectus</span>
+            <span class="d">VS Code extension that rebuilds the editor as a cyberpunk workstation, injected live into the running instance.</span>
+            <span class="t">JavaScript</span>
+            <span class="go">GitHub &rarr;</span>
+          </a>
+
+        </div>
+
+        <p class="section-note" style="margin:22px 0 0">The seven Unity editor tools are internal to the studios they were built at and have no public repository.</p>
+      </section>
+
+      <!-- ══ CONTACT ═══════════════════════════════════════ -->
+      <section class="section" id="contact">
+        <div class="section-bar">
+          <h2>Contact</h2>
+        </div>
+        <p class="section-note">Open to game development and technical art roles, and to collaborations. Email is the fastest way to reach me.</p>
+
+        <ul class="contact-list">
+          <li><a href="mailto:varun2002saini19@gmail.com"><span class="k">Email</span><span class="v">varun2002saini19@gmail.com</span><span class="go">Compose</span></a></li>
+          <li><a href="https://linkedin.com/in/varun-saini"><span class="k">LinkedIn</span><span class="v">linkedin.com/in/varun-saini</span><span class="go">Open</span></a></li>
+          <li><a href="https://github.com/iudexryze"><span class="k">GitHub</span><span class="v">github.com/iudexryze</span><span class="go">Open</span></a></li>
+          <li><a href="https://www.artstation.com/notryze"><span class="k">ArtStation</span><span class="v">artstation.com/notryze</span><span class="go">Open</span></a></li>
+          <li><a href="tel:+919901098611"><span class="k">Phone</span><span class="v">+91 99010 98611</span><span class="go">Call</span></a></li>
+        </ul>
+
+        <p class="colophon">
+          Varun Saini — Bangalore, India<br>
+          Built as one static page. IBM Plex, set in Condensed, Sans and Mono.<br>
+          BT-7274N is an unofficial fan project and is not affiliated with Respawn Entertainment or EA.
+        </p>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span>Section <b data-status-section>Top</b></span>
+    <span><b data-count-play>8</b> playable</span>
+    <span class="hide-sm"><b data-count-tools>7</b> editor tools</span>
+    <span class="hide-sm"><b data-count-repos>10</b> repositories</span>
+    <span class="end"><b>Varun Saini</b> &middot; Bangalore</span>
+  </footer>
+
+</div>
+
+<!-- ══ LAUNCHER ═══════════════════════════════════════════════ -->
+<div class="launcher" data-launcher data-open="false" data-narrow="false" role="dialog" aria-modal="true" aria-labelledby="launcher-name">
+  <div class="launcher-bar">
+    <span class="name" id="launcher-name" data-launcher-name></span>
+    <span class="end">
+      <a class="btn" data-launcher-tab href="#" target="_blank" rel="noopener">Open in new tab</a>
+      <button class="btn" type="button" data-fullscreen>Fullscreen</button>
+      <button class="btn" type="button" data-close>Exit &nbsp;Esc</button>
+    </span>
+  </div>
+  <iframe class="launcher-frame" data-frame title="Playable game" src="about:blank"></iframe>
+  <div class="notice">
+    <div>
+      <h2 data-notice-head>Best on desktop</h2>
+      <p class="what" data-notice-what></p>
+      <ul data-notice-list></ul>
+      <div class="row">
+        <button class="btn btn-go" type="button" data-anyway>Play anyway</button>
+        <a class="btn" data-notice-source href="#">Read the source</a>
+        <button class="btn" type="button" data-close-notice>Back</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ── Cabinet boot log ────────────────────────────────────────
+     The single piece of non-interactive motion on the page. It
+     runs once, then stops. */
+  var LOG = [
+    'neural link  <b>handshake ok</b>',
+    'pilot        <i>JACK COOPER</i>',
+    'titan        BT-7274, vanguard class',
+    'protocol     3 &mdash; <i>protect the pilot</i>',
+    'combat net   <b>standing by</b>'
+  ];
+
+  var logEl = document.querySelector('[data-log]');
+  if (logEl) {
+    if (reduced) {
+      logEl.innerHTML = LOG.join('<br>');
+    } else {
+      var i = 0;
+      (function step() {
+        logEl.innerHTML = LOG.slice(0, i + 1).join('<br>') + '<span class="cur"></span>';
+        if (++i < LOG.length) setTimeout(step, 260);
+      })();
+    }
+  }
+
+  /* ── The arcade ──────────────────────────────────────────────
+     One record per playable, and everything else — the overlay
+     chrome, the deep link, the counts in the status bar — reads
+     from here. Adding a game is this object plus a card. */
+  /* input  — 'keyboard' still works by touch but wants real keys.
+     shape  — 'fluid' reflows to any window; 'fixed' would letterbox.
+     Together these decide what the overlay says up front, and the badge
+     printed on the card so nobody finds out only after tapping. Every
+     game here reflows now, so the only remaining advice is about BT's
+     typed command line. */
+  var GAMES = {
+    'bt-7274n': {
+      name: 'BT-7274 // VANGUARD NEURAL LINK',
+      title: 'BT-7274N — playable terminal roguelike',
+      src: 'play/bt-7274n/index.html',
+      source: 'https://github.com/iudexryze/portfolio/tree/main/play/bt-7274n',
+      input: 'keyboard', shape: 'fluid', minWidth: 0
+    },
+    'drift-lander': {
+      name: 'DRIFT LANDER // DESCENT',
+      title: 'Drift Lander — playable physics lander',
+      src: 'play/drift-lander/index.html',
+      source: 'https://github.com/iudexryze/portfolio/tree/main/play/drift-lander',
+      input: 'touch', shape: 'fluid', minWidth: 0
+    },
+    'circuit-breaker': {
+      name: 'CIRCUIT BREAKER // ROUTING',
+      title: 'Circuit Breaker — playable routing puzzle',
+      src: 'play/circuit-breaker/index.html',
+      source: 'https://github.com/iudexryze/portfolio/tree/main/play/circuit-breaker',
+      input: 'touch', shape: 'fluid', minWidth: 0
+    },
+    'overclock': {
+      name: 'OVERCLOCK // ARENA',
+      title: 'Overclock — playable arena dodger',
+      src: 'play/overclock/index.html',
+      source: 'https://github.com/iudexryze/portfolio/tree/main/play/overclock',
+      input: 'touch', shape: 'fluid', minWidth: 0
+    },
+    'disco-race': {
+      name: 'DISCO RACE // 124 BPM',
+      title: 'Disco Race — playable rhythm lane racer',
+      src: 'play/disco-race/index.html',
+      source: 'https://github.com/iudexryze/disco-race',
+      input: 'touch', shape: 'fluid', minWidth: 0
+    },
+    'refactor': {
+      name: 'REFACTOR // PLANARITY',
+      title: 'Refactor — playable graph untangling puzzle',
+      src: 'play/refactor/index.html',
+      source: 'https://github.com/iudexryze/refactor',
+      input: 'touch', shape: 'fluid', minWidth: 0
+    },
+    'heap': {
+      name: 'HEAP // STACK',
+      title: 'Heap — playable precision stacking game',
+      src: 'play/heap/index.html',
+      source: 'https://github.com/iudexryze/heap',
+      input: 'touch', shape: 'fluid', minWidth: 0
+    },
+    'mutex': {
+      name: 'MUTEX // CRITICAL SECTION',
+      title: 'Mutex — playable timing game',
+      src: 'play/mutex/index.html',
+      source: 'https://github.com/iudexryze/mutex',
+      input: 'touch', shape: 'fluid', minWidth: 0
+    }
+  };
+
+  /* Coarse pointer is the honest test for "no keyboard attached" —
+     screen width is not, since a small window on a laptop is still a
+     laptop, and a tablet with a keyboard is not a phone. */
+  var coarse = matchMedia('(pointer: coarse)').matches;
+
+  function problems(game) {
+    var out = [];
+    if (game.input === 'keyboard' && coarse) {
+      out.push('Every order is typed at a command line. It works on a phone keyboard, but it is slow going next to real keys.');
+    }
+    if (game.shape === 'fixed' && innerHeight > innerWidth && coarse) {
+      out.push('It lays out in landscape. Turn your phone sideways and it will fill the screen.');
+    }
+    if (game.minWidth && innerWidth < game.minWidth) {
+      out.push('It wants about ' + game.minWidth + 'px of width; this window is ' + innerWidth + 'px.');
+    }
+    return out;
+  }
+
+  function bestOn(game) {
+    if (game.input === 'keyboard') return { cls: 'desk', label: 'Better on desktop' };
+    if (game.shape === 'fixed') return { cls: 'wide', label: 'Landscape' };
+    return { cls: 'any', label: 'Any device' };
+  }
+
+  /* ── Launcher ────────────────────────────────────────────────
+     The iframe stays on about:blank until asked, so nothing loads
+     and nothing steals focus for a visitor who never plays. */
+  var launcher  = document.querySelector('[data-launcher]');
+  var frame     = document.querySelector('[data-frame]');
+  var app       = document.querySelector('.app');
+  var nameEl    = document.querySelector('[data-launcher-name]');
+  var tabLink   = document.querySelector('[data-launcher-tab]');
+  var noticeWhat = document.querySelector('[data-notice-what]');
+  var noticeList = document.querySelector('[data-notice-list]');
+  var noticeSrc  = document.querySelector('[data-notice-source]');
+  var lastFocus = null, currentSlug = null, overridden = false;
+
+  function evaluate() {
+    if (!currentSlug) return;
+    var game = GAMES[currentSlug];
+    var list = overridden ? [] : problems(game);
+    launcher.setAttribute('data-notice', list.length ? 'true' : 'false');
+    if (!list.length) return;
+
+    noticeWhat.textContent = game.title.split(' \u2014 ')[0] +
+      ' runs fine here, but this is not the device it is best on.';
+    noticeList.innerHTML = '';
+    list.forEach(function (line) {
+      var li = document.createElement('li');
+      li.textContent = line;
+      noticeList.appendChild(li);
+    });
+  }
+
+  function openGame(slug, trigger) {
+    var game = GAMES[slug];
+    if (!game) return;
+
+    lastFocus = trigger || document.activeElement;
+    currentSlug = slug;
+    overridden = false;
+
+    nameEl.textContent = game.name;
+    frame.setAttribute('title', game.title);
+    tabLink.setAttribute('href', game.src);
+    noticeSrc.setAttribute('href', game.source);
+
+    evaluate();
+    /* Reload even when it is the same game, so "play again" restarts
+       rather than resuming whatever state the last session left. */
+    frame.setAttribute('src', game.src);
+
+    launcher.setAttribute('data-open', 'true');
+    app.inert = true;
+    document.querySelector('[data-close]').focus();
+    history.replaceState(null, '', '?play=' + slug);
+  }
+
+  function closeGame() {
+    app.inert = false;
+    launcher.setAttribute('data-open', 'false');
+    /* Drop the iframe: a canvas game left running behind an invisible
+       overlay keeps a rAF loop and a fan spinning for no one. */
+    frame.setAttribute('src', 'about:blank');
+    currentSlug = null;
+    if (document.fullscreenElement) document.exitFullscreen();
+    history.replaceState(null, '', location.pathname);
+    if (lastFocus && lastFocus.isConnected) lastFocus.focus();
+  }
+
+  document.querySelectorAll('[data-launch]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      openGame(btn.getAttribute('data-launch'), btn);
+    });
+  });
+  document.querySelector('[data-close]').addEventListener('click', closeGame);
+
+  document.querySelector('[data-fullscreen]').addEventListener('click', function () {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (launcher.requestFullscreen) launcher.requestFullscreen();
+  });
+
+  /* The notice is advice, not a gate: anyone who wants to try it on a
+     phone anyway is allowed to, and the choice lasts until they leave. */
+  document.querySelector('[data-anyway]').addEventListener('click', function () {
+    overridden = true;
+    evaluate();
+  });
+  document.querySelector('[data-close-notice]').addEventListener('click', closeGame);
+
+  /* Turning the phone sideways should clear the orientation warning by
+     itself, without anyone having to back out and tap again. */
+  addEventListener('resize', evaluate);
+  addEventListener('orientationchange', function () { setTimeout(evaluate, 250); });
+
+  /* Print each game's badge from the same record the warning reads, so
+     the card and the overlay can never claim different things. */
+  document.querySelectorAll('.game-screen[data-launch]').forEach(function (btn) {
+    var game = GAMES[btn.getAttribute('data-launch')];
+    if (!game) return;
+    var fit = bestOn(game);
+    var tag = document.createElement('span');
+    tag.className = 'fits ' + fit.cls;
+    tag.textContent = fit.label;
+    btn.parentNode.insertBefore(tag, btn.nextSibling);
+  });
+
+  /* Esc closes. While the game has focus inside the iframe it owns
+     its own keys, so the click-out and the button are the reliable
+     exits; this covers the case where focus is still on the chrome. */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && launcher.getAttribute('data-open') === 'true') closeGame();
+  });
+
+  /* ?play=<slug> boots straight into a game, so a single link can be
+     handed to someone who only wants to see the thing run. */
+  var wanted = (location.search.match(/[?&]play=([\w-]+)/) || [])[1];
+  if (wanted && GAMES[wanted]) openGame(wanted, null);
+
+  /* ── Rail groups ─────────────────────────────────────────── */
+  document.querySelectorAll('.rail-head').forEach(function (head) {
+    head.addEventListener('click', function () {
+      head.setAttribute('aria-expanded', head.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+    });
+  });
+
+  /* ── Tool disclosures ────────────────────────────────────── */
+  document.querySelectorAll('.tool-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var open = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+      document.getElementById(btn.getAttribute('aria-controls')).hidden = open;
+    });
+  });
+
+  /* ── Scroll spy: drives the tabs, the rail and the status bar ─ */
+  var content   = document.querySelector('.content');
+  var sections  = [].slice.call(document.querySelectorAll('.section'));
+  var tabs      = [].slice.call(document.querySelectorAll('.tab'));
+  var railLinks = [].slice.call(document.querySelectorAll('.rail-link'));
+  var targets   = [].slice.call(document.querySelectorAll('.entry[id], .tool[id], .game[id], .repo[id], .cabinet[id]'));
+  var statusEl  = document.querySelector('[data-status-section]');
+
+  var LABEL = {
+    top: 'Top', work: 'Work', arcade: 'Arcade', tools: 'Editor tools',
+    art: 'Art & other', code: 'Code', about: 'About', contact: 'Contact'
+  };
+
+  /* Counted from the page rather than typed into it, so the footer
+     cannot drift out of date the next time a game is added. */
+  function count(sel) { return document.querySelectorAll(sel).length; }
+  var counts = {
+    play: Object.keys(GAMES).length,
+    tools: count('.tool'),
+    repos: count('.repo')
+  };
+  Object.keys(counts).forEach(function (k) {
+    var el = document.querySelector('[data-count-' + k + ']');
+    if (el) el.textContent = counts[k];
+  });
+
+  /* A section counts as current once you have entered it. */
+  function currentSection() {
+    var best = sections[0], bestY = Infinity;
+    sections.forEach(function (el) {
+      var y = el.getBoundingClientRect().top - 90;
+      if (y <= 0 && Math.abs(y) < bestY) { bestY = Math.abs(y); best = el; }
+    });
+    return best;
+  }
+
+  /* A rail entry is the one sitting nearest the top of the column,
+     above or below — otherwise the rail lags a section behind. */
+  function currentEntry() {
+    var best = null, bestY = Infinity;
+    targets.forEach(function (el) {
+      var d = Math.abs(el.getBoundingClientRect().top - 110);
+      if (d < bestY) { bestY = d; best = el; }
+    });
+    return best;
+  }
+
+  var ticking = false;
+  function sync() {
+    ticking = false;
+
+    var sec = currentSection();
+    var id  = sec ? sec.id : 'top';
+    tabs.forEach(function (t) {
+      t.setAttribute('aria-current', t.getAttribute('data-tab') === id ? 'true' : 'false');
+    });
+    if (statusEl) statusEl.textContent = LABEL[id] || 'Top';
+
+    var item = currentEntry();
+    var href = item ? '#' + item.id : null;
+    railLinks.forEach(function (l) {
+      l.setAttribute('aria-current', l.getAttribute('href') === href ? 'true' : 'false');
+    });
+  }
+
+  content.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(sync); }
+  }, { passive: true });
+  sync();
+
+  /* In-page links scroll the content column rather than the document,
+     and open a tool's panel when the target is a collapsed tool. */
+  document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      var id = a.getAttribute('href').slice(1);
+      var el = id && document.getElementById(id);
+      if (!el) return;
+      e.preventDefault();
+
+      if (el.classList.contains('tool')) {
+        var btn = el.querySelector('.tool-btn[aria-expanded="false"]');
+        if (btn) btn.click();
+      }
+
+      var y = el.getBoundingClientRect().top - content.getBoundingClientRect().top + content.scrollTop - 16;
+      content.scrollTo({ top: y, behavior: reduced ? 'auto' : 'smooth' });
+      history.replaceState(null, '', '#' + id);
+    });
+  });
+
+  /* Deep link on load — after webfonts land. Measuring before Plex
+     swaps in lands the scroll short, because the whole column
+     reflows underneath it. */
+  function goToHash() {
+    if (!location.hash) { sync(); return; }
+    var target = document.getElementById(location.hash.slice(1));
+    if (!target) { sync(); return; }
+    if (target.classList.contains('tool')) {
+      var tb = target.querySelector('.tool-btn[aria-expanded="false"]');
+      if (tb) tb.click();
+    }
+    /* Jump, do not animate: smooth scrolling applies to programmatic
+       scrollTop as well, and a deep link should arrive, not travel. */
+    content.style.scrollBehavior = 'auto';
+    content.scrollTop += target.getBoundingClientRect().top - content.getBoundingClientRect().top - 16;
+    content.style.scrollBehavior = '';
+    sync();
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(goToHash);
+  } else {
+    addEventListener('load', goToHash);
+  }
+
+  /* Back/forward and externally set hashes land too. The in-page links
+     handle their own scrolling, so this only fires for navigation the
+     page did not originate. */
+  addEventListener('hashchange', goToHash);
+})();
+</script>
+</body>
+</html>
