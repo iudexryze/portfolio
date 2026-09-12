@@ -32,6 +32,31 @@
     }
   }
 
+  /* ── The light in here is going too ──────────────────────────
+     The backlight on the machine fails on a schedule you cannot
+     anticipate, and so does the one in this room. Two or three frames
+     at a gap between seven and twenty-three seconds, sometimes with a
+     second stutter behind it, because a single clean blink reads as a
+     transition and a stutter reads as a fault.
+
+     Never under reduced motion. An involuntary full-page flash is the
+     single thing that setting most clearly exists to prevent, and the
+     page has to be worth reading without it. */
+  if (!reduced) {
+    (function fail(){
+      setTimeout(function(){
+        var r = document.documentElement;
+        r.classList.add('out');
+        setTimeout(function(){ r.classList.remove('out'); }, 70 + Math.random() * 60);
+        if (Math.random() < 0.38) setTimeout(function(){
+          r.classList.add('out');
+          setTimeout(function(){ r.classList.remove('out'); }, 45);
+        }, 200 + Math.random() * 120);
+        fail();
+      }, 7000 + Math.random() * 16000);
+    })();
+  }
+
   /* ── The arcade ──────────────────────────────────────────────
      One record per playable, and everything else — the overlay
      chrome, the deep link, the counts in the status bar — reads

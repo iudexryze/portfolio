@@ -313,50 +313,148 @@ function shellPrint(){
 
   /* Dried, not fresh. It has been there long enough to go brown at the
      edges and to have been half-wiped once, badly. */
+  /* ── what happened here ─────────────────────────────────────────
+     The previous pass was thirty per cent alpha under a blur, which is
+     the recipe for dirt. Blood is not dirt. It is darker than anyone
+     expects, nearly black in the middle of a deposit; it dries from the
+     outside in, so a droplet keeps a hard rim after the centre has sunk
+     and gone matte; and it is directional — every drop points back at
+     where it came from, which is the single thing that makes a wall of
+     specks read as an event rather than as texture.
+
+     It is placed, not scattered. A cast-off arc across the lower shell
+     from something swung, impact spatter thrown up from below left, one
+     long run out from under the bezel seam where it soaked in and came
+     back out, and — the part that does the work — contact transfer on
+     the controls. Somebody held this thing with wet hands. The D-pad and
+     the A button are the two places a right hand actually touches, so
+     that is where the finger ridges are.                             */
   {
     g.save();
-    const DARK = 'rgba(46,9,9,';
-    const BROWN = 'rgba(74,22,14,';
+    const CORE  = 'rgba(46,6,8,';     // the middle of a deposit
+    const RIM   = 'rgba(22,3,5,';     // dried edge, always darker
+    const FRESH = 'rgba(84,10,13,';
+    const OLD   = 'rgba(72,32,20,';   // weeks of it, gone brown
 
-    // a smear dragged across the lower shell, thinning as it goes
-    g.filter = 'blur(' + u(0.05).toFixed(2) + 'px)';
-    for (let i = 0; i < 30; i++){
-      const t = i / 29;
-      const x = -3.5 + t * 5.2 + Math.sin(t * 7) * 0.10;
-      const y = -6.75 + Math.sin(t * 3.1) * 0.16;
-      g.fillStyle = BROWN + (0.52 * (1 - t * 0.78)).toFixed(3) + ')';
-      g.beginPath();
-      g.ellipse(px(x), py(y), u(0.30 - t * 0.16), u(0.16 - t * 0.08), 0.2, 0, 7);
-      g.fill();
-    }
+    /* One droplet: rim, body, and a sliver of sheen. The sheen is why
+       it reads wet — the shell around it is matte plastic and blood is
+       the only thing on this object that is not. */
+    const drop = (x, y, r, ang, elong, a, col) => {
+      const rx = u(r * elong), ry = u(r);
+      g.save(); g.translate(px(x), py(y)); g.rotate(ang);
+      g.fillStyle = RIM + Math.min(0.95, a * 1.05).toFixed(3) + ')';
+      g.beginPath(); g.ellipse(0, 0, rx * 1.12, ry * 1.12, 0, 0, 7); g.fill();
+      g.fillStyle = (col || CORE) + a.toFixed(3) + ')';
+      g.beginPath(); g.ellipse(0, 0, rx, ry, 0, 0, 7); g.fill();
+      if (r > 0.045){
+        g.fillStyle = 'rgba(196,150,150,' + (a * 0.16).toFixed(3) + ')';
+        g.beginPath(); g.ellipse(-rx * 0.30, -ry * 0.34, rx * 0.30, ry * 0.26, 0, 0, 7); g.fill();
+      }
+      g.restore();
+    };
 
-    // the edge of a hand, where someone held it too hard
-    for (let i = 0; i < 16; i++){
-      const t = i / 15;
-      const x = 3.72 + Math.sin(t * 2.0) * 0.06;
-      const y = -1.1 - t * 3.0;
-      g.fillStyle = DARK + (0.46 - t * 0.22).toFixed(3) + ')';
-      g.beginPath();
-      g.ellipse(px(x), py(y), u(0.20), u(0.30), 0, 0, 7);
-      g.fill();
-    }
+    /* Impact: everything radiates from one point and stretches with
+       distance, and the big ones throw a tail and a satellite. */
+    const spatter = (ox, oy, dir, spread, n, reach, scale) => {
+      for (let i = 0; i < n; i++){
+        const a = dir + (Math.random() - 0.5) * spread;
+        const d = Math.pow(Math.random(), 0.6) * reach;
+        const x = ox + Math.cos(a) * d, y = oy + Math.sin(a) * d;
+        const r = (0.020 + Math.random() * 0.075) * scale * (1 - d / reach * 0.45);
+        const el = 1 + d / reach * 2.2;
+        drop(x, y, r, -a, el, 0.62 + Math.random() * 0.33, Math.random() < 0.22 ? OLD : CORE);
+        if (r > 0.055 && Math.random() < 0.5){
+          drop(x + Math.cos(a) * r * 3.4, y + Math.sin(a) * r * 3.4,
+               r * 0.32, -a, 1.6, 0.55 + Math.random() * 0.3);
+        }
+      }
+    };
 
-    // spatter, and two runs that dried before they got anywhere
-    for (let i = 0; i < 46; i++){
-      const x = -4.1 + Math.random() * 8.2, y = 1.6 - Math.random() * 8.6;
-      const r = 0.03 + Math.random() * 0.10;
-      g.fillStyle = (Math.random() < 0.5 ? DARK : BROWN) + (0.30 + Math.random()*0.42).toFixed(3) + ')';
-      g.beginPath(); g.ellipse(px(x), py(y), u(r), u(r * (1 + Math.random())), 0, 0, 7); g.fill();
-    }
-    [[-1.85, 0.30], [2.95, -0.15], [-3.10, -2.05], [1.40, 1.10]].forEach(([x, y]) => {
-      const len = 0.5 + Math.random() * 1.1;
-      const grad = g.createLinearGradient(px(x), py(y), px(x), py(y - len));
-      grad.addColorStop(0, DARK + '.52)');
-      grad.addColorStop(1, DARK + '0)');
-      g.fillStyle = grad;
-      g.fillRect(px(x) - u(0.045), py(y), u(0.09), u(len));
+    /* Cast-off: a swing, so the drops sit along an arc and get bigger
+       toward the end of the stroke where the tip was moving fastest. */
+    const castOff = (x0, y0, x1, y1, bow, n) => {
+      for (let i = 0; i < n; i++){
+        const t = i / (n - 1);
+        const mx = (x0 + x1) / 2 + bow, my = (y0 + y1) / 2 + bow * 0.6;
+        const x = (1-t)*(1-t)*x0 + 2*(1-t)*t*mx + t*t*x1;
+        const y = (1-t)*(1-t)*y0 + 2*(1-t)*t*my + t*t*y1;
+        const ang = Math.atan2(y1 - y0, x1 - x0);
+        const r = (0.030 + Math.random() * 0.055) * (0.5 + t);
+        drop(x + (Math.random()-0.5)*0.16, y + (Math.random()-0.5)*0.16,
+             r, -ang, 1.5 + t * 1.4, 0.66 + Math.random() * 0.30);
+      }
+    };
+
+    /* A run. Gravity, a bulb of mass at the leading edge, and a tail
+       that thins where it outran its own supply. */
+    const run = (x, y, len, w, a) => {
+      const steps = 42;
+      for (let i = 0; i < steps; i++){
+        const t = i / (steps - 1);
+        const yy = y - t * len;
+        const wob = Math.sin(t * 9 + x) * 0.020;
+        const ww = w * (1 - t * 0.55) * (0.8 + Math.sin(t * 17) * 0.2);
+        g.fillStyle = CORE + (a * (1 - t * 0.35)).toFixed(3) + ')';
+        g.beginPath(); g.ellipse(px(x + wob), py(yy), u(ww), u(len / steps * 1.5), 0, 0, 7); g.fill();
+      }
+      drop(x + Math.sin(9 + x) * 0.02, y - len, w * 1.9, 0, 0.85, Math.min(0.94, a * 1.15));
+    };
+
+    /* Contact transfer. Four ridges and a palm edge, dragged — this is
+       a hand that was already wet, not a hand that got splashed. */
+    const hand = (cx, cy, rot, s, a) => {
+      g.save(); g.translate(px(cx), py(cy)); g.rotate(rot);
+      for (let f = 0; f < 4; f++){
+        const fx = (f - 1.5) * u(0.30 * s);
+        const grad = g.createLinearGradient(fx, -u(0.55*s), fx, u(0.70*s));
+        grad.addColorStop(0,   CORE + (a * 0.92).toFixed(3) + ')');
+        grad.addColorStop(0.55, CORE + (a * 0.55).toFixed(3) + ')');
+        grad.addColorStop(1,   CORE + '0)');
+        g.fillStyle = grad;
+        g.beginPath();
+        g.ellipse(fx, u(0.05*s), u(0.105 * s), u(0.62 * s), 0, 0, 7);
+        g.fill();
+        // the ridge itself, broken where the skin did not sit down
+        for (let k = 0; k < 7; k++){
+          if (Math.random() < 0.34) continue;
+          g.fillStyle = RIM + (a * (0.5 - k * 0.05)).toFixed(3) + ')';
+          g.fillRect(fx - u(0.075*s), -u(0.42*s) + k * u(0.145*s), u(0.15*s), u(0.030*s));
+        }
+      }
+      g.restore();
+    };
+
+    // it came from below and to the left, hard
+    spatter(-3.15, -6.25, 0.62, 1.55, 90, 5.4, 1.0);
+    // and something was swung across the middle of the shell
+    castOff(-4.15, -1.35, 3.95, -2.65, 0.85, 22);
+    // a second, shorter arc, later, over the top of the first
+    castOff(3.60, -5.05, -1.30, -6.85, -0.55, 13);
+
+    // soaked into the bezel seam and came back out of it
+    run( 2.42, 0.20, 2.35, 0.055, 0.88);
+    run(-1.05, 0.14, 1.10, 0.036, 0.74);
+    run( 3.88, 0.06, 3.30, 0.042, 0.80);
+    // and off the bottom of the speaker grille
+    run( 1.62, -6.95, 0.85, 0.030, 0.66);
+
+    // the two places a right hand actually holds this
+    hand(P.a[0] + 0.10, P.a[1] + 0.35, -0.28, 1.0, 0.62);
+    hand(P.dpad[0] - 0.15, P.dpad[1] + 0.55, 0.34, 1.15, 0.52);
+
+    // pooled where the mould dishes let it collect
+    [[P.a[0], P.a[1], 1.02], [P.b[0], P.b[1], 1.02], [P.dpad[0], P.dpad[1], 2.05]].forEach(([x, y, r]) => {
+      const gd = g.createRadialGradient(px(x), py(y), u(r * 0.72), px(x), py(y), u(r));
+      gd.addColorStop(0, RIM + '0)');
+      gd.addColorStop(0.82, RIM + '.30)');
+      gd.addColorStop(1, RIM + '.52)');
+      g.fillStyle = gd;
+      g.beginPath(); g.arc(px(x), py(y), u(r), 0, 7); g.fill();
     });
-    g.filter = 'none';
+
+    // a thumbprint on the glass side of the bezel seam, half wiped
+    drop(-3.72, -3.05, 0.20, 0.4, 1.35, 0.58, OLD);
+    drop(-3.55, -3.32, 0.13, 0.4, 1.20, 0.48, OLD);
     g.restore();
   }
 
@@ -925,7 +1023,17 @@ function frame(now){
     invalidate();
     const on = IRZ.powered();
     screenLight.color.set(IRZ.glow());
-    screenLight.intensity = on ? 8 : 0;
+    /* When the backlight goes, the room goes with it. A panel that
+       flickers on its own is a broken panel; a panel that takes the key
+       light and the near source down with it is a building with
+       something wrong in it, which is a different feeling entirely. The
+       sickly green is the one thing that gets brighter. */
+    const d = IRZ.dip ? IRZ.dip() : 0;
+    key.intensity    = 1.38 * (1 - d * 0.62);
+    shaper.intensity = 175  * (1 - d * 0.55);
+    hands.intensity  = 62   * (1 - d * 0.70);
+    wrong.intensity  = 13   * (1 + d * 1.30);
+    screenLight.intensity = on ? 8 * (1 - d * 0.80) : 0;
     lampMat.emissiveIntensity = on ? 1.6 : 0.05;
     lampMat.color.set(on ? 0xE04038 : 0x6A3230);
   }

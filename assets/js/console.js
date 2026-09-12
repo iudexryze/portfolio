@@ -186,6 +186,7 @@ function matrix(){
   for (x = step; x < CW_PX; x += step) ctx.fillRect(Math.round(x), 0, 1, CH_PX);
   for (x = step; x < CH_PX; x += step) ctx.fillRect(0, Math.round(x), CW_PX, 1);
   ctx.globalAlpha = 1;
+  apparition();
   falloff();
   band();
 }
@@ -220,10 +221,69 @@ setInterval(function(){
   if (pal.name !== 'DREAD') return;
   if (Math.random() > 0.42) return;
   dip = 1; bandY = Math.random(); dirty();
-  setTimeout(function(){ dip = 0.5; dirty(); }, 60);
-  setTimeout(function(){ dip = 0;   dirty(); }, 130);
+  var seen = Math.random() < 0.20;
+  setTimeout(function(){ dip = 0.5; if (seen) face = 0.5; dirty(); }, 60);
+  setTimeout(function(){ dip = 0.28; if (seen) face = 0.34; dirty(); }, 118);
+  setTimeout(function(){ dip = 0; face = 0; dirty(); }, 190);
 }, 2800);
 
+/* ── the thing in the panel ───────────────────────────────────────
+   Blood on a case is set dressing. You look at it once and then it is
+   furniture. What actually unsettles someone is the object not behaving
+   like an object — so once in a while, when the backlight goes, there
+   is a face behind it.
+
+   Everything about how it is drawn is doing one job: making you unsure
+   you saw it. It is built out of the panel's own four shades, so it
+   cannot be brighter than the screen is capable of. It is closest to
+   the background shade, not the ink, so it sits at the bottom of the
+   contrast range. It lasts two frames. And it only comes at the end of
+   a dip that was already going to happen, so the flicker explains
+   itself and you are left arguing with your own eyes.
+
+   One in seven dips, which is a couple of minutes of looking. Any more
+   often and it becomes a feature of the site rather than a thing that
+   happened to you. */
+var face = 0;
+function apparition(){
+  if (!face) return;
+  var w = CW_PX, h = CH_PX;
+  ctx.save();
+
+  /* The backlight is going, so the content goes with it. Washing the
+     panel down first is what buys the whole effect: the menu you were
+     reading leaves, and what is left is not the menu. Drawing a face
+     THROUGH the text just read as a smudge on the glass. */
+  ctx.fillStyle = 'rgba(5,7,3,' + (0.88 * face).toFixed(3) + ')';
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.globalAlpha = Math.min(1, face * 2.2);
+  var eyeY = h * 0.38, eyeR = w * 0.135, gap = w * 0.225;
+  [-1, 1].forEach(function(sgn){
+    var cx = w / 2 + sgn * gap;
+    /* Lit from behind rather than in front. Whatever this is, it is
+       between the backlight and the glass. */
+    var gd = ctx.createRadialGradient(cx, eyeY, eyeR * 0.10, cx, eyeY, eyeR * 2.3);
+    gd.addColorStop(0, shade(2));
+    gd.addColorStop(0.42, shade(1));
+    gd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gd;
+    ctx.beginPath(); ctx.arc(cx, eyeY, eyeR * 2.3, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgb(5,7,3)';
+    ctx.beginPath(); ctx.ellipse(cx, eyeY, eyeR * 0.52, eyeR * 0.70, 0, 0, 7); ctx.fill();
+  });
+
+  /* The mouth is a hole, not a shape. No teeth — teeth are a cartoon;
+     an opening you cannot see the bottom of is not. */
+  var mg = ctx.createRadialGradient(w / 2, h * 0.72, w * 0.01, w / 2, h * 0.72, w * 0.24);
+  mg.addColorStop(0, 'rgb(4,6,2)');
+  mg.addColorStop(0.62, 'rgba(4,6,2,.72)');
+  mg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = mg;
+  ctx.beginPath(); ctx.ellipse(w / 2, h * 0.72, w * 0.155, h * 0.115, 0, 0, 7); ctx.fill();
+
+  ctx.restore();
+}
 /* No LCD is evenly lit. The corners fall away from the viewing angle
    and the reflector never quite reaches the edge of the glass, so an
    even rectangle of colour is the giveaway that it is not a panel. */
@@ -704,6 +764,16 @@ var dot = document.createElement('canvas');
 dot.width = DOT_W; dot.height = DOT_H;
 var dctx = dot.getContext('2d', { willReadFrequently:true });
 
+/* A panel this bad does not clear a pixel, it lets go of it. Holding a
+   third of the previous frame under the current one gives every moving
+   thing a tail, which is exactly what these screens did and is also the
+   quiet reason a game on here feels like it is being watched through
+   something. It decays as 0.34^n, so it is gone in three frames and
+   never accumulates. */
+var ghost = document.createElement('canvas');
+ghost.width = DOT_W; ghost.height = DOT_H;
+var gctx = ghost.getContext('2d');
+
 var slot = null;
 var SLOT = { on:false, slug:'', cfg:null, gcv:null, held:{}, cur:null, t0:0, back:null,
              box:{ ox:0, oy:0, w:DOT_W, h:DOT_H } };
@@ -762,6 +832,7 @@ function insert(slug){
   document.body.appendChild(slot);
   SLOT.on = true; SLOT.slug = slug; SLOT.cfg = cfg; SLOT.gcv = null;
   SLOT.held = {}; SLOT.cur = { x:0.5, y:0.5, down:false }; SLOT.t0 = performance.now();
+  gctx.clearRect(0, 0, DOT_W, DOT_H);
   APP.view = 'cart';
   sfx('open');
   say(cartTitle(slug) + ' is running on the console screen. Play it with the D-pad and A. START ejects the cartridge.');
@@ -839,7 +910,9 @@ function drawCart(){
   SLOT.box = { ox:ox, oy:oy, w:w, h:h };
   dctx.imageSmoothingEnabled = true;
   dctx.drawImage(g, 0, 0, g.width, g.height, ox, oy, w, h);
+  dctx.globalAlpha = 0.34; dctx.drawImage(ghost, 0, 0); dctx.globalAlpha = 1;
   posterise();
+  gctx.clearRect(0, 0, DOT_W, DOT_H); gctx.drawImage(dot, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(dot, 0, 0, DOT_W, DOT_H, 0, 0, CW_PX, CH_PX);
   ctx.imageSmoothingEnabled = true;
@@ -1071,6 +1144,10 @@ window.IRZ = {
   hold: function(btn, down){ if (APP.view === 'cart') cartHold(btn, down); },
   rev: function(){ return APP.rev; },
   glow: function(){ return PALETTES[APP.palIdx].glow; },
+  /* How far the backlight is down right now, 0..1. The 3D shell pulls
+     its own lights down by the same amount, so the failure reads as
+     the room and not as the toy. */
+  dip: function(){ return dip; },
   powered: function(){ return APP.power; },
   sound: function(){ return APP.sound; },
   fitGrid: function(px){ screenPx = px; pickGrid(); },

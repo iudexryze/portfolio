@@ -689,10 +689,23 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
    The corners are where it shows, so the corners are what moves. */
 .glass::after{
   content:''; position:absolute; inset:0;
-  background:radial-gradient(122% 96% at 50% 43%,
-    rgba(6,8,4,0) 38%, rgba(6,8,4,.30) 76%, rgba(6,8,4,.62) 100%);
+  background:radial-gradient(118% 92% at 50% 42%,
+    rgba(6,8,4,0) 30%, rgba(6,8,4,.42) 72%, rgba(6,8,4,.80) 100%);
   animation:sick 12s ease-in-out infinite;
 }
+
+/* The same light that is failing in the machine is failing in here.
+   It is a separate layer rather than a filter on .app because a filter
+   makes a containing block and every fixed thing on the page would
+   start resolving against it. Driven from page.js: a flicker on a CSS
+   timer is a metronome, and the eye files a metronome away as
+   decoration inside two cycles. */
+.glass::before{
+  content:''; position:absolute; inset:0;
+  background:rgba(3,5,2,.74); opacity:0;
+}
+html.out .glass::before{ opacity:1 }
+html.out .glass::after{ opacity:1 }
 @keyframes sick{
   0%,100%{ opacity:.90 }
   44%    { opacity:1    }
