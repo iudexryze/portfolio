@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#131211; --sunken:#0E0D0C; --rule:#322E28; --dim:#8C8577; --mid:#B4AC9D;
+  --ink:#0E1108; --sunken:#080A05; --rule:#2F341F; --dim:#949F52; --mid:#B3BE79;
   --f:'IBM Plex Mono', ui-monospace, Consolas, monospace;
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -49,7 +49,7 @@ canvas{
 var stage = document.getElementById('stage');
 var cv = document.getElementById('c'), ctx = cv.getContext('2d');
 var FONT = "'IBM Plex Mono', ui-monospace, Consolas, monospace";
-var COL = { amber:'#F0902E', live:'#86C232', bone:'#EDE8DE', mid:'#B4AC9D', dim:'#8C8577', rule:'#443E36' };
+var COL = { amber:'#FFC24B', live:'#8FC93A', bone:'#D2DB99', mid:'#B3BE79', dim:'#949F52', rule:'#3A3F26' };
 
 /* ── Viewport ──────────────────────────────────────────────────────
    The logical viewport keeps a constant area and takes the aspect of
@@ -253,7 +253,7 @@ function geom() {
 
 function draw(now) {
   ctx.setTransform(dpr * pxScale, 0, 0, dpr * pxScale, 0, 0);
-  ctx.fillStyle = '#0E0D0C';
+  ctx.fillStyle = '#080A05';
   ctx.fillRect(0, 0, W, H);
 
   if (state === 'title') { drawTitle(); return; }
@@ -272,14 +272,14 @@ function drawBoard(now) {
       var px = g.ox + x * cs, py = g.oy + y * cs;
       var lit = powered[i];
 
-      ctx.fillStyle = '#141311';
+      ctx.fillStyle = '#101408';
       ctx.fillRect(px, py, cs, cs);
-      ctx.strokeStyle = '#221F1B';
+      ctx.strokeStyle = '#1F2416';
       ctx.lineWidth = 1;
       ctx.strokeRect(px + 0.5, py + 0.5, cs, cs);
 
       if (hoverX === x && hoverY === y && state === 'play') {
-        ctx.fillStyle = 'rgba(240,144,46,.07)';
+        ctx.fillStyle = 'rgba(255,194,75,.07)';
         ctx.fillRect(px, py, cs, cs);
       }
 
@@ -291,7 +291,7 @@ function drawBoard(now) {
       var cx = px + r, cy = py + r;
       ctx.lineCap = 'round';
       ctx.lineWidth = Math.max(3, cs * 0.13);
-      ctx.strokeStyle = lit ? COL.live : '#4A443A';
+      ctx.strokeStyle = lit ? COL.live : '#4A5230';
       ctx.globalAlpha = lit ? 0.85 + boost * 0.15 : 1;
 
       ctx.beginPath();
@@ -310,13 +310,13 @@ function drawBoard(now) {
       } else if (one) {
         ctx.beginPath();
         ctx.arc(cx, cy, cs * 0.15, 0, Math.PI * 2);
-        ctx.fillStyle = lit ? COL.live : '#2A2721';
+        ctx.fillStyle = lit ? COL.live : '#262B1B';
         ctx.fill();
-        ctx.strokeStyle = lit ? COL.live : '#4A443A';
+        ctx.strokeStyle = lit ? COL.live : '#4A5230';
         ctx.lineWidth = 2;
         ctx.stroke();
       } else {
-        ctx.fillStyle = lit ? COL.live : '#4A443A';
+        ctx.fillStyle = lit ? COL.live : '#4A5230';
         ctx.beginPath();
         ctx.arc(cx, cy, Math.max(2, cs * 0.055), 0, Math.PI * 2);
         ctx.fill();
@@ -330,7 +330,7 @@ function drawBoard(now) {
     ctx.strokeRect(g.ox + curX * cs + 1, g.oy + curY * cs + 1, cs - 2, cs - 2);
   }
 
-  ctx.strokeStyle = '#322E28';
+  ctx.strokeStyle = '#2F341F';
   ctx.lineWidth = 1;
   ctx.strokeRect(g.ox - 6.5, g.oy - 6.5, cs * N + 13, cs * N + 13);
 
@@ -355,9 +355,9 @@ function drawHud() {
   var hud = hudH(), edge = 14 * UI;
   if (state === 'play') elapsed = (performance.now() - startedAt) / 1000;
 
-  ctx.fillStyle = '#131211';
+  ctx.fillStyle = '#0E1108';
   ctx.fillRect(0, 0, W, hud);
-  ctx.strokeStyle = '#322E28';
+  ctx.strokeStyle = '#2F341F';
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, hud - 0.5); ctx.lineTo(W, hud - 0.5); ctx.stroke();
 
@@ -387,7 +387,7 @@ function wrap(text, max) {
 }
 
 function panel(items, accent) {
-  ctx.fillStyle = 'rgba(14,13,12,.87)';
+  ctx.fillStyle = 'rgba(8,10,5,.87)';
   ctx.fillRect(0, 0, W, H);
 
   var bw = Math.min(W - 28 * UI, 560 * UI), inner = bw - 44 * UI;
@@ -404,9 +404,9 @@ function panel(items, accent) {
   for (i = 0; i < rows.length; i++) bh += rows[i].big ? th : lh;
   var bx = (W - bw) / 2, by = Math.max(8, (H - bh) / 2);
 
-  ctx.fillStyle = '#1B1917';
+  ctx.fillStyle = '#171B0F';
   ctx.fillRect(bx, by, bw, bh);
-  ctx.strokeStyle = '#322E28';
+  ctx.strokeStyle = '#2F341F';
   ctx.lineWidth = 1;
   ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
   ctx.fillStyle = accent;

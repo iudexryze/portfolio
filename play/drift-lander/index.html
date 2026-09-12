@@ -10,8 +10,8 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#131211; --panel:#1B1917; --sunken:#0E0D0C;
-  --rule:#322E28; --dim:#8C8577; --mid:#B4AC9D;
+  --ink:#0E1108; --panel:#171B0F; --sunken:#080A05;
+  --rule:#2F341F; --dim:#949F52; --mid:#B3BE79;
   --f:'IBM Plex Mono', ui-monospace, Consolas, monospace;
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -48,7 +48,7 @@ canvas{
 var stage = document.getElementById('stage');
 var cv = document.getElementById('c'), ctx = cv.getContext('2d');
 var FONT = "'IBM Plex Mono', ui-monospace, Consolas, monospace";
-var COL = { amber:'#F0902E', live:'#86C232', bad:'#D9484B', bone:'#EDE8DE', dim:'#8C8577' };
+var COL = { amber:'#FFC24B', live:'#8FC93A', bad:'#E0503A', bone:'#D2DB99', dim:'#949F52' };
 
 /* ── Viewport ──────────────────────────────────────────────────────
    The logical world holds a constant area and takes the aspect of the
@@ -353,10 +353,10 @@ function draw() {
   ctx.setTransform(dpr * pxScale, 0, 0, dpr * pxScale, 0, 0);
   if (shake > 0.4) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
 
-  ctx.fillStyle = '#0E0D0C';
+  ctx.fillStyle = '#080A05';
   ctx.fillRect(-30, -30, W + 60, H + 60);
 
-  ctx.fillStyle = '#EDE8DE';
+  ctx.fillStyle = '#D2DB99';
   for (var i = 0; i < stars.length; i++) {
     ctx.globalAlpha = stars[i].a;
     ctx.fillRect(stars[i].x, stars[i].y, stars[i].r, stars[i].r);
@@ -376,9 +376,9 @@ function drawTerrain() {
   for (var i = 0; i <= CELLS; i++) ctx.lineTo(terrain[i].x, terrain[i].y);
   ctx.lineTo(W, H);
   ctx.closePath();
-  ctx.fillStyle = '#1B1917';
+  ctx.fillStyle = '#171B0F';
   ctx.fill();
-  ctx.strokeStyle = '#443E36';
+  ctx.strokeStyle = '#3A3F26';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
@@ -418,7 +418,7 @@ function drawShip() {
   ctx.translate(s.x, s.y);
   ctx.rotate(s.ang);
 
-  ctx.strokeStyle = '#443E36';
+  ctx.strokeStyle = '#3A3F26';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(-6, 7); ctx.lineTo(-11, 12);
@@ -472,7 +472,7 @@ function drawHud() {
   var spd = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
   var e = 14 * UI, span = W - e * 2;
 
-  ctx.fillStyle = 'rgba(14,13,12,.5)';
+  ctx.fillStyle = 'rgba(8,10,5,.5)';
   ctx.fillRect(0, 0, W, 78 * UI);
 
   meter('ALT', pad3(Math.round(alt)), e + span * 0.11, false);
@@ -486,7 +486,7 @@ function drawHud() {
   var pct = Math.max(0, Math.min(1, s.fuel / full));
   var bw = Math.min(150 * UI, span * 0.4), bx = (W - bw) / 2, by = 52 * UI;
 
-  ctx.strokeStyle = '#443E36';
+  ctx.strokeStyle = '#3A3F26';
   ctx.lineWidth = 1;
   ctx.strokeRect(bx + 0.5, by + 0.5, bw, 11 * UI);
   ctx.fillStyle = pct < 0.2 ? COL.amber : COL.live;
@@ -515,7 +515,7 @@ function wrap(text, max) {
 }
 
 function panel(items, accent) {
-  ctx.fillStyle = 'rgba(14,13,12,.86)';
+  ctx.fillStyle = 'rgba(8,10,5,.86)';
   ctx.fillRect(0, 0, W, H);
 
   var bw = Math.min(W - 28 * UI, 520 * UI), inner = bw - 44 * UI;
@@ -531,9 +531,9 @@ function panel(items, accent) {
   for (i = 0; i < rows.length; i++) bh += rows[i].big ? th : lh;
   var bx = (W - bw) / 2, by = Math.max(8, (H - bh) / 2);
 
-  ctx.fillStyle = '#1B1917';
+  ctx.fillStyle = '#171B0F';
   ctx.fillRect(bx, by, bw, bh);
-  ctx.strokeStyle = '#322E28';
+  ctx.strokeStyle = '#2F341F';
   ctx.lineWidth = 1;
   ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
   ctx.fillStyle = accent;

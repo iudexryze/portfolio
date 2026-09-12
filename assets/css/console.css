@@ -17,15 +17,28 @@
    setGrid() measures glyph advance and lays every string on fixed cells,
    so the screen font has to be monospace or the layout collapses. */
 
+/* The chrome around the machine is coloured out of the machine's own
+   screen — the DREAD/VANGUARD/AMBER arrays in assets/js/console.js —
+   so page.html, this page, and the panel itself are one palette.
+   The stage stays neutral black: it is the room the object sits in,
+   and it has to agree with the sky gradient in device.js, not the LCD.
+
+   Every text step here was raised. The old ramp bottomed out at a
+   2.3:1 grey, which is unreadable full stop, and it sat over a lit
+   3D render that can put a pale plastic shell directly behind it.
+   The contrasts below are against --stage; the scrim further down
+   guarantees the render never takes them lower. */
 :root{
   --f-display:'Rubik Distressed','IBM Plex Sans Condensed',system-ui,sans-serif;
   --stage:#07080A;
-  --pool:#13181A;
-  --ink:#DDD8CC;
-  --dim:#7A756A;
-  --faint:#4E4B44;
-  --rule:rgba(234,230,220,.13);
+  --pool:#12160F;
+  --ink:#E4EAC4;          /* 16.1:1 — names, values, anything read once */
+  --mid:#B3BE79;          /*  9.7:1 — sentences */
+  --dim:#949F52;          /*  7.0:1 — DREAD's third shade; labels */
+  --rule:rgba(210,219,153,.22);
+  --rule-hi:rgba(210,219,153,.42);
   --live:#8FC93A;
+  --scrim:7,8,10;
   --pad-x:clamp(16px,3.4vw,40px);
   --pad-y:clamp(14px,2.6vh,26px);
 }
@@ -77,29 +90,85 @@ body::after{
 @media (prefers-reduced-motion: reduce){ body::after{ background-size: cover, 140px 140px } }
 html.no3d body::after{ background-image:none }
 
+/* A scrim under the chrome, and only under the chrome. The render
+   behind it is a lit object: the pale plastic shell, the shoulder of
+   the case, the reflection off the bezel all drift under the corner
+   text as the machine turns, and text that is legible against the
+   stage is not legible against any of those. Two soft bands — one at
+   each end, sized to the chrome's own padding — give the four corners
+   a guaranteed dark ground without touching the middle of the frame
+   where the machine actually is. It sits at z-index 2: above the
+   canvas and the vignette, below .chrome. */
+body::before{
+  content:''; position:fixed; inset:0; z-index:2; pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(var(--scrim),.86), rgba(var(--scrim),.52) 45%, rgba(var(--scrim),0)) top/100% clamp(112px,19vh,190px) no-repeat,
+    linear-gradient(0deg,   rgba(var(--scrim),.88), rgba(var(--scrim),.54) 45%, rgba(var(--scrim),0)) bottom/100% clamp(108px,17vh,175px) no-repeat;
+}
+html.no3d body::before{ display:none }
+
 /* ── page chrome ───────────────────────────────────────────────── */
 .chrome{position:fixed; inset:0; z-index:3; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:var(--pad-y) var(--pad-x)}
 .chrome a,.chrome button{pointer-events:auto}
+/* One shadow for everything in the corners. Belt and braces with the
+   scrim above: the scrim handles a pale shell, this handles a specular
+   highlight that lands inside a letterform. */
+.chrome, .warming{text-shadow:0 1px 3px rgba(0,0,0,.8), 0 0 14px rgba(0,0,0,.55)}
+.chrome a:focus-visible, .chrome button:focus-visible{
+  outline:2px solid var(--live); outline-offset:3px; border-radius:3px;
+}
 
 .masthead{display:flex; justify-content:space-between; align-items:flex-start; gap:20px}
-.who{margin:0; font-family:var(--f-display); font-size:clamp(17px,1.7vw,21px); font-weight:400; letter-spacing:.01em; line-height:1.3}
-.who span{display:block; font-family:"IBM Plex Sans Condensed",sans-serif; font-weight:400; font-size:.72em; color:var(--dim); letter-spacing:.012em; margin-top:2px}
-.reach{margin:0; text-align:right; font-size:13.5px; line-height:1.5; color:var(--dim)}
+.who{margin:0; font-family:var(--f-display); font-size:clamp(17px,1.7vw,21px); font-weight:400; letter-spacing:.01em; line-height:1.3; color:var(--ink)}
+.who span{display:block; font-family:"IBM Plex Sans Condensed",sans-serif; font-weight:400; font-size:.72em; color:var(--mid); letter-spacing:.012em; margin-top:2px}
+.reach{margin:0; text-align:right; font-size:13.5px; line-height:1.6; color:var(--mid)}
 .reach b{display:block; font-weight:400; color:var(--ink)}
-.reach .on{display:inline-flex; align-items:center; gap:7px; color:var(--ink)}
-.reach .on i{width:6px; height:6px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(143,201,58,.16)}
-.reach a{color:inherit; text-decoration:none; border-bottom:1px solid var(--rule); padding-bottom:1px}
-.reach a:hover{color:var(--ink); border-bottom-color:var(--dim)}
+.reach .on{display:inline-flex; align-items:center; gap:7px; color:var(--live); font-size:12.5px; letter-spacing:.03em}
+.reach .on i{width:7px; height:7px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(143,201,58,.18), 0 0 10px rgba(143,201,58,.55)}
+/* The email is the one thing on this page a recruiter is looking for.
+   It gets a real underline rather than a hairline you have to hunt for. */
+.reach a{color:var(--ink); text-decoration:underline; text-decoration-color:var(--rule-hi); text-underline-offset:3px; text-decoration-thickness:1px}
+.reach a:hover{color:var(--live); text-decoration-color:var(--live)}
 
-.footbar{display:flex; justify-content:space-between; align-items:flex-end; gap:20px; font-size:13px; color:var(--faint)}
-.legend{margin:0; display:flex; flex-wrap:wrap; gap:4px 18px; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; letter-spacing:.04em; color:var(--dim)}
-.legend em{font-style:normal; color:var(--ink); margin-right:.45em}
-.escape{margin:0; display:flex; gap:16px; white-space:nowrap}
-.escape a{color:var(--faint); text-decoration:none; border-bottom:1px solid transparent}
-.escape a:hover{color:var(--ink); border-bottom-color:var(--rule)}
+.footbar{display:flex; justify-content:space-between; align-items:flex-end; gap:20px 28px; font-size:13px; color:var(--dim)}
+
+/* The legend is the whole manual for a machine with no manual, so the
+   keys are drawn as keys. An ↑↓ set in the same weight as the words
+   around it reads as punctuation; in a cap it reads as a button. */
+.legend{margin:0; display:flex; flex-wrap:wrap; align-items:center; gap:7px 14px; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:12px; letter-spacing:.02em; color:var(--mid)}
+.legend span{display:inline-flex; align-items:center; gap:7px; white-space:nowrap}
+.legend em{
+  font-style:normal; margin:0; color:var(--ink); font-size:11px; line-height:1;
+  padding:4px 6px; min-width:22px; text-align:center;
+  border:1px solid var(--rule-hi); border-radius:4px;
+  background:rgba(var(--scrim),.55); box-shadow:0 1px 0 rgba(210,219,153,.10) inset;
+  text-shadow:none;
+}
+
+/* The way out, for anyone who does not want to drive a D-pad to read a
+   CV. It was a 2.3:1 grey word in a corner; it is now the only bordered
+   thing in the chrome, which is what "this is a button" looks like. */
+.escape{margin:0; display:flex; gap:10px; white-space:nowrap; align-items:center}
+.escape a{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:7px 13px; border-radius:5px;
+  border:1px solid var(--rule-hi); background:rgba(var(--scrim),.55);
+  color:var(--mid); font-size:12.5px; letter-spacing:.02em; text-decoration:none;
+  transition:color .12s, border-color .12s, background-color .12s;
+}
+.escape a:hover{color:var(--ink); border-color:var(--live); background:rgba(143,201,58,.12)}
+/* First link out is the reading version — the one people actually need
+   when the machine is not what they came for. */
+.escape a:first-child{color:var(--ink); border-color:var(--rule-hi)}
+.escape a:first-child::before{
+  content:''; flex:none; width:9px; height:11px; border-radius:1px;
+  border:1px solid currentColor; border-top-width:3px; opacity:.75;
+}
+.escape a:last-child::after{content:'\2197'; opacity:.6; font-size:11px}
 
 /* ── the boot line, until the machine is on screen ─────────────── */
-.warming{position:fixed; z-index:4; left:50%; top:50%; margin:0; transform:translate(-50%,-50%); font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.12em; color:var(--faint); transition:opacity .5s}
+.warming{position:fixed; z-index:4; left:50%; top:50%; margin:0; transform:translate(-50%,-50%); font-family:"IBM Plex Mono",monospace; font-size:12.5px; letter-spacing:.14em; color:var(--dim); transition:opacity .5s; animation:warm 1.6s ease-in-out infinite}
+@keyframes warm{50%{opacity:.42}}
 .warming[hidden]{display:none}
 
 /* ── keyboard / assistive control surface ──────────────────────────
@@ -138,21 +207,72 @@ html.no3d .chrome{position:fixed; pointer-events:none}
 html.no3d .warming{display:none}
 
 /* ── cartridge overlay: a game running full-frame ──────────────── */
-.cart{position:fixed; inset:0; z-index:9; display:none; flex-direction:column; background:rgba(9,10,11,.95); backdrop-filter:blur(10px)}
+.cart{position:fixed; inset:0; z-index:9; display:none; flex-direction:column; background:rgba(8,10,5,.95); backdrop-filter:blur(10px)}
 .cart[data-open]{display:flex}
-.cart-bar{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:11px var(--pad-x); border-bottom:1px solid var(--rule); font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.06em; color:var(--dim)}
+.cart-bar{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:11px var(--pad-x); border-bottom:1px solid var(--rule); font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.06em; color:var(--mid)}
 .cart-bar b{color:var(--ink); font-weight:500}
-.cart-bar button{background:none; border:1px solid var(--rule); color:var(--ink); font:inherit; letter-spacing:.06em; padding:5px 12px; border-radius:4px; cursor:pointer}
-.cart-bar button:hover{border-color:var(--dim)}
-.cart iframe{flex:1; width:100%; border:0; background:#0B0C0D}
+.cart-bar button{background:rgba(var(--scrim),.5); border:1px solid var(--rule-hi); color:var(--ink); font:inherit; letter-spacing:.06em; padding:6px 13px; border-radius:5px; cursor:pointer}
+.cart-bar button:hover{border-color:var(--live); color:var(--live); background:rgba(143,201,58,.12)}
+.cart-bar button:focus-visible{outline:2px solid var(--live); outline-offset:3px}
+.cart iframe{flex:1; width:100%; border:0; background:#080A05}
+
+/* Where a game actually runs while it is on the panel. It has to stay
+   a rendered element — a display:none iframe gets its animation frames
+   throttled to nothing and the game would run at a crawl — so it is
+   full size, parked at the origin, effectively invisible, and behind
+   the render. Nothing ever sees it; the panel reads its canvas.  */
+.slot{
+  position:fixed; top:0; left:0; width:320px; height:288px;
+  border:0; z-index:0; opacity:.002; pointer-events:none;
+}
 
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap}
 
+/* With no WebGL there is no scrim, and the flat console below is pale
+   plastic that scrolls under the fixed chrome. Give the corners their
+   own ground instead. */
+html.no3d .masthead, html.no3d .footbar{
+  background:rgba(var(--scrim),.9); border:1px solid var(--rule);
+  border-radius:8px; padding:10px 14px; backdrop-filter:blur(6px);
+}
+
+/* ── narrow ────────────────────────────────────────────────────
+   The corners get tight before the machine does, so the chrome
+   folds first: the footer stacks so the legend and the way out
+   never fight for the same line. */
 @media (max-width:760px){
   .who{font-size:14px}
-  .reach{font-size:12px}
-  .legend{font-size:10px; gap:2px 12px}
-  .escape{font-size:11px; gap:12px}
+  .reach{font-size:12px; line-height:1.5}
+  .reach .on{font-size:11.5px}
+  .footbar{flex-direction:column; align-items:flex-start; gap:10px}
+  .legend{font-size:11px; gap:6px 12px}
+  .legend em{font-size:10px; min-width:20px; padding:3px 5px}
+  .escape{gap:8px; flex-wrap:wrap; white-space:normal}
+  .escape a{padding:8px 12px; font-size:12px}
+}
+/* Below this the email is the only thing in the top-right worth the
+   room, and the keyboard legend is describing a keyboard nobody has. */
+/* The status and the address each take their own line here: side by
+   side they ran off the right edge of a 390px screen. */
+@media (max-width:520px){
+  .masthead{gap:10px}
+  .who{font-size:13.5px}
+  .who span{display:none}
+  .reach{min-width:0; flex:1; font-size:11.5px}
+  .reach b{display:none}
+  .reach .on{display:flex; justify-content:flex-end; font-size:11px}
+  .reach a{display:block; overflow-wrap:anywhere}
+  .legend{display:none}
 }
 @media (max-height:600px){ .legend{display:none} }
-@media (prefers-reduced-motion:reduce){ *{animation-duration:.01ms !important; transition-duration:.01ms !important} }
+/* iteration-count matters as much as duration here. Crushing an
+   infinite animation to .01ms without capping it leaves it looping,
+   and a cycle far shorter than a frame is sampled at an arbitrary
+   phase each time — which is a strobe, delivered to exactly the people
+   who asked for less motion. Chromium happens to resolve the one
+   infinite animation on this page to its rest value anyway, but that
+   is luck, not intent. */
+@media (prefers-reduced-motion:reduce){
+  *{ animation-duration:.01ms !important; animation-iteration-count:1 !important;
+     transition-duration:.01ms !important }
+}
