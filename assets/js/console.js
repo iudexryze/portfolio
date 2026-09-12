@@ -492,7 +492,56 @@ function tone(freq, dur, type, vol){
     o.start(); o.stop(actx.currentTime + dur + 0.02);
   } catch(e){}
 }
+/* ── haptics ──────────────────────────────────────────────────────
+   A machine with real buttons should answer in the hand as well as in
+   the ear.
+
+   navigator.vibrate is Android only. Safari on iOS has never shipped
+   it, and a desktop has nothing to vibrate, so on both of those every
+   call below is a no-op that costs nothing and the sound goes on being
+   the whole of the feedback. Nothing here is load-bearing.
+
+   It follows the VOLUME dial rather than getting a switch of its own.
+   The machine has one control for answer-me and be-quiet, and adding a
+   second dial for the same idea would be a worse object.
+
+   Durations are eight to twenty milliseconds — a tick, not a buzz.
+   Anything longer under a menu keypress is intolerable inside a minute,
+   and holding a direction repeats this every 90ms.
+
+   Chrome logs a warning for every vibrate made before the frame has
+   been tapped, and the boot sequence fires sfx() on load, so nothing is
+   sent until a real gesture has actually happened. */
+var canBuzz = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+var gestured = false;
+/* Capture, not bubble. The machine's own pointerdown handler lives on
+   the WebGL canvas, so on the very first press a bubble-phase listener
+   here would not have run yet and that press would be the one silent
+   one of the session. Capture puts the gate ahead of it. */
+['pointerdown', 'keydown'].forEach(function(t){
+  window.addEventListener(t, function(){ gestured = true; },
+    { once:true, passive:true, capture:true });
+});
+
+/* hasBeenActive is the flag the browser itself gates vibrate on, so ask
+   it rather than inferring activation from the fact that an event was
+   heard — the two come apart for anything synthetic, and the listener
+   above cannot tell the difference. It falls back to the flag where the
+   property is not implemented. */
+function activated(){
+  var ua = navigator.userActivation;
+  return ua ? ua.hasBeenActive : gestured;
+}
+
+var BUZZ = { move:8, open:14, back:10, deny:[16,38,16], boot:[10,70,18], off:22, tick:6 };
+function buzz(kind){
+  if (!canBuzz || !activated() || reduced || !APP.sound) return;
+  var pattern = BUZZ[kind];
+  if (pattern) try { navigator.vibrate(pattern); } catch(e){}
+}
+
 function sfx(kind){
+  buzz(kind);
   if (kind === 'move')  tone(720, 0.05);
   if (kind === 'open')  { tone(560, 0.05); setTimeout(function(){ tone(880, 0.07); }, 55); }
   if (kind === 'back')  tone(340, 0.07);
@@ -531,7 +580,7 @@ function fire(action){
 function cyclePalette(){
   APP.palIdx = (APP.palIdx + 1) % PALETTES.length;
   pal = PALETTES[APP.palIdx];
-  tone(880, 0.04, 'triangle');
+  buzz('tick'); tone(880, 0.04, 'triangle');
   dirty();
 }
 
@@ -847,6 +896,9 @@ function stepCursor(){
    belongs to the game. */
 function cartHold(btn, down){
   if (!SLOT.on) return;
+  /* On the way down only. The release is not a button press and should
+     not feel like one. */
+  if (down) buzz('tick');
   var cfg = SLOT.cfg;
   if (cfg.cursor && /^(up|down|left|right)$/.test(btn)){ SLOT.held[btn] = down; return; }
   if (cfg.cursor && btn === (cfg.grab || 'a')){
