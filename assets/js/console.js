@@ -3,6 +3,13 @@
    cartridge slot. Publishes window.IRZ for the 3D shell to drive.
    Part of IudexRzye. See README.md for how the pieces fit. */
 
+/* A static import, deliberately. Making this a dynamic one to carry the
+   cache-busting query across gave console.js a top-level await, and a
+   module that awaits does not finish evaluating before the next script
+   in the list starts — so device.js read window.IRZ before this file
+   had published it and silently fell back to the flat console every
+   time. The version reaches content.js through an import map instead;
+   see the loader in index.html. */
 import { SECTIONS, BASE } from './content.js';
 (function(){
 'use strict';

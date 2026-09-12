@@ -24,7 +24,33 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="assets/css/page.css">
+<!-- ═══════════════════════════════════════════════════════════════
+     Keeping the page and its assets in step.
+
+     GitHub Pages serves everything with max-age=600, and the HTML
+     expires independently of the JavaScript. For up to ten minutes
+     after a deploy a browser can pair fresh HTML with a stale script,
+     which does not look like a caching problem — it looks like the site
+     is broken.
+
+     document.lastModified is the HTML's own timestamp. It changes when,
+     and only when, the page is redeployed, so hanging it off every
+     asset URL means the two can never disagree: cached HTML asks for
+     the assets it was built with, new HTML asks for new ones. No build
+     step and nothing to remember on a push.
+
+     A stylesheet appended during head parsing blocks rendering exactly
+     as a parsed one does, so this costs no flash of unstyled content.
+     Without JavaScript the noscript link below is the whole story.
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+  (function(){
+    var v = '?v=' + Date.parse(document.lastModified);
+    document.head.appendChild(Object.assign(document.createElement('link'),
+      { rel: 'stylesheet', href: 'assets/css/page.css' + v }));
+  })();
+</script>
+<noscript><link rel="stylesheet" href="assets/css/page.css"></noscript>
 </head>
 <body>
 
@@ -937,6 +963,12 @@
   </div>
 </div>
 
-<script src="assets/js/page.js"></script>
+<script>
+  (function(){
+    var el = document.createElement('script');
+    el.src = 'assets/js/page.js?v=' + Date.parse(document.lastModified);
+    document.body.appendChild(el);
+  })();
+</script>
 </body>
 </html>

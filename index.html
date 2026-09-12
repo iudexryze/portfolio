@@ -19,7 +19,58 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik+Distressed&family=JetBrains+Mono:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:ital,wght@0,400;0,600;1,600&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="assets/css/console.css">
+<!-- ═══════════════════════════════════════════════════════════════
+     Keeping the page and its assets in step.
+
+     GitHub Pages serves everything with max-age=600, and the HTML
+     expires independently of the JavaScript. For up to ten minutes
+     after a deploy a browser can pair fresh HTML with a stale script,
+     which does not look like a caching problem — it looks like the site
+     is broken.
+
+     document.lastModified is the HTML's own timestamp. It changes when,
+     and only when, the page is redeployed, so hanging it off every
+     asset URL means the two can never disagree: cached HTML asks for
+     the assets it was built with, new HTML asks for new ones. No build
+     step and nothing to remember on a push.
+
+     A stylesheet appended during head parsing blocks rendering exactly
+     as a parsed one does, so this costs no flash of unstyled content.
+     Without JavaScript the noscript link below is the whole story.
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+  (function(){
+    var v = '?v=' + Date.parse(document.lastModified);
+    document.head.appendChild(Object.assign(document.createElement('link'),
+      { rel: 'stylesheet', href: 'assets/css/console.css' + v }));
+
+    /* content.js is reached by an import inside console.js, not by a tag,
+       so the loader cannot put the query on it. An import map can, and
+       it is the one way to do it that does not turn the import into a
+       dynamic one — console.js would then need a top-level await, and a
+       module that awaits does not finish before the next script starts,
+       which left device.js reading window.IRZ too early and falling back
+       to the flat console. It has to be injected before anything
+       resolves a module specifier, which is why it is here in head and
+       the loader is at the end of body. */
+    document.head.appendChild(Object.assign(document.createElement('script'), {
+      type: 'importmap',
+      textContent: JSON.stringify({ imports: {
+        './assets/js/content.js': './assets/js/content.js' + v
+      }})
+    }));
+
+    /* No modulepreload hints here, deliberately. A hint on console.js
+       makes the browser resolve its dependency graph immediately, which
+       resolves the bare './content.js' specifier — and once a specifier
+       is resolved the map rule for it is discarded, which the console
+       says out loud. On a cold load the fetch was slow enough that the
+       map won; on a warm one it lost, and content.js was fetched a
+       second time unversioned. They buy very little in any case: the
+       script tags this replaced were already at the end of the body. */
+  })();
+</script>
+<noscript><link rel="stylesheet" href="assets/css/console.css"></noscript>
 </head>
 <body>
 
@@ -88,17 +139,28 @@
 <noscript><p style="padding:40px;max-width:60ch">This page is a small machine that needs JavaScript to switch on. The same work, as ordinary text, is <a href="page.html" style="color:#8FC93A">on the text version of this page</a>.</p></noscript>
 
 <!-- ═══════════════════════════════════════════════════════════════
-     THE MACHINE — content, screen and controls.
-     Deliberately a plain script: if the 3D module below never
-     arrives, everything here still works on a flat console.
-     ═══════════════════════════════════════════════════════════ -->
-<script type="module" src="assets/js/console.js"></script>
+     THE MACHINE, and THE OBJECT.
 
-<!-- ═══════════════════════════════════════════════════════════════
-     THE OBJECT — the machine itself, in three dimensions.
-     Loaded on its own. If it never arrives, the flat console above
-     takes over and nothing is lost but the plastic.
+     console.js is the content, the screen and the controls; device.js
+     is the machine itself, in three dimensions. Order matters — the
+     first publishes window.IRZ and the second reads it on the way in —
+     and if device.js never arrives, everything in console.js still
+     works on the flat console and nothing is lost but the plastic.
      ═══════════════════════════════════════════════════════════ -->
-<script type="module" src="assets/js/device.js"></script>
+<script>
+  /* async=false keeps dynamically inserted scripts in insertion order,
+     which matters here: console.js publishes window.IRZ and device.js
+     reads it on the way in. Inserted from the end of body so the DOM
+     both of them reach for is already parsed. */
+  (function(){
+    var v = '?v=' + Date.parse(document.lastModified);
+    ['assets/js/console.js', 'assets/js/device.js'].forEach(function(src){
+      var el = document.createElement('script');
+      el.type = 'module'; el.async = false; el.src = src + v;
+      document.body.appendChild(el);
+    });
+  })();
+</script>
+
 </body>
 </html>
