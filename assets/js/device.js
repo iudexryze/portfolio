@@ -99,6 +99,86 @@ function pad2d(w, h){
   return [c, c.getContext('2d')];
 }
 
+/* ── engraved control labels ──────────────────────────────────────
+   The names used to be printed on the shell beside the controls, where
+   a Game Boy puts them, and at the size this thing renders that was not
+   enough to tell you what you were about to press. They are cut into
+   the buttons now.
+
+   A groove is read entirely from its two inner walls, and the thing
+   that sells it is that they are lit the opposite way round from a
+   raised letter. The key light sits upper-right, so the wall that FACES
+   it — the lower-left one — is the bright edge, and the upper-right
+   wall is the one in shadow. Get that backwards and the letter looks
+   glued on. A bump map off the same glyph goes on as well, so the baked
+   chisel and the real light agree when the machine turns.
+
+   These are decals rather than UV work on the buttons themselves: the
+   pills and the D-pad are extrusions whose front-face UVs are in shape
+   coordinates, not 0..1, so there is nothing sane to paint into. A
+   child plane a thousandth in front of the face is predictable on every
+   one of them and moves with the button when it is pressed.        */
+function engraved(paint, wWorld, hWorld, opts){
+  opts = opts || {};
+  const HPX = 256;
+  const WPX = Math.max(48, Math.round(HPX * wWorld / hWorld));
+  const [c, g]   = pad2d(WPX, HPX);
+  const [bc, bg] = pad2d(WPX, HPX);
+  const d = Math.max(1, HPX * 0.020);
+
+  const pass = (ctx, fill, dx, dy) => {
+    ctx.save();
+    ctx.translate(dx, dy);
+    ctx.fillStyle = fill;
+    paint(ctx, WPX, HPX);
+    ctx.restore();
+  };
+
+  pass(g, opts.lit  || 'rgba(255,255,255,.46)', -d,  d);   // wall facing the key
+  pass(g, opts.dark || 'rgba(0,0,0,.70)',        d, -d);   // wall away from it
+  pass(g, opts.core || 'rgba(0,0,0,.52)',        0,  0);   // the floor of the cut
+
+  bg.fillStyle = '#8a8a8a'; bg.fillRect(0, 0, WPX, HPX);
+  pass(bg, '#000', 0, 0);
+
+  const m = new THREE.MeshStandardMaterial({
+    map: tex(c),
+    bumpMap: tex(bc, false),
+    bumpScale: opts.bump === undefined ? 0.6 : opts.bump,
+    roughness: opts.roughness === undefined ? 0.52 : opts.roughness,
+    transparent: true, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+  });
+  return new THREE.Mesh(new THREE.PlaneGeometry(wWorld, hWorld), m);
+}
+
+/* text, centred, tracked out a little because small caps on a curved
+   cap close up otherwise */
+function engravedText(text, wWorld, hWorld, opts){
+  opts = opts || {};
+  const fill = opts.fill || 0.66;
+  return engraved(function(ctx, w, h){
+    ctx.font = '700 ' + (h * fill) + 'px "IBM Plex Sans Condensed", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.letterSpacing = (h * (opts.tracking || 0)) + 'px';
+    ctx.fillText(text, w / 2, h / 2 + h * 0.03);
+  }, wWorld, hWorld, opts);
+}
+
+/* a solid triangle, for the four arms of the pad */
+function engravedArrow(dir, size, opts){
+  return engraved(function(ctx, w, h){
+    const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.34;
+    const pts = { u:[[0,-1],[.9,.7],[-.9,.7]], d:[[0,1],[.9,-.7],[-.9,-.7]],
+                  l:[[-1,0],[.7,.9],[.7,-.9]], r:[[1,0],[-.7,.9],[-.7,-.9]] }[dir];
+    ctx.beginPath();
+    ctx.moveTo(cx + pts[0][0]*r, cy + pts[0][1]*r);
+    ctx.lineTo(cx + pts[1][0]*r, cy + pts[1][1]*r);
+    ctx.lineTo(cx + pts[2][0]*r, cy + pts[2][1]*r);
+    ctx.closePath(); ctx.fill();
+  }, size, size, opts);
+}
+
 /* moulded plastic is never perfectly smooth */
 function plasticRoughness(){
   const N = 512, [c, g] = pad2d(N, N);
@@ -330,26 +410,11 @@ function shellPrint(){
   g.font = u(0.21) + 'px "IBM Plex Mono", monospace';
   g.fillText('BATT', px(P.lamp[0] - 0.30), py(P.lamp[1] - 0.07));
 
-  // button letters sit square under each button; only the pill
-  // labels follow the tilt, and canvas turns the other way round
-  // from the scene, so the sign flips here.
+  /* A, B, SELECT and START used to be printed here, on the shell
+     beside each control. They are cut into the buttons themselves now
+     — see engraved() — so printing them here as well would only say
+     everything twice in the smallest part of the frame. */
   g.textAlign = 'center';
-  const letter = (t, x, y) => {
-    g.fillStyle = NAVY;
-    g.font = '600 ' + u(0.36) + 'px "IBM Plex Sans Condensed", sans-serif';
-    g.fillText(t, px(x), py(y));
-  };
-  letter('B', P.b[0] + 0.86, P.b[1] - 0.60);
-  letter('A', P.a[0] + 0.86, P.a[1] - 0.60);
-
-  const tab = (t, x, y) => {
-    g.save(); g.translate(px(x), py(y)); g.rotate(25*Math.PI/180);
-    g.fillStyle = '#4A463D'; g.font = '600 ' + u(0.24) + 'px "IBM Plex Sans Condensed", sans-serif';
-    g.letterSpacing = u(0.07) + 'px';
-    g.fillText(t, 0, 0); g.letterSpacing = '0px'; g.restore();
-  };
-  tab('SELECT', P.select[0] - 0.29, P.select[1] - 0.62);
-  tab('START',  P.start[0]  - 0.29, P.start[1]  - 0.62);
   return tex(c);
 }
 
@@ -445,17 +510,22 @@ camera.position.set(0, 0, 40);
   const env = tex(c); env.mapping = THREE.EquirectangularReflectionMapping;
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromEquirectangular(env).texture;
-  scene.environmentIntensity = 0.30;
+  scene.environmentIntensity = 0.42;
   pmrem.dispose(); env.dispose();
 }
 
-scene.add(new THREE.HemisphereLight(0x5C6C78, 0x080A0B, 0.22));
+/* The rig was lit for mood and the controls paid for it: the bottom
+   third of the shell — which is the half you actually operate — sat a
+   stop and a half under the screen end. Everything below lifts the
+   lower half and the silhouette without touching what makes it feel
+   like a room with one bad light in it. */
+scene.add(new THREE.HemisphereLight(0x5C6C78, 0x141216, 0.34));
 
 /* Something sickly and low, off to one side, that should not be on. */
 const wrong = new THREE.PointLight(0x8FB55A, 13, 20, 2);
 wrong.position.set(-7.5, -9.5, 5.0); scene.add(wrong);
 
-const key = new THREE.DirectionalLight(0xD8E2E6, 1.25);
+const key = new THREE.DirectionalLight(0xD8E2E6, 1.38);
 key.position.set(6, 10.5, 17); key.castShadow = true;
 /* The frustum was more than twice the size of the thing casting into
    it, so every texel covered a lot of world and the result was a hard
@@ -469,8 +539,18 @@ key.shadow.radius = 7; key.shadow.blurSamples = 24;
 key.shadow.bias = 0; key.shadow.normalBias = 0.03;
 scene.add(key);
 
-const rim = new THREE.DirectionalLight(0x4A6E96, 1.5);
+/* Two edges, not one. A single rim left the right-hand side of the
+   case dissolving into a background that is nearly the same value. */
+const rim = new THREE.DirectionalLight(0x4A6E96, 1.95);
 rim.position.set(-12, 5, -4); scene.add(rim);
+
+const rim2 = new THREE.DirectionalLight(0x6E86A8, 0.85);
+rim2.position.set(13, 2, -6); scene.add(rim2);
+
+/* Low and in front, on the controls alone. Short range so it dies well
+   before the bezel and never flattens the screen end. */
+const hands = new THREE.PointLight(0xDCD5C6, 62, 26, 2);
+hands.position.set(0.8, -8.6, 9.5); scene.add(hands);
 
 const fill = new THREE.PointLight(0xC8B49A, 70, 44, 2);
 fill.position.set(-9.5, -7.5, 10); scene.add(fill);
@@ -488,10 +568,10 @@ function sweep(){
   /* One failing source overhead and nothing else. The pool is tighter
      and colder than a studio would ever light it, and it dies to black
      well before the edge of frame. */
-  const grad = g.createRadialGradient(256, 208, 10, 256, 236, 96);
-  grad.addColorStop(0,    '#232B2C');
-  grad.addColorStop(0.34, '#141A1B');
-  grad.addColorStop(0.66, '#080C0D');
+  const grad = g.createRadialGradient(256, 206, 12, 256, 240, 128);
+  grad.addColorStop(0,    '#2E3739');
+  grad.addColorStop(0.34, '#1B2223');
+  grad.addColorStop(0.66, '#0C1112');
   grad.addColorStop(1,    '#030405');
   g.fillStyle = grad; g.fillRect(0, 0, 512, 512);
 
@@ -636,7 +716,21 @@ const cross = new THREE.Mesh(slab(crossShape(1.20, 3.30), 0.32, 0.07), darkMat);
 cross.castShadow = true; DP.add(cross);
 {
   const dot = new THREE.Mesh(new THREE.CircleGeometry(0.24, 20), new THREE.MeshStandardMaterial({ color:0x1D1D21, roughness:0.65 }));
-  dot.position.z = 0.165; DP.add(dot);
+  dot.position.z = 0.236; DP.add(dot);
+  /* The pad is near-black, so a dark cut would read as nothing at all.
+     These are moulded proud rather than sunk: light core, shadow under.
+     It is the one place on the machine where that is the honest choice,
+     and it is also the only one where you cannot guess the control from
+     its shape alone. */
+  const arrow = (dir, x, y) => {
+    const a = engravedArrow(dir, 0.62, {
+      core:'rgba(226,229,214,.44)', lit:'rgba(255,255,255,.34)',
+      dark:'rgba(0,0,0,.62)', bump:-0.5
+    });
+    a.position.set(x, y, 0.238); DP.add(a);
+  };
+  arrow('u', 0, 1.06); arrow('d', 0, -1.06);
+  arrow('l', -1.06, 0); arrow('r', 1.06, 0);
 }
 device.add(DP);
 hit(P.dpad[0] - 1.15, P.dpad[1], 1.15, 1.15, 'left',  DP, 'tilt', [0, -1]);
@@ -645,26 +739,37 @@ hit(P.dpad[0], P.dpad[1] + 1.15, 1.15, 1.15, 'up',    DP, 'tilt', [-1, 0]);
 hit(P.dpad[0], P.dpad[1] - 1.15, 1.15, 1.15, 'down',  DP, 'tilt', [ 1, 0]);
 
 // A and B
-function roundButton(pos, btn){
+function roundButton(pos, btn, name){
   const m = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.69, 0.34, 36), btnMat);
   m.rotation.x = Math.PI/2; m.position.set(pos[0], pos[1], FRONT + 0.13);
   m.castShadow = true; device.add(m);
+  const lab = engravedText(name, 0.80, 0.80, { fill:0.74, lit:'rgba(255,225,232,.50)' });
+  lab.rotation.x = -Math.PI/2; lab.position.y = 0.172;   // the cap, in cylinder space
+  m.add(lab);
   hit(pos[0], pos[1], 1.5, 1.5, btn, m, 'push');
   return m;
 }
-roundButton(P.b, 'b');
-roundButton(P.a, 'a');
+roundButton(P.b, 'b', 'B');
+roundButton(P.a, 'a', 'A');
 
 // start and select
-function pill(pos, btn){
+function pill(pos, btn, name){
   const m = new THREE.Mesh(slab(roundedRect(1.40, 0.44, {tl:0.22, tr:0.22, br:0.22, bl:0.22}), 0.20, 0.05), greyMat);
   m.position.set(pos[0], pos[1], FRONT + 0.07); m.rotation.z = -25 * Math.PI/180;
   m.castShadow = true; device.add(m);
+  /* Six characters across 1.4 units is tight, so the cut is shallower
+     and tracked out — a deep chisel at this size fills its own counters
+     and the word closes up into a smudge. */
+  const lab = engravedText(name, 1.16, 0.29, {
+    fill:0.72, tracking:0.05, bump:0.4,
+    core:'rgba(14,14,17,.62)', lit:'rgba(255,255,255,.58)'
+  });
+  lab.position.z = 0.156; m.add(lab);
   hit(pos[0], pos[1], 1.7, 0.9, btn, m, 'push');
   return m;
 }
-pill(P.select, 'select');
-pill(P.start,  'start');
+pill(P.select, 'select', 'SELECT');
+pill(P.start,  'start',  'START');
 
 // power switch, on the top edge. It slides, and it means it.
 const SW_OFF = -3.24, SW_ON = -2.56;
