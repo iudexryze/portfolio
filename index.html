@@ -70,7 +70,30 @@
        script tags this replaced were already at the end of the body. */
   })();
 </script>
-<noscript><link rel="stylesheet" href="assets/css/console.css"></noscript>
+<noscript>
+  <link rel="stylesheet" href="assets/css/console.css">
+  <!-- Without JavaScript the machine never switches on, so the boot line
+       sits there saying WARMING UP for ever, and the explanation — a
+       <noscript> at the end of the body — is buried: everything on this
+       page that draws the machine is position:fixed, and a paragraph in
+       normal flow paints underneath all of it. Nobody was stranded, the
+       way out is in the corner either way, but a portfolio that reads as
+       hung is a bad first impression to leave on anyone whose browser
+       simply is not running scripts. -->
+  <style>
+    .warming{ display:none }
+    .nojs{
+      position:fixed; inset:0; z-index:10;
+      display:grid; place-items:center; padding:var(--pad-y) var(--pad-x);
+      text-align:center;
+    }
+    .nojs p{
+      max-width:46ch; margin:0; color:var(--mid);
+      font-size:15px; line-height:1.6; text-shadow:0 1px 3px rgba(0,0,0,.8);
+    }
+    .nojs a{ color:var(--live) }
+  </style>
+</noscript>
 </head>
 <body>
 
@@ -136,7 +159,7 @@
 </div>
 
 <p class="sr" id="say" role="status" aria-live="polite"></p>
-<noscript><p style="padding:40px;max-width:60ch">This page is a small machine that needs JavaScript to switch on. The same work, as ordinary text, is <a href="page.html" style="color:#8FC93A">on the text version of this page</a>.</p></noscript>
+<noscript><div class="nojs"><p>This page is a small machine, and it needs JavaScript to switch on. The same work, as ordinary text, is <a href="page.html">on the text version of this page</a>.</p></div></noscript>
 
 <!-- ═══════════════════════════════════════════════════════════════
      THE MACHINE, and THE OBJECT.
