@@ -219,7 +219,8 @@ const P = {
   select: [-1.15, -5.95],
   start:  [ 0.85, -5.59],
   spk:    [ 2.50, -6.05],
-  lamp:   [ 4.02,  0.22]
+  lamp:   [ 4.02,  0.22],
+  power:  [-3.66, -6.24]
 };
 
 function shellPrint(){
@@ -243,6 +244,7 @@ function shellPrint(){
   dish(P.dpad[0], P.dpad[1], 2.05);
   dish(P.a[0], P.a[1], 1.02);
   dish(P.b[0], P.b[1], 1.02);
+  dish(P.power[0], P.power[1], 0.66);
 
   /* Occlusion where the bezel meets the shell. The bezel stands proud
      of this plane, so light never reaches the millimetre around its
@@ -507,6 +509,17 @@ function shellPrint(){
   g.fillStyle = '#5A554A';
   g.font = u(0.21) + 'px "IBM Plex Mono", monospace';
   g.fillText('BATT', px(P.lamp[0] - 0.30), py(P.lamp[1] - 0.07));
+
+  /* the front power button says what it is; the glyph on its face is
+     unambiguous but small, and this is the corner of a machine nobody
+     has used before */
+  g.textAlign = 'center';
+  g.fillStyle = '#4A463D';
+  g.font = '600 ' + u(0.22) + 'px "IBM Plex Sans Condensed", sans-serif';
+  g.letterSpacing = u(0.06) + 'px';
+  g.fillText('POWER', px(P.power[0]), py(P.power[1] - 0.78));
+  g.letterSpacing = '0px';
+  g.textAlign = 'right';
 
   /* A, B, SELECT and START used to be printed here, on the shell
      beside each control. They are cut into the buttons themselves now
@@ -795,14 +808,21 @@ lamp.rotation.x = Math.PI/2; lamp.position.set(P.lamp[0], P.lamp[1], FRONT + 0.0
 /* ── controls ─────────────────────────────────────────────────── */
 const hitboxes = [];
 
-function hit(x, y, w, h, btn, target, kind, tilt){
+function hit(x, y, w, h, btn, target, kind, tilt, z, d){
   // Drawn but written to nothing: an invisible mesh can be skipped by
   // the raycaster, and these have to stay clickable.
+  //
+  // z and d default to a slab standing proud of the front face, which is
+  // right for everything ON that face and wrong for anything that is
+  // not. A box 0.3 in front of the shell is nearer the camera than the
+  // shell is, so under perspective it covers more of the frame than the
+  // control does — which is how the power switch, up on the top edge,
+  // ended up catching clicks aimed at the top of the screen.
   const box = new THREE.Mesh(
-    new THREE.BoxGeometry(w, h, 1.6),
+    new THREE.BoxGeometry(w, h, d === undefined ? 1.6 : d),
     new THREE.MeshBasicMaterial({ colorWrite:false, depthWrite:false, transparent:true, opacity:0 })
   );
-  box.position.set(x, y, FRONT + 0.3);
+  box.position.set(x, y, z === undefined ? FRONT + 0.3 : z);
   box.userData = { btn, target, kind, tilt };
   device.add(box); hitboxes.push(box);
 }
@@ -869,6 +889,43 @@ function pill(pos, btn, name){
 pill(P.select, 'select', 'SELECT');
 pill(P.start,  'start',  'START');
 
+/* Power, on the front, where a hand already is.
+   The slider on the top edge stays — it is the only thing that shows
+   which way the machine is set, and watching it travel is half of what
+   makes the machine feel like an object. But it is on a face you cannot
+   see from in front, which made the only way to switch this thing off
+   an invisible box floating over the top of the screen. So the control
+   comes down here with the others and the slider goes back to being
+   what it always really was: the indicator. */
+{
+  const pw = new THREE.Mesh(new THREE.CylinderGeometry(0.40, 0.42, 0.24, 28), greyMat);
+  pw.rotation.x = Math.PI/2;
+  pw.position.set(P.power[0], P.power[1], FRONT + 0.09);
+  pw.castShadow = true;
+  device.add(pw);
+
+  /* The IEC mark rather than the word: it fits on a 0.8-unit cap at a
+     size you can actually read, and it is the one symbol on the whole
+     object that needs no caption. */
+  const glyph = engraved(function(ctx, w, h){
+    const cx = w/2, cy = h/2, r = Math.min(w, h) * 0.27;
+    ctx.strokeStyle = ctx.fillStyle;
+    ctx.lineWidth = Math.min(w, h) * 0.10;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, cy + r * 0.10, r, -Math.PI/2 + 0.62, -Math.PI/2 - 0.62 + Math.PI*2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r * 1.20); ctx.lineTo(cx, cy + r * 0.02);
+    ctx.stroke();
+  }, 0.52, 0.52, { bump:0.5 });
+  glyph.rotation.x = -Math.PI/2;
+  glyph.position.y = 0.122;
+  pw.add(glyph);
+
+  hit(P.power[0], P.power[1], 1.05, 1.05, 'power', pw, 'push');
+}
+
 // power switch, on the top edge. It slides, and it means it.
 const SW_OFF = -3.24, SW_ON = -2.56;
 const powerSwitch = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.5, 0.62), greyMat);
@@ -877,7 +934,10 @@ const powerSwitch = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.5, 0.62), greyM
   guard.position.set(-2.62, H/2 + 0.08, 0.35); device.add(guard);
   powerSwitch.position.set(SW_ON, H/2 + 0.14, 0.35);
   powerSwitch.castShadow = true; device.add(powerSwitch);
-  hit(-2.62, H/2 + 0.14, 2.9, 1.1, 'power', null, null);
+  /* Hugging the switch, at the switch's own depth. It still works —
+     it is the thing that shows you which way the machine is set — but
+     it no longer reaches out over the screen. */
+  hit(-2.90, H/2 + 0.18, 1.45, 0.60, 'power', null, null, 0.35, 0.85);
 }
 
 // side dials: contrast on the left, volume on the right
