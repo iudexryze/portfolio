@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#131211; --sunken:#0E0D0C; --rule:#322E28; --dim:#8C8577; --mid:#B4AC9D;
+  --ink:#0E1108; --sunken:#080A05; --rule:#2F341F; --dim:#949F52; --mid:#B3BE79;
   --f:'IBM Plex Mono', ui-monospace, Consolas, monospace;
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -47,7 +47,7 @@ canvas{
 var stage = document.getElementById('stage');
 var cv = document.getElementById('c'), ctx = cv.getContext('2d');
 var FONT = "'IBM Plex Mono', ui-monospace, Consolas, monospace";
-var COL = { amber:'#F0902E', live:'#86C232', bad:'#D9484B', bone:'#EDE8DE', mid:'#B4AC9D', dim:'#8C8577' };
+var COL = { amber:'#FFC24B', live:'#8FC93A', bad:'#E0503A', bone:'#D2DB99', mid:'#B3BE79', dim:'#949F52' };
 
 /* ── Viewport ──────────────────────────────────────────────────────
    The logical arena holds a constant area and takes the aspect of the
@@ -323,13 +323,13 @@ function draw() {
   ctx.setTransform(dpr * pxScale, 0, 0, dpr * pxScale, 0, 0);
   if (shake > 0.4) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
 
-  ctx.fillStyle = '#0E0D0C';
+  ctx.fillStyle = '#080A05';
   ctx.fillRect(-30, -30, W + 60, H + 60);
 
   /* The grid breathes with the clock — the speed is legible before the
      number is. */
   var g = 40, drift = (tick * 0.35 * (clock || 1)) % g;
-  ctx.strokeStyle = 'rgba(68,62,54,.32)';
+  ctx.strokeStyle = 'rgba(58,63,38,.32)';
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (var x = -g + drift; x < W + g; x += g) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
@@ -458,7 +458,7 @@ function drawHud() {
   ctx.font = font(10.5);
   ctx.fillStyle = COL.dim;
   ctx.fillText('THROTTLE', W / 2, 30 * UI);
-  ctx.strokeStyle = '#443E36';
+  ctx.strokeStyle = '#3A3F26';
   ctx.lineWidth = 1;
   ctx.strokeRect(bx + 0.5, by + 0.5, bw, 10 * UI);
   ctx.fillStyle = heat > 0.25 ? COL.live : COL.bad;
@@ -480,7 +480,7 @@ function wrap(text, max) {
 }
 
 function panel(items, accent) {
-  ctx.fillStyle = 'rgba(14,13,12,.86)';
+  ctx.fillStyle = 'rgba(8,10,5,.86)';
   ctx.fillRect(0, 0, W, H);
 
   var bw = Math.min(W - 28 * UI, 560 * UI), inner = bw - 44 * UI;
@@ -496,9 +496,9 @@ function panel(items, accent) {
   for (i = 0; i < rows.length; i++) bh += rows[i].big ? th : lh;
   var bx = (W - bw) / 2, by = Math.max(8, (H - bh) / 2);
 
-  ctx.fillStyle = '#1B1917';
+  ctx.fillStyle = '#171B0F';
   ctx.fillRect(bx, by, bw, bh);
-  ctx.strokeStyle = '#322E28';
+  ctx.strokeStyle = '#2F341F';
   ctx.lineWidth = 1;
   ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
   ctx.fillStyle = accent;

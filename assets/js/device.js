@@ -725,6 +725,9 @@ function fire(obj){
 function startHold(obj){
   fire(obj);
   const d = obj.userData;
+  /* A game on the panel needs the button's duration, not just the fact
+     that it happened, so report the edges as well as the press. */
+  if (IRZ.hold) IRZ.hold(d.btn, true);
   if (!/^(up|down|left|right)$/.test(d.btn)) return;
   clearTimeout(repeatTimer);
   repeatTimer = setTimeout(function rep(){
@@ -733,7 +736,11 @@ function startHold(obj){
     repeatTimer = setTimeout(rep, 90);
   }, 380);
 }
-function endHold(){ held = null; clearTimeout(repeatTimer); }
+function endHold(){
+  if (held && IRZ.hold) IRZ.hold(held.userData.btn, false);
+  held = null;
+  clearTimeout(repeatTimer);
+}
 
 canvas.addEventListener('pointerdown', e => {
   const obj = pickAt(e.clientX, e.clientY);

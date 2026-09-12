@@ -187,7 +187,42 @@ function matrix(){
   for (x = step; x < CH_PX; x += step) ctx.fillRect(0, Math.round(x), CW_PX, 1);
   ctx.globalAlpha = 1;
   falloff();
+  band();
 }
+
+/* When the light goes it does not go evenly: one strip of rows holds on
+   a moment longer than the rest, the way a driver line on its way out
+   looks. Brightness only. It never displaces a glyph and never garbles
+   one, because a CV that appears to corrupt its own text does not read
+   as atmosphere, it reads as broken. */
+var bandY = 0.5;
+function band(){
+  if (!dip) return;
+  var h = CH_PX * 0.055, y = bandY * (CH_PX - h);
+  ctx.globalAlpha = 0.11 * dip;
+  ctx.fillStyle = shade(3);
+  ctx.fillRect(0, Math.round(y), CW_PX, Math.round(h));
+  ctx.globalAlpha = 1;
+}
+
+/* The backlight is failing, so every so often it fails. Two frames
+   down and one back, at a random moment inside a window you cannot
+   anticipate, which is the only thing that makes a flicker land — a
+   flicker on a timer is a metronome. Only on DREAD: the other four
+   palettes are what a working panel looks like, and the contrast dial
+   is the way out of this one.
+
+   It costs three extra paints when it fires and nothing at all when it
+   does not, because the menu only repaints when something asks it to. */
+var dip = 0;
+setInterval(function(){
+  if (dip || reduced || !APP.power) return;
+  if (pal.name !== 'DREAD') return;
+  if (Math.random() > 0.42) return;
+  dip = 1; bandY = Math.random(); dirty();
+  setTimeout(function(){ dip = 0.5; dirty(); }, 60);
+  setTimeout(function(){ dip = 0;   dirty(); }, 130);
+}, 2800);
 
 /* No LCD is evenly lit. The corners fall away from the viewing angle
    and the reflector never quite reaches the edge of the glass, so an
@@ -196,7 +231,7 @@ function falloff(){
   /* On DREAD the backlight is going: the hot spot is off-centre and the
      corners are much further gone. Every other palette gets an evenly
      lit panel, so the contrast dial is a way out of here. */
-  var sick = pal.name === 'DREAD', k = sick ? 2.2 : 1;
+  var sick = pal.name === 'DREAD', k = (sick ? 2.2 : 1) * (1 + dip * 2.6);
   var g = ctx.createRadialGradient(
     CW_PX * (sick ? 0.42 : 0.48), CH_PX * (sick ? 0.39 : 0.44),
     Math.min(CW_PX, CH_PX) * (sick ? 0.07 : 0.16),
@@ -373,6 +408,23 @@ function drawBoot(t){
     ctx.fillStyle = shade(2);
     ctx.fillText('P O R T F O L I O   S Y S T E M', CW_PX/2, mid + CH_PX*0.10);
   }
+  /* A self test that finds something. The screen has been drawn as a
+     failing panel since the first commit — the off-centre hot spot and
+     the corners in falloff() are the same fiction — and it may as well
+     say so on the way up. It reports honestly: turn the dial off DREAD
+     and the next boot passes, because the other palettes are what a
+     working panel looks like. */
+  if (t > 1250){
+    ctx.font = screenFont(Math.round(CW_PX*0.026));
+    ctx.fillStyle = shade(2);
+    ctx.fillText('PANEL SELF TEST', CW_PX/2, mid + CH_PX*0.19);
+  }
+  if (t > 1620){
+    var sick = pal.name === 'DREAD';
+    ctx.font = screenFont(Math.round(CW_PX*0.026));
+    ctx.fillStyle = shade(sick ? 3 : 2);
+    ctx.fillText(sick ? 'BACKLIGHT   DEGRADED' : 'BACKLIGHT   NOMINAL', CW_PX/2, mid + CH_PX*0.245);
+  }
   if (t > 1350){
     ctx.font = screenFont(Math.round(CW_PX*0.026));
     ctx.fillStyle = shade(2);
@@ -381,7 +433,7 @@ function drawBoot(t){
   ctx.restore();
   matrix();
   legend('booting');
-  if (t > 1900) toMenu(true);
+  if (t > 2150) toMenu(true);
 }
 
 /* ── paint ────────────────────────────────────────────────────── */
@@ -389,6 +441,7 @@ function drawBoot(t){
 function paint(){
   if (!APP.power){ drawOff(); APP.rev++; return; }
   if (APP.view === 'boot'){ drawBoot(performance.now() - APP.bootAt); APP.rev++; return; }
+  if (APP.view === 'cart'){ drawCart(); APP.rev++; return; }
   frame();
   if (APP.view === 'menu') drawMenu();
   else if (APP.view === 'list') drawList();
@@ -397,9 +450,13 @@ function paint(){
   APP.rev++;
 }
 
+/* Boot animates and a running game animates, so neither can sit and
+   wait for dirty() the way a menu does. */
 function tick(){
-  if (needsPaint || APP.view === 'boot'){
-    if (APP.view !== 'boot') needsPaint = false;
+  var live = APP.view === 'boot' || APP.view === 'cart';
+  if (needsPaint || live){
+    if (!live) needsPaint = false;
+    if (APP.view === 'cart') stepCursor();
     paint();
   }
   requestAnimationFrame(tick);
@@ -480,12 +537,31 @@ function cyclePalette(){
 
 function press(btn){
   if (btn === 'power'){
+    if (SLOT.on) ejectPanel();
     APP.power = !APP.power;
     if (APP.power){ APP.view = 'boot'; APP.bootAt = performance.now(); sfx('boot'); }
     else sfx('off');
     dirty(); return;
   }
   if (!APP.power) return;
+
+  /* A cartridge is on the panel. The dials and the switches still belong
+     to the machine — turning the contrast while a game runs is half the
+     point of having a dial — and everything else belongs to the game,
+     which is driven from hold() rather than here so that a held button
+     stays held. */
+  if (APP.view === 'cart'){
+    if (btn === 'start'){ ejectPanel(); return; }
+    if (btn === 'contrast' || btn === 'select'){ cyclePalette(); return; }
+    if (btn === 'volume'){
+      APP.sound = !APP.sound;
+      if (APP.sound) tone(760, 0.06, 'triangle');
+      say(APP.sound ? 'Sound on.' : 'Sound off.');
+      return;
+    }
+    return;
+  }
+
   if (APP.view === 'boot'){
     if (btn === 'a' || btn === 'start' || btn === 'b') toMenu(true);
     return;
@@ -529,7 +605,263 @@ function press(btn){
   if (btn === 'b'){ APP.view = 'list'; APP.scroll = 0; sfx('back'); setHash(sec().id); dirty(); return; }
 }
 
-/* ── the cartridge slot: a game, running full frame ───────────── */
+/* ── the cartridge slot ────────────────────────────────────────────
+   There are two ways to run a game here and the controls decide which.
+
+   Most of them run ON THE PANEL. The real game loads into a hidden
+   same-origin iframe and keeps running as it always did; every frame
+   its canvas is posterised to the four shades this screen actually has
+   and blitted up. It is not a video of a game: it is the game, on the
+   panel, in the panel's colours, driven by the D-pad.
+
+   The dot grid is 320×288 and the slot is rendered at 320×288, which is
+   deliberate on both counts. The panel is 960×864, exactly three times
+   that in both axes, so every game pixel lands on three whole panel
+   pixels and nothing resamples on the way up. And the game is not
+   downsampled at all — the first cut of this ran the slot at 480 and
+   squeezed it into a 160×144 handheld frame, which was a lovely idea
+   and completely unreadable: these games size their own type off the
+   box they are given, and a third of 480 turns a label into two pixels
+   of mush. Rendering at the size it is displayed keeps the type the
+   size the game drew it.
+
+   Two of them do not. BT-7274N is typed, and Overclock wants an axis
+   held to a precision four discrete directions cannot give. Those keep
+   the full frame, where a real keyboard is in reach. Squeezing them
+   onto the pad would not be a port, it would just be a worse way to
+   play them.                                                        */
+
+/* Per cartridge: which console button becomes which key inside the
+   game, or — for the two that are driven by pointing at something —
+   what the A button does with the crosshair. */
+var CARTS = {
+  'bt-7274n':        { full:true },
+  'overclock':       { full:true },
+  'drift-lander':    { keys:{ left:'ArrowLeft', right:'ArrowRight', up:'ArrowUp', a:'Space', b:'KeyR' } },
+  'disco-race':      { keys:{ left:'ArrowLeft', right:'ArrowRight', down:'ArrowDown', a:'Space', b:'KeyR' } },
+  'circuit-breaker': { keys:{ left:'ArrowLeft', right:'ArrowRight', up:'ArrowUp', down:'ArrowDown', a:'Space', b:'Backspace' } },
+  'heap':            { keys:{ a:'Space', b:'KeyR' } },
+  'mutex':           { cursor:'tap',  grab:'a', keys:{ b:'KeyR' } },
+  /* Refactor grabs with B, not A, because its title screen and its
+     between-levels screen both want a plain start and the crosshair had
+     taken the only button that could give them one. */
+  'refactor':        { cursor:'drag', grab:'b', keys:{ a:'Space' } }
+};
+
+/* ── on the panel ─────────────────────────────────────────────── */
+
+var DOT_W = 320, DOT_H = 288;
+var dot = document.createElement('canvas');
+dot.width = DOT_W; dot.height = DOT_H;
+var dctx = dot.getContext('2d', { willReadFrequently:true });
+
+var slot = null;
+var SLOT = { on:false, slug:'', cfg:null, gcv:null, held:{}, cur:null, t0:0, back:null,
+             box:{ ox:0, oy:0, w:DOT_W, h:DOT_H } };
+
+/* The four shades as raw bytes, rebuilt only when the dial is turned. */
+var rampCache = null, rampFor = null;
+function ramp(){
+  if (rampFor === pal) return rampCache;
+  rampCache = [pal.a, pal.b, pal.c, pal.d].map(function(h){
+    return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+  });
+  rampFor = pal;
+  return rampCache;
+}
+
+function gameCanvas(){
+  if (SLOT.gcv && SLOT.gcv.isConnected) return SLOT.gcv;
+  try {
+    var d = slot && slot.contentDocument;
+    SLOT.gcv = d ? d.querySelector('canvas') : null;
+  } catch(e){ SLOT.gcv = null; }
+  return SLOT.gcv;
+}
+
+function cartTitle(slug){
+  var i, j;
+  for (i=0;i<SECTIONS.length;i++) for (j=0;j<SECTIONS[i].items.length;j++)
+    if (SECTIONS[i].items[j].id === slug) return SECTIONS[i].items[j].name;
+  return slug;
+}
+function cartLegend(cfg){
+  var parts = [];
+  if (cfg.cursor){
+    parts.push('+ aim');
+    parts.push((cfg.grab || 'A').toUpperCase() + ' ' + (cfg.cursor === 'drag' ? 'grab' : 'tap'));
+    if (cfg.keys && cfg.keys.a === 'Space') parts.push('A start');
+    if (cfg.keys && cfg.keys.b === 'KeyR')  parts.push('B reset');
+    parts.push('START eject');
+    return parts.join(' · ');
+  }
+  if (cfg.keys && (cfg.keys.left || cfg.keys.up)) parts.push('+ move');
+  if (cfg.keys && cfg.keys.a) parts.push('A play');
+  if (cfg.keys && cfg.keys.b) parts.push('B reset');
+  parts.push('START eject');
+  return parts.join(' · ');
+}
+
+function insert(slug){
+  var cfg = CARTS[slug] || {};
+  SLOT.back = { view:APP.view, sec:APP.sec, item:APP.item, scroll:APP.scroll };
+  slot = document.createElement('iframe');
+  slot.className = 'slot';
+  slot.setAttribute('aria-hidden', 'true');
+  slot.setAttribute('tabindex', '-1');
+  slot.src = BASE + 'play/' + slug + '/index.html';
+  document.body.appendChild(slot);
+  SLOT.on = true; SLOT.slug = slug; SLOT.cfg = cfg; SLOT.gcv = null;
+  SLOT.held = {}; SLOT.cur = { x:0.5, y:0.5, down:false }; SLOT.t0 = performance.now();
+  APP.view = 'cart';
+  sfx('open');
+  say(cartTitle(slug) + ' is running on the console screen. Play it with the D-pad and A. START ejects the cartridge.');
+  legend(cartLegend(cfg));
+  dirty();
+}
+
+function ejectPanel(){
+  if (!SLOT.on) return;
+  if (SLOT.cur && SLOT.cur.down) sendPointer('pointerup');
+  if (slot && slot.parentNode) slot.parentNode.removeChild(slot);
+  slot = null; SLOT.on = false; SLOT.gcv = null; SLOT.held = {};
+  var b = SLOT.back || { view:'list', sec:APP.sec, item:APP.item, scroll:0 };
+  APP.view = b.view === 'cart' ? 'list' : b.view;
+  APP.sec = b.sec; APP.item = b.item; APP.scroll = b.scroll;
+  sfx('back'); dirty();
+}
+
+/* Four shades chosen by how bright the game drew the pixel. The colour
+   is not lost by accident: the panel has four shades and no hue, so a
+   game running on the panel has four shades and no hue. */
+function posterise(){
+  var img = dctx.getImageData(0, 0, DOT_W, DOT_H), p = img.data, r = ramp(), i, y, s;
+  for (i = 0; i < p.length; i += 4){
+    y = (p[i]*77 + p[i+1]*151 + p[i+2]*28) >> 8;
+    s = y < 26 ? 0 : y < 84 ? 1 : y < 168 ? 2 : 3;
+    p[i] = r[s][0]; p[i+1] = r[s][1]; p[i+2] = r[s][2]; p[i+3] = 255;
+  }
+  dctx.putImageData(img, 0, 0);
+}
+
+function drawCursor(){
+  var b = SLOT.box, w = CW_PX / DOT_W;                     // one game pixel
+  var x = (b.ox + SLOT.cur.x * b.w) * w;
+  var y = (b.oy + SLOT.cur.y * b.h) * (CH_PX / DOT_H);
+  var r = w * (SLOT.cur.down ? 5 : 7);
+  ctx.save();
+  ctx.strokeStyle = shade(3);
+  ctx.lineWidth = Math.max(2, w);
+  ctx.beginPath();
+  ctx.moveTo(x-r, y); ctx.lineTo(x-r*0.34, y);
+  ctx.moveTo(x+r*0.34, y); ctx.lineTo(x+r, y);
+  ctx.moveTo(x, y-r); ctx.lineTo(x, y-r*0.34);
+  ctx.moveTo(x, y+r*0.34); ctx.lineTo(x, y+r);
+  ctx.stroke();
+  if (SLOT.cur.down){ ctx.fillStyle = shade(3); ctx.fillRect(x-w, y-w, w*2, w*2); }
+  ctx.restore();
+}
+
+function drawSlotWait(){
+  frame();
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = shade(2);
+  ctx.font = screenFont(Math.round(CW_PX*0.036));
+  var n = 1 + (Math.floor((performance.now() - SLOT.t0) / 360) % 3);
+  ctx.fillText('READING CARTRIDGE' + Array(n+1).join('.'), CW_PX/2, CH_PX*0.5);
+  ctx.restore();
+  matrix();
+}
+
+function drawCart(){
+  var g = gameCanvas();
+  if (!g || !g.width || !g.height){ drawSlotWait(); return; }
+
+  /* Letterboxed, never stretched. Every one of these games sizes its
+     canvas to whatever box it is given but clamps to a 240 px floor, so
+     the shape that comes back is close to the slot's and not always
+     equal to it. A game squashed by two percent looks wrong in a way
+     nobody can name; a black bar looks like a cartridge. */
+  var k = Math.min(DOT_W / g.width, DOT_H / g.height);
+  var w = Math.round(g.width * k), h = Math.round(g.height * k);
+  var ox = (DOT_W - w) >> 1, oy = (DOT_H - h) >> 1;
+  if (ox || oy){ dctx.fillStyle = '#000'; dctx.fillRect(0, 0, DOT_W, DOT_H); }
+  SLOT.box = { ox:ox, oy:oy, w:w, h:h };
+  dctx.imageSmoothingEnabled = true;
+  dctx.drawImage(g, 0, 0, g.width, g.height, ox, oy, w, h);
+  posterise();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(dot, 0, 0, DOT_W, DOT_H, 0, 0, CW_PX, CH_PX);
+  ctx.imageSmoothingEnabled = true;
+  if (SLOT.cfg.cursor) drawCursor();
+  matrix();
+}
+
+/* ── driving it ───────────────────────────────────────────────── */
+
+var KEYNAME = {
+  Space:' ', Enter:'Enter', Backspace:'Backspace', KeyR:'r',
+  ArrowLeft:'ArrowLeft', ArrowRight:'ArrowRight', ArrowUp:'ArrowUp', ArrowDown:'ArrowDown'
+};
+function sendKey(code, down){
+  var w = slot && slot.contentWindow;
+  if (!w) return;
+  try {
+    w.dispatchEvent(new w.KeyboardEvent(down ? 'keydown' : 'keyup', {
+      code:code, key:KEYNAME[code] || code, bubbles:true, cancelable:true
+    }));
+  } catch(e){}
+}
+function sendPointer(type){
+  var w = slot && slot.contentWindow, g = gameCanvas();
+  if (!w || !g) return;
+  var r = g.getBoundingClientRect();
+  try {
+    g.dispatchEvent(new w.PointerEvent(type, {
+      pointerId:1, pointerType:'mouse', isPrimary:true, button:0,
+      buttons:type === 'pointerup' ? 0 : 1, bubbles:true, cancelable:true,
+      clientX:r.left + SLOT.cur.x * r.width,
+      clientY:r.top  + SLOT.cur.y * r.height
+    }));
+  } catch(e){}
+}
+
+/* The crosshair moves while a direction is held, and at the panel's own
+   aspect, so up feels exactly as fast as left. */
+function stepCursor(){
+  if (!SLOT.on || !SLOT.cfg.cursor) return;
+  var h = SLOT.held;
+  var dx = (h.right ? 1 : 0) - (h.left ? 1 : 0);
+  var dy = (h.down ? 1 : 0) - (h.up ? 1 : 0);
+  if (!dx && !dy) return;
+  var k = 0.0085, b = SLOT.box;
+  SLOT.cur.x = Math.max(0, Math.min(1, SLOT.cur.x + dx * k));
+  SLOT.cur.y = Math.max(0, Math.min(1, SLOT.cur.y + dy * k * (b.w / b.h)));
+  if (SLOT.cur.down) sendPointer('pointermove');
+}
+
+/* Called on the way down AND on the way up, which is the whole reason
+   it exists: a lander needs thrust held, not tapped. While a cartridge
+   is in, press() keeps only the system buttons and every other button
+   belongs to the game. */
+function cartHold(btn, down){
+  if (!SLOT.on) return;
+  var cfg = SLOT.cfg;
+  if (cfg.cursor && /^(up|down|left|right)$/.test(btn)){ SLOT.held[btn] = down; return; }
+  if (cfg.cursor && btn === (cfg.grab || 'a')){
+    if (!down) return;
+    if (cfg.cursor === 'drag'){
+      SLOT.cur.down = !SLOT.cur.down;
+      sendPointer(SLOT.cur.down ? 'pointerdown' : 'pointerup');
+    } else { sendPointer('pointerdown'); sendPointer('pointerup'); }
+    return;
+  }
+  var code = cfg.keys && cfg.keys[btn];
+  if (code) sendKey(code, down);
+}
+
+/* ── full frame, for the two that need a keyboard ─────────────── */
 
 var cart = document.getElementById('cart'),
     cartFrame = document.getElementById('cart-frame'),
@@ -537,11 +869,10 @@ var cart = document.getElementById('cart'),
     cartOpen = false, cartReturn = null;
 
 function launch(slug){
-  var it = null, i, j;
-  for (i=0;i<SECTIONS.length;i++) for (j=0;j<SECTIONS[i].items.length;j++)
-    if (SECTIONS[i].items[j].id === slug) it = it || SECTIONS[i].items[j];
-  cartName.textContent = (it ? it.name : slug).toUpperCase();
-  cartFrame.title = (it ? it.name : slug) + ' — playable in the browser';
+  var cfg = CARTS[slug];
+  if (cfg && !cfg.full){ insert(slug); return; }
+  cartName.textContent = cartTitle(slug).toUpperCase();
+  cartFrame.title = cartTitle(slug) + ' — playable in the browser';
   cartFrame.src = BASE + 'play/' + slug + '/index.html';
   cart.setAttribute('data-open', '');
   cartOpen = true; cartReturn = document.activeElement;
@@ -565,16 +896,43 @@ var KEYS = {
   z:'a', Z:'a', x:'b', X:'b', Enter:'a', ' ':'a', Backspace:'b', Escape:'b',
   Shift:'select', Tab:null
 };
+function btnFor(e){
+  if (e.metaKey || e.ctrlKey || e.altKey) return null;
+  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return null;
+  if (e.key === 'Enter' && e.shiftKey) return 'start';
+  if (e.key === 'Escape') return APP.view === 'menu' ? null : 'b';
+  if (e.key === 'Shift') return 'select';
+  if (e.key === 'p' || e.key === 'P') return 'power';
+  return KEYS[e.key] !== undefined ? KEYS[e.key] : null;
+}
+
+/* A game needs to know when a button was let go, so while a cartridge
+   is on the panel the keyboard drives hold() at both edges instead of
+   press(). Escape is the way out either way. */
+var downKeys = {};
+window.addEventListener('keyup', function(e){
+  if (!downKeys[e.key]) return;
+  var btn = downKeys[e.key]; delete downKeys[e.key];
+  if (APP.view === 'cart') cartHold(btn, false);
+});
 window.addEventListener('keydown', function(e){
   if (cartOpen){ if (e.key === 'Escape'){ e.preventDefault(); eject(); } return; }
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
-  var btn = null;
-  if (e.key === 'Enter' && e.shiftKey) btn = 'start';
-  else if (e.key === 'Escape') btn = APP.view === 'menu' ? null : 'b';
-  else if (e.key === 'Shift') btn = 'select';
-  else if (KEYS[e.key] !== undefined) btn = KEYS[e.key];
-  if (e.key === 'p' || e.key === 'P') btn = 'power';
+  if (APP.view === 'cart'){
+    if (e.key === 'Escape'){ e.preventDefault(); ejectPanel(); return; }
+    var cb = btnFor(e);
+    if (!cb) return;
+    e.preventDefault();
+    if (cb === 'start' || cb === 'power' || cb === 'contrast' || cb === 'select' || cb === 'volume'){
+      if (!downKeys[e.key]) press(cb === 'select' ? 'contrast' : cb);
+      downKeys[e.key] = cb;
+      return;
+    }
+    if (downKeys[e.key]) return;        // the OS repeating a held key
+    downKeys[e.key] = cb;
+    cartHold(cb, true);
+    return;
+  }
+  var btn = btnFor(e);
   if (!btn) return;
   e.preventDefault();
   press(btn);
@@ -585,6 +943,22 @@ padEl.addEventListener('click', function(e){
   var b = e.target.closest('[data-btn]'); if (!b) return;
   press(b.getAttribute('data-btn'));
 });
+/* A click is one event with no duration, which is fine for a menu and
+   useless for a lander. Track the press itself as well. */
+var padHeld = null;
+padEl.addEventListener('pointerdown', function(e){
+  var b = e.target.closest('[data-btn]'); if (!b) return;
+  padHeld = b.getAttribute('data-btn');
+  if (APP.view === 'cart') cartHold(padHeld, true);
+});
+function padRelease(){
+  if (!padHeld) return;
+  if (APP.view === 'cart') cartHold(padHeld, false);
+  padHeld = null;
+}
+padEl.addEventListener('pointerup', padRelease);
+padEl.addEventListener('pointercancel', padRelease);
+padEl.addEventListener('pointerleave', padRelease);
 
 /* ── deep links ───────────────────────────────────────────────── */
 
@@ -615,6 +989,17 @@ function readHash(){
 pickGrid();
 window.addEventListener('resize', function(){ pickGrid(); });
 
+/* The hash was only ever read once, on the way in, so a deep link
+   pasted into the bar of a page that was already open did nothing and
+   the back button walked through hashes without moving the machine.
+   writingHash guards the ones we set ourselves. */
+window.addEventListener('hashchange', function(){
+  if (writingHash) return;
+  if (SLOT.on) ejectPanel();
+  if (readHash()){ APP.scroll = 0; sfx('open'); dirty(); }
+  else toMenu(true);
+});
+
 var deep = readHash();
 if (deep || reduced){ APP.view = deep ? APP.view : 'menu'; }
 else { APP.view = 'boot'; APP.bootAt = performance.now(); }
@@ -628,6 +1013,10 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(function()
 window.IRZ = {
   canvas: cv,
   press: press,
+  /* The machine's own buttons, on the way down and on the way up. Only
+     a cartridge cares about the difference, so it is a separate entry
+     point rather than a change to press(). */
+  hold: function(btn, down){ if (APP.view === 'cart') cartHold(btn, down); },
   rev: function(){ return APP.rev; },
   glow: function(){ return PALETTES[APP.palIdx].glow; },
   powered: function(){ return APP.power; },

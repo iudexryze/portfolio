@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#131211; --sunken:#0E0D0C; --rule:#322E28; --dim:#8C8577; --mid:#B4AC9D;
+  --ink:#0E1108; --sunken:#080A05; --rule:#2F341F; --dim:#949F52; --mid:#B3BE79;
   --f:'IBM Plex Mono', ui-monospace, Consolas, monospace;
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -48,8 +48,8 @@ var stage = document.getElementById('stage');
 var cv = document.getElementById('c'), ctx = cv.getContext('2d');
 var FONT = "'IBM Plex Mono', ui-monospace, Consolas, monospace";
 var COL = {
-  amber:'#F0902E', live:'#86C232', bad:'#D9484B', vio:'#8A6FD8',
-  bone:'#EDE8DE', mid:'#B4AC9D', dim:'#8C8577'
+  amber:'#FFC24B', live:'#8FC93A', bad:'#E0503A', vio:'#6FA82C',
+  bone:'#D2DB99', mid:'#B3BE79', dim:'#949F52'
 };
 
 /* ── Viewport ──────────────────────────────────────────────────────
@@ -378,7 +378,7 @@ function draw() {
   ctx.setTransform(dpr * pxScale, 0, 0, dpr * pxScale, 0, 0);
   if (shake > 0.4) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
 
-  ctx.fillStyle = '#0E0D0C';
+  ctx.fillStyle = '#080A05';
   ctx.fillRect(-40, -40, W + 80, H + 80);
 
   drawRig();
@@ -393,7 +393,7 @@ function draw() {
   }
 
   if (hitFlash > 0) {
-    ctx.fillStyle = 'rgba(217,72,75,' + (hitFlash * 0.22).toFixed(3) + ')';
+    ctx.fillStyle = 'rgba(224,80,58,' + (hitFlash * 0.22).toFixed(3) + ')';
     ctx.fillRect(0, 0, W, H);
   }
   if (state === 'title') drawTitle();
@@ -414,7 +414,7 @@ function drawRig() {
     for (var i = 0; i * pitch < H; i++) {
       var y = 20 + i * pitch, lit = (i + bar) % 3 === 0;
       ctx.globalAlpha = lit ? 0.18 + p * 0.72 : 0.1;
-      ctx.fillStyle = lit ? (bar % 2 ? COL.amber : COL.vio) : '#2A2721';
+      ctx.fillStyle = lit ? (bar % 2 ? COL.amber : COL.vio) : '#262B1B';
       ctx.fillRect(x, y, w, tall);
     }
   }
@@ -425,13 +425,13 @@ function drawRoad() {
   var p = pulse(), off = scroll % TILE;
   var cols = ROAD_W / (TILE / 2);
 
-  ctx.fillStyle = '#141311';
+  ctx.fillStyle = '#101408';
   ctx.fillRect(ROAD_X, 0, ROAD_W, H);
 
   for (var r = -1; r * TILE - off < H; r++) {
     for (var c = 0; c < cols; c++) {
       var dark = (r + c) % 2 === 0;
-      ctx.fillStyle = dark ? '#17150F' : '#121110';
+      ctx.fillStyle = dark ? '#12160B' : '#101408';
       var x = ROAD_X + c * (TILE / 2), y = r * TILE - off;
       ctx.fillRect(x, y, TILE / 2, TILE);
       if (dark && p > 0.02) {
@@ -443,7 +443,7 @@ function drawRoad() {
     }
   }
 
-  ctx.strokeStyle = '#3A352E';
+  ctx.strokeStyle = '#2F341F';
   ctx.lineWidth = 2;
   ctx.setLineDash([26, 30]);
   ctx.lineDashOffset = -off;
@@ -455,7 +455,7 @@ function drawRoad() {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  ctx.strokeStyle = '#4A443A';
+  ctx.strokeStyle = '#4A5230';
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(ROAD_X + 1.5, 0); ctx.lineTo(ROAD_X + 1.5, H);
@@ -479,14 +479,14 @@ function drawThings() {
       ctx.fillRect(-7 * k, -7 * k, 14 * k, 14 * k);
       ctx.restore();
     } else {
-      carBody(t.x, t.y, t.hue === 'vio' ? COL.vio : '#9A9184', false);
+      carBody(t.x, t.y, t.hue === 'vio' ? COL.vio : '#9EAA5E', false);
     }
   }
 }
 
 function carBody(cx, y, col, mine) {
   var x = cx - CAR_W / 2;
-  ctx.fillStyle = mine ? COL.bone : '#1E1B18';
+  ctx.fillStyle = mine ? COL.bone : '#1A1F10';
   ctx.fillRect(x, y, CAR_W, CAR_H);
   ctx.strokeStyle = col;
   ctx.lineWidth = 2;
@@ -526,7 +526,7 @@ function drawBrackets() {
      lighting only the approach would punish a hair-late tap that the
      scoring counts as perfect. */
   var close = ph > 1 - win || ph < win;
-  ctx.fillStyle = close ? COL.live : '#9A9184';
+  ctx.fillStyle = close ? COL.live : '#9EAA5E';
   ctx.globalAlpha = close ? 1 : 0.75;
   var bw = Math.max(4, CAR_W * 0.11), bh = CAR_H * 0.56;
   ctx.fillRect(player.x - gap - bw, PLAYER_Y + CAR_H * 0.24, bw, bh);
@@ -563,7 +563,7 @@ function drawCalls() {
 function drawHud() {
   var e = 16 * UI, top = 26 * UI;
 
-  ctx.fillStyle = 'rgba(14,13,12,.55)';
+  ctx.fillStyle = 'rgba(8,10,5,.55)';
   ctx.fillRect(0, 0, W, 84 * UI);
 
   ctx.textAlign = 'left';
@@ -593,7 +593,7 @@ function drawHud() {
   ctx.font = font(10);
   ctx.fillStyle = COL.dim;
   ctx.fillText('SPEED', W / 2, top);
-  ctx.strokeStyle = '#443E36';
+  ctx.strokeStyle = '#3A3F26';
   ctx.lineWidth = 1;
   ctx.strokeRect(bx + 0.5, top + 8 * UI + 0.5, bw, 9 * UI);
   ctx.fillStyle = boost > 0.3 ? COL.amber : COL.live;
@@ -601,7 +601,7 @@ function drawHud() {
 
   var pip = 9 * UI, py = top + 28 * UI;
   for (var i = 0; i < 3; i++) {
-    ctx.fillStyle = i < shields ? COL.live : '#2A2721';
+    ctx.fillStyle = i < shields ? COL.live : '#262B1B';
     ctx.fillRect(W / 2 - pip * 2 + i * (pip + 4), py, pip, pip);
   }
   ctx.textAlign = 'left';
@@ -621,7 +621,7 @@ function wrap(text, max) {
 }
 
 function panel(items, accent) {
-  ctx.fillStyle = 'rgba(14,13,12,.87)';
+  ctx.fillStyle = 'rgba(8,10,5,.87)';
   ctx.fillRect(0, 0, W, H);
 
   var bw = Math.min(W - 28 * UI, 560 * UI), inner = bw - 44 * UI;
@@ -637,9 +637,9 @@ function panel(items, accent) {
   for (i = 0; i < rows.length; i++) bh += rows[i].big ? th : lh;
   var bx = (W - bw) / 2, by = Math.max(8, (H - bh) / 2);
 
-  ctx.fillStyle = '#1B1917';
+  ctx.fillStyle = '#171B0F';
   ctx.fillRect(bx, by, bw, bh);
-  ctx.strokeStyle = '#322E28';
+  ctx.strokeStyle = '#2F341F';
   ctx.lineWidth = 1;
   ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
   ctx.fillStyle = accent;

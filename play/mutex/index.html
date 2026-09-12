@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <title>Mutex</title>
 <meta name="description" content="Overlapping tracks, one shared critical section. Tap a runner to hold it — but a held runner is running out of patience.">
-<meta name="theme-color" content="#131211">
+<meta name="theme-color" content="#0E1108">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#131211; --sunken:#0E0D0C; --rule:#322E28; --dim:#8C8577; --mid:#B4AC9D;
+  --ink:#0E1108; --sunken:#080A05; --rule:#2F341F; --dim:#949F52; --mid:#B3BE79;
   --f:'IBM Plex Mono', ui-monospace, Consolas, monospace;
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -48,7 +48,7 @@ canvas{
 var stage = document.getElementById('stage');
 var cv = document.getElementById('c'), ctx = cv.getContext('2d');
 var FONT = "'IBM Plex Mono', ui-monospace, Consolas, monospace";
-var COL = { amber:'#F0902E', live:'#86C232', bad:'#D9484B', vio:'#8A6FD8', bone:'#EDE8DE', mid:'#B4AC9D', dim:'#8C8577' };
+var COL = { amber:'#FFC24B', live:'#8FC93A', bad:'#E0503A', vio:'#6FA82C', bone:'#D2DB99', mid:'#B3BE79', dim:'#949F52' };
 
 var W = 320, H = 480, dpr = 1, S = 1;
 var cx = 160, cy = 260, PR = 120, DOT = 11, hud = 56;
@@ -247,7 +247,7 @@ function draw() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   if (shake > 0.4) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
 
-  ctx.fillStyle = '#0E0D0C';
+  ctx.fillStyle = '#080A05';
   ctx.fillRect(-30, -30, W + 60, H + 60);
 
   drawTracks();
@@ -272,11 +272,11 @@ function draw() {
 function drawTracks() {
   for (var i = 0; i < tracks.length; i++) {
     var t = tracks[i];
-    ctx.strokeStyle = '#2C2822';
+    ctx.strokeStyle = '#262B1B';
     ctx.lineWidth = Math.max(6, DOT * 1.7);
     ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.stroke();
 
-    ctx.strokeStyle = '#443E36';
+    ctx.strokeStyle = '#3A3F26';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.stroke();
 
@@ -285,7 +285,7 @@ function drawTracks() {
     for (var k = 0; k < 12; k++) {
       var a = k / 12 * Math.PI * 2 + tick * 0.004 * t.dir;
       var x = t.x + Math.cos(a) * t.r, y = t.y + Math.sin(a) * t.r;
-      ctx.fillStyle = '#4A443A';
+      ctx.fillStyle = '#4A5230';
       ctx.fillRect(x - 1, y - 1, 2, 2);
     }
   }
@@ -302,7 +302,7 @@ function drawDots() {
     ctx.beginPath(); ctx.arc(p.x, p.y, DOT * 2.1, 0, Math.PI * 2); ctx.fill();
 
     ctx.globalAlpha = 0.35 + fresh * 0.65;
-    ctx.fillStyle = '#17150F';
+    ctx.fillStyle = '#12160B';
     ctx.beginPath(); ctx.arc(p.x, p.y, DOT, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = col;
     ctx.lineWidth = Math.max(2, DOT * 0.26);
@@ -336,9 +336,9 @@ function drawParts() {
 }
 
 function drawHud() {
-  ctx.fillStyle = '#131211';
+  ctx.fillStyle = '#0E1108';
   ctx.fillRect(0, 0, W, hud);
-  ctx.strokeStyle = '#322E28';
+  ctx.strokeStyle = '#2F341F';
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, hud - 0.5); ctx.lineTo(W, hud - 0.5); ctx.stroke();
 
@@ -383,7 +383,7 @@ function wrap(text, max) {
 }
 
 function panel(title, body, foot, accent) {
-  ctx.fillStyle = 'rgba(14,13,12,.88)';
+  ctx.fillStyle = 'rgba(8,10,5,.88)';
   ctx.fillRect(0, 0, W, H);
 
   var bw = Math.min(W - 28, 520 * S), inner = bw - 44;
@@ -395,9 +395,9 @@ function panel(title, body, foot, accent) {
   var bh = th + 26 + lines.length * lh + lh + 22 + 26;
   var bx = (W - bw) / 2, by = Math.max(8, (H - bh) / 2);
 
-  ctx.fillStyle = '#1B1917';
+  ctx.fillStyle = '#171B0F';
   ctx.fillRect(bx, by, bw, bh);
-  ctx.strokeStyle = '#322E28';
+  ctx.strokeStyle = '#2F341F';
   ctx.lineWidth = 1;
   ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
   ctx.fillStyle = accent;
