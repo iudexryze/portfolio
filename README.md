@@ -222,8 +222,10 @@ It lives in `assets/js/intro.js` and follows these decisions:
   disposed, the page layer removed, the audio context closed, and the machine
   is back to drawing only when something changes.
 
-Return visits go straight to the machine. It can be replayed from the
-DIAGNOSTICS screen (A) or with `?intro=1`.
+Return visits go straight to the machine. It plays again on any reload of
+the page (the browser does not tell a hard refresh from F5), returning to
+wherever the address pointed once the boot is done, and it can be replayed
+from the DIAGNOSTICS screen (A) or with `?intro=1`.
 
 ### What it remembers
 

@@ -730,6 +730,13 @@ function startBoot(long){
 function finishBoot(){
   remember('irz.booted', '1');
   APP.introBoot = false;
+  /* Reloaded while it was showing something: back to that, not the menu. */
+  if (introReturn){
+    var r = introReturn; introReturn = null;
+    transition('in', true);
+    APP.sec = APP.menuSel = r.sec; APP.item = r.item; APP.scroll = 0; APP.view = r.view;
+    dirty(); return;
+  }
   toMenu(true, 'in');
 }
 
@@ -1168,7 +1175,7 @@ function press(btn){
            the whole self test, with what it has to say about where it
            has been. */
         introPowered = true; APP.introBoot = !reduced;
-        if (reduced) toMenu(true); else startBoot(true);
+        if (reduced) finishBoot(); else startBoot(true);
       } else startBoot(false);
     }
     emit('power', { on:APP.power });
@@ -1956,23 +1963,32 @@ var deep = readHash();
    Three.js, the module did not load — cancelIntro() switches the machine
    on the ordinary way, so nobody is ever left holding a dead console. */
 var forceIntro = /[?&]intro=1/.test(location.search);
-var introPlanned = !deep && (forceIntro || !remembered('irz.introSeen'));
+/* A reload - F5 or a hard refresh, which the browser does not tell apart -
+   plays it again, whatever has been seen: someone reloading the page is
+   asking for the page from the top. If the address was pointing somewhere
+   inside the machine, that is where it goes once the boot is done. */
+var reloaded = false;
+try { var navEntry = performance.getEntriesByType('navigation')[0]; reloaded = !!navEntry && navEntry.type === 'reload'; } catch(e){}
+var introPlanned = forceIntro || reloaded || (!deep && !remembered('irz.introSeen'));
+var introReturn = null;
 var introStarted = false, introPowered = false, introGate = null;
 function cancelIntro(){
   if (!introPlanned || introStarted) return;
   introPlanned = false; introGate = null;
   APP.introQuiet = false; APP.introGlow = 0; APP.introPixel = false;
   if (!APP.power){ APP.power = true; emit('power', { on:true }); }
-  if (reduced) APP.view = 'menu';
+  if (introReturn){ APP.view = introReturn.view; introReturn = null; }
+  else if (reduced) APP.view = 'menu';
   else startBoot(!remembered('irz.booted'));
   dirty();
 }
 
-if (deep){ /* readHash has already put the machine where the link points */ }
-else if (introPlanned){
+if (introPlanned){
+  if (deep) introReturn = { view:APP.view, sec:APP.sec, item:APP.item };
   APP.power = false; APP.offAt = -1e9; APP.view = 'boot'; APP.introQuiet = true;
   setTimeout(function(){ if (!introStarted) cancelIntro(); }, 9000);
 }
+else if (deep){ /* readHash has already put the machine where the link points */ }
 else if (reduced){ APP.view = 'menu'; }
 else {
   startBoot(!remembered('irz.booted'));
