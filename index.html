@@ -18,6 +18,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik+Distressed&family=JetBrains+Mono:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:ital,wght@0,400;0,600;1,600&display=swap" rel="stylesheet">
+<!-- Three.js is the slowest thing on the page and the machine cannot appear
+     without it, so it starts downloading now, in parallel with everything
+     else, instead of when device.js gets round to importing it. This is the
+     CDN module only: preloading console.js is what broke the import map. -->
+<link rel="modulepreload" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.185.1/three.module.min.js" crossorigin>
 
 <!-- ═══════════════════════════════════════════════════════════════
      Keeping the page and its assets in step.

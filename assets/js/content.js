@@ -1,7 +1,8 @@
 /* Everything the cartridge holds.
 
    One array. A section is {id, title, gloss, items}; an item is
-   {id, name, tag, status, body, props, actions}; an action is either
+   {id, name, tag, status, body, media, props, actions}; media is a list
+   of {src, cap} pictures from assets/art; an action is either
    {label, href} or {label, launch} where launch is an arcade slug.
    Adding an entry needs nothing else, anywhere.
    Part of IudexRyze. See README.md for how the pieces fit. */
@@ -89,12 +90,18 @@ export const SECTIONS = [
     actions:[{label:'SOURCE', href:'https://github.com/iudexryze/architectus'}] },
   { id:'final-boss', name:'Final Boss', tag:'3D art', status:'CHALLENGE ENTRY',
     body:['An entry for the Pwnisher community challenge, a global 3D art event run to a shared brief. Built with Aman Singh: a high-fidelity boss scene pushed as far as real-time rendering would take it.'],
+    media:[{src:'assets/art/bossfight.jpg', cap:'BossFight, 2023'}],
     props:[['ROLE','Co-creator with Aman Singh'],['STACK','Blender, shaders, environment art']],
     actions:[{label:'ARTSTATION', href:'https://www.artstation.com/artwork/1xaKn2'}] },
   { id:'renders', name:'Environment work', tag:'3D art', status:'ONGOING',
     body:[
       'An ongoing body of 3D work: environment design, shader experiments, and procedural scenes driven by geometry nodes. This is where most of what I know about lighting and material response actually got learned.',
       'Fifty-two pieces so far. Spatial Ruins, Horror in Space Station, Asylum Escape, Escaping the Dead, Witch House, Cannibal Cave, Open Area in Backrooms, Ruins, Ancient Spell Book.'],
+    media:[
+      {src:'assets/art/spatial-ruins.jpg', cap:'Spatial Ruins, 2024'},
+      {src:'assets/art/horror-in-space-station.jpg', cap:'Horror in Space Station, 2024'},
+      {src:'assets/art/asylum-escape.jpg', cap:'Asylum Escape, 2024'},
+      {src:'assets/art/witch-house.jpg', cap:'Witch House, 2024'}],
     props:[['STACK','Blender, geometry nodes, shader editor'],['SUBJECTS','Environment design, procedural scenes, material studies'],['BODY','52 pieces, 2023 to 2024']],
     actions:[{label:'ARTSTATION', href:'https://www.artstation.com/notryze'}] }
 ]},

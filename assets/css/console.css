@@ -175,7 +175,13 @@ html.no3d body::before{ display:none }
    Always real buttons. Clipped away while the 3D machine is on
    screen — there, the machine itself is the control surface — and
    promoted to a flat console when WebGL is unavailable.            */
-.shellwrap{display:none}
+/* display:contents rather than display:none, and only the flat console
+   hidden: a button inside a display:none box cannot take focus, so in 3D
+   the whole control surface was unreachable by Tab. The buttons stay
+   clipped out of sight; the machine lights the control that has focus. */
+.shellwrap{display:contents}
+.lcdmount{display:none}
+html.no3d .lcdmount{display:block}
 canvas.lcd{display:none}
 .pad{position:fixed; z-index:2; left:0; bottom:0; width:1px; height:1px; overflow:hidden; clip-path:inset(50%)}
 .pad button{font:inherit; cursor:pointer}

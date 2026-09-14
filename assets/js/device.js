@@ -10,6 +10,8 @@ const root = document.documentElement;
 function fallback(){
   root.classList.add('no3d');
   const w = document.getElementById('warming'); if (w) w.hidden = true;
+  // the flat console is the machine now, so the boot can start on it
+  if (IRZ && IRZ.ready) IRZ.ready();
   // the flat console sizes its own panel, so tell the screen how big
   // it ended up — otherwise it picks a grid for a device that is not there
   const lcd = document.getElementById('lcd');
@@ -791,11 +793,101 @@ const screen = new THREE.Mesh(
 );
 screen.position.set(0, LC_Y, BZ_FRONT + 0.004); device.add(screen);
 
+/* The panel sits under the glass, not in it. A display that is flush
+   with its own bezel reads as a sticker, so the edge of the active
+   area falls into shadow the way the lip of a window does — heaviest
+   along the top, where the bezel is between it and the key light. */
+function recessTexture(){
+  const [c, g] = pad2d(512, Math.round(512 * LC_H / LC_W));
+  const w = c.width, h = c.height;
+  g.clearRect(0, 0, w, h);
+  g.filter = 'blur(9px)';
+  g.strokeStyle = 'rgba(0,0,0,.80)'; g.lineWidth = 22;
+  g.strokeRect(0, 0, w, h);
+  g.filter = 'blur(2px)';
+  g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 5;
+  g.strokeRect(0, 0, w, h);
+  g.filter = 'none';
+  const lip = g.createLinearGradient(0, 0, 0, h * 0.12);
+  lip.addColorStop(0, 'rgba(0,0,0,.38)');
+  lip.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = lip; g.fillRect(0, 0, w, h * 0.12);
+  return tex(c);
+}
+const recess = new THREE.Mesh(
+  new THREE.PlaneGeometry(LC_W, LC_H),
+  new THREE.MeshBasicMaterial({ map:recessTexture(), transparent:true, depthWrite:false, toneMapped:false })
+);
+recess.position.set(0, LC_Y, BZ_FRONT + 0.007); device.add(recess);
+
+/* Backlight bleed. An edge-lit panel leaks at its own border, so the
+   bezel immediately around the glass picks up the screen's colour and
+   loses it within a few millimetres. It follows the palette and the
+   backlight, so DREAD's failing light takes its halo down with it. */
+function bleedTexture(){
+  const [c, g] = pad2d(512, 512);
+  const mx = 512 * 0.5 / (LC_W + 1.0), my = 512 * 0.5 / (LC_H + 1.0);
+  g.clearRect(0, 0, 512, 512);
+  g.filter = 'blur(16px)';
+  g.fillStyle = '#fff';
+  g.fillRect(mx, my, 512 - mx * 2, 512 - my * 2);
+  g.filter = 'none';
+  return tex(c);
+}
+const bleedMat = new THREE.MeshBasicMaterial({
+  map:bleedTexture(), color:0x9BBC0F, transparent:true, opacity:0.0,
+  blending:THREE.AdditiveBlending, depthWrite:false, toneMapped:false
+});
+const bleed = new THREE.Mesh(new THREE.PlaneGeometry(LC_W + 1.0, LC_H + 1.0), bleedMat);
+bleed.position.set(0, LC_Y, BZ_FRONT + 0.003); device.add(bleed);
+
 const glass = new THREE.Mesh(
   new THREE.PlaneGeometry(LC_W + 0.14, LC_H + 0.14),
-  new THREE.MeshBasicMaterial({ map:glassSheen(), transparent:true, opacity:0.13, blending:THREE.AdditiveBlending, depthWrite:false, toneMapped:false })
+  new THREE.MeshBasicMaterial({ map:glassSheen(), transparent:true, opacity:0.10, blending:THREE.AdditiveBlending, depthWrite:false, toneMapped:false })
 );
 glass.position.set(0, LC_Y, BZ_FRONT + 0.02); device.add(glass);
+
+/* The cover glass reflects the room, and the room moves when the
+   machine does. Additive, so it can only ever put light ON the panel —
+   a reflection that darkened the text would be the one flourish here
+   that cost the thing it is laid over. */
+const reflection = new THREE.Mesh(
+  new THREE.PlaneGeometry(LC_W + 0.14, LC_H + 0.14),
+  new THREE.MeshStandardMaterial({ color:0x000000, metalness:1, roughness:0.22,
+    transparent:true, opacity:0.55, blending:THREE.AdditiveBlending, depthWrite:false, envMapIntensity:1.0 })
+);
+reflection.position.set(0, LC_Y, BZ_FRONT + 0.022); device.add(reflection);
+
+/* Something standing behind you, in the glass. It is only ever a
+   darker shape in a reflection — over a shoulder, never facing — and
+   it is gone before the eye can settle on it. The console decides
+   when; nothing here runs unless it is asked to. */
+function watcherTexture(){
+  const [c, g] = pad2d(256, 256);
+  g.clearRect(0, 0, 256, 256);
+  g.filter = 'blur(13px)';
+  g.fillStyle = '#000';
+  g.beginPath(); g.ellipse(176, 104, 30, 40, 0.08, 0, 7); g.fill();
+  g.fillRect(162, 136, 30, 30);
+  g.beginPath(); g.ellipse(178, 262, 92, 84, 0, Math.PI, 0); g.fill();
+  g.filter = 'none';
+  return tex(c);
+}
+const watcher = { t:0, mesh:new THREE.Mesh(
+  new THREE.PlaneGeometry(LC_W, LC_H),
+  new THREE.MeshBasicMaterial({ map:watcherTexture(), transparent:true, opacity:0, depthWrite:false, toneMapped:false })
+)};
+watcher.mesh.position.set(0, LC_Y, BZ_FRONT + 0.012); watcher.mesh.visible = false; device.add(watcher.mesh);
+function stepWatcher(dt){
+  if (!watcher.t) return false;
+  watcher.t += dt;
+  const k = watcher.t / 1.7;
+  if (k >= 1){ watcher.t = 0; watcher.mesh.visible = false; return true; }
+  const a = Math.sin(Math.PI * k);
+  watcher.mesh.material.opacity = 0.22 * a * a;
+  watcher.mesh.visible = true;
+  return true;
+}
 
 const screenLight = new THREE.PointLight(0x9BBC0F, 14, 11, 2);
 screenLight.position.set(0, LC_Y, BZ_FRONT + 1.3); device.add(screenLight);
@@ -808,7 +900,7 @@ lamp.rotation.x = Math.PI/2; lamp.position.set(P.lamp[0], P.lamp[1], FRONT + 0.0
 /* ── controls ─────────────────────────────────────────────────── */
 const hitboxes = [];
 
-function hit(x, y, w, h, btn, target, kind, tilt, z, d){
+function hit(x, y, w, h, btn, z, d){
   // Drawn but written to nothing: an invisible mesh can be skipped by
   // the raycaster, and these have to stay clickable.
   //
@@ -823,8 +915,54 @@ function hit(x, y, w, h, btn, target, kind, tilt, z, d){
     new THREE.MeshBasicMaterial({ colorWrite:false, depthWrite:false, transparent:true, opacity:0 })
   );
   box.position.set(x, y, z === undefined ? FRONT + 0.3 : z);
-  box.userData = { btn, target, kind, tilt };
+  box.userData = { btn };
   device.add(box); hitboxes.push(box);
+}
+
+/* ── how a control moves ──────────────────────────────────────────
+   Every control is a damped spring toward wherever the hand is putting
+   it. Held, it stays down for as long as it is held; let go, it comes
+   back up a little past rest and settles. That is the difference
+   between a button and a picture of a button playing an animation.
+
+   The keyboard drives the same springs as the pointer: the console
+   reports every press and release from any source, and this module
+   only ever listens. So Z on a keyboard pushes the A cap in, which it
+   never used to.
+
+   Springs go to sleep once they arrive, so an idle machine is still a
+   still image and still zero draw calls. Under reduced motion they are
+   critically damped: the cap still goes down and comes back, it just
+   never bounces. */
+const springs = [];
+function spring(k, c){
+  const s = { x:0, v:0, to:0, k, c: reduced ? 2 * Math.sqrt(k) : c };
+  springs.push(s); return s;
+}
+function stepSprings(dt){
+  let awake = false;
+  for (const s of springs){
+    if (s.x === s.to && s.v === 0) continue;
+    let t = dt;
+    while (t > 0){
+      const h = Math.min(1 / 240, t); t -= h;
+      s.v += (s.k * (s.to - s.x) - s.c * s.v) * h;
+      s.x += s.v * h;
+    }
+    if (Math.abs(s.to - s.x) < 1e-4 && Math.abs(s.v) < 2e-3){ s.x = s.to; s.v = 0; }
+    else awake = true;
+  }
+  return awake;
+}
+
+const PUSH = {};
+/* Seen from the front, a cap travelling straight away from the camera
+   barely moves, so a press also takes a few per cent off the cap's face
+   — the rim of the dish around it shows, which is what a pressed button
+   actually looks like from above. cyl marks the caps that are cylinders
+   stood on end, whose face is their local x and z. */
+function pushable(btn, mesh, depth, cyl){
+  PUSH[btn] = { mesh, restZ:mesh.position.z, depth, cyl:!!cyl, s:spring(1500, 30) };
 }
 
 // D-pad
@@ -851,10 +989,20 @@ cross.castShadow = true; DP.add(cross);
   arrow('l', -1.06, 0); arrow('r', 1.06, 0);
 }
 device.add(DP);
-hit(P.dpad[0] - 1.15, P.dpad[1], 1.15, 1.15, 'left',  DP, 'tilt', [0, -1]);
-hit(P.dpad[0] + 1.15, P.dpad[1], 1.15, 1.15, 'right', DP, 'tilt', [0,  1]);
-hit(P.dpad[0], P.dpad[1] + 1.15, 1.15, 1.15, 'up',    DP, 'tilt', [-1, 0]);
-hit(P.dpad[0], P.dpad[1] - 1.15, 1.15, 1.15, 'down',  DP, 'tilt', [ 1, 0]);
+/* A rocker, not four switches: it pivots on the centre, so pressing
+   an arm tips that arm in and lifts the opposite one, and holding a
+   diagonal tips it into the corner. */
+const DPAD = { restZ:DP.position.z, rx:spring(1100, 26), ry:spring(1100, 26), z:spring(1400, 30), held:{} };
+function dpadTargets(){
+  const h = DPAD.held;
+  DPAD.rx.to = 0.10 * ((h.down ? 1 : 0) - (h.up ? 1 : 0));
+  DPAD.ry.to = 0.10 * ((h.right ? 1 : 0) - (h.left ? 1 : 0));
+  DPAD.z.to  = (h.up || h.down || h.left || h.right) ? -0.035 : 0;
+}
+hit(P.dpad[0] - 1.15, P.dpad[1], 1.25, 1.25, 'left');
+hit(P.dpad[0] + 1.15, P.dpad[1], 1.25, 1.25, 'right');
+hit(P.dpad[0], P.dpad[1] + 1.15, 1.25, 1.25, 'up');
+hit(P.dpad[0], P.dpad[1] - 1.15, 1.25, 1.25, 'down');
 
 // A and B
 function roundButton(pos, btn, name){
@@ -864,7 +1012,8 @@ function roundButton(pos, btn, name){
   const lab = engravedText(name, 0.80, 0.80, { fill:0.74, lit:'rgba(255,225,232,.50)' });
   lab.rotation.x = -Math.PI/2; lab.position.y = 0.172;   // the cap, in cylinder space
   m.add(lab);
-  hit(pos[0], pos[1], 1.5, 1.5, btn, m, 'push');
+  hit(pos[0], pos[1], 1.55, 1.55, btn);
+  pushable(btn, m, 0.11, true);
   return m;
 }
 roundButton(P.b, 'b', 'B');
@@ -883,7 +1032,10 @@ function pill(pos, btn, name){
     core:'rgba(14,14,17,.62)', lit:'rgba(255,255,255,.58)'
   });
   lab.position.z = 0.156; m.add(lab);
-  hit(pos[0], pos[1], 1.7, 0.9, btn, m, 'push');
+  /* The pill is a thumb-width tall at most, and on a phone that was a
+     target you had to aim for. The box is taller than the cap. */
+  hit(pos[0], pos[1], 1.75, 1.15, btn);
+  pushable(btn, m, 0.07);
   return m;
 }
 pill(P.select, 'select', 'SELECT');
@@ -923,7 +1075,8 @@ pill(P.start,  'start',  'START');
   glyph.position.y = 0.122;
   pw.add(glyph);
 
-  hit(P.power[0], P.power[1], 1.05, 1.05, 'power', pw, 'push');
+  hit(P.power[0], P.power[1], 1.30, 1.30, 'power');
+  pushable('power', pw, 0.06, true);
 }
 
 // power switch, on the top edge. It slides, and it means it.
@@ -937,10 +1090,15 @@ const powerSwitch = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.5, 0.62), greyM
   /* Hugging the switch, at the switch's own depth. It still works —
      it is the thing that shows you which way the machine is set — but
      it no longer reaches out over the screen. */
-  hit(-2.90, H/2 + 0.18, 1.45, 0.60, 'power', null, null, 0.35, 0.85);
+  hit(-2.90, H/2 + 0.18, 1.45, 0.60, 'power', 0.35, 0.85);
 }
 
-// side dials: contrast on the left, volume on the right
+/* Side dials: contrast on the left, volume on the right. They turn by
+   detents that match what they set — the contrast wheel advances one
+   notch per palette, the volume wheel sits at the level it is at and
+   rolls back to its stop when it wraps — so the dial is a readout, not
+   an ornament that spins whenever it is touched. */
+const DIAL = {};
 function dial(x, y, btn){
   const g = new THREE.Group();
   g.position.set(x, y, -0.12); g.rotation.z = Math.PI/2;
@@ -950,25 +1108,78 @@ function dial(x, y, btn){
   const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.04, 6, 24), greyMat);
   ridge.rotation.x = Math.PI/2; ridge.position.y = 0.20; m.add(ridge);
   g.add(m); device.add(g);
-  hit(x, y, 1.3, 1.5, btn, m, 'spin');
+  hit(x, y, 1.45, 1.7, btn);
+  DIAL[btn] = { mesh:m, s:spring(320, 16) };
   return m;
 }
 dial(-W/2 - 0.06, 3.6, 'contrast');
 dial( W/2 + 0.06, 2.4, 'volume');
+const DETENT = 0.9;
+
+/* ── light where a hand should go ─────────────────────────────────
+   A ring of backlight around a control, out of the palette's own
+   colour warmed toward white. Three jobs, one mesh: a hint (a slow
+   breath, only until the control has been used), keyboard focus (on,
+   steady, for as long as a real <button> behind the render has focus —
+   otherwise tabbing through the machine had no visible focus at all)
+   and a flash on press. */
+function haloTexture(){
+  const [c, g] = pad2d(256, 256);
+  const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grad.addColorStop(0.00, 'rgba(255,255,255,0)');
+  grad.addColorStop(0.52, 'rgba(255,255,255,0)');
+  grad.addColorStop(0.68, 'rgba(255,255,255,.90)');
+  grad.addColorStop(0.82, 'rgba(255,255,255,.30)');
+  grad.addColorStop(1.00, 'rgba(255,255,255,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
+  return tex(c);
+}
+const haloMap = haloTexture();
+const HALO = {};
+function halo(key, x, y, r, stretch, rot){
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(r * 2 * (stretch || 1), r * 2),
+    new THREE.MeshBasicMaterial({ map:haloMap, color:0xFFF1D0, transparent:true, opacity:0,
+      blending:THREE.AdditiveBlending, depthWrite:false, toneMapped:false })
+  );
+  m.position.set(x, y, FRONT + 0.012); m.rotation.z = rot || 0; m.visible = false;
+  device.add(m);
+  HALO[key] = { m, flash:0, focus:false, hint:false, held:false, lit:false };
+}
+halo('dpad',   P.dpad[0],   P.dpad[1],   2.30);
+halo('a',      P.a[0],      P.a[1],      1.28);
+halo('b',      P.b[0],      P.b[1],      1.28);
+halo('select', P.select[0], P.select[1], 0.62, 1.85, -25 * Math.PI/180);
+halo('start',  P.start[0],  P.start[1],  0.62, 1.85, -25 * Math.PI/180);
+halo('power',  P.power[0],  P.power[1],  0.80);
+const haloKey = b => /^(up|down|left|right)$/.test(b) ? 'dpad' : b;
+const haloTint = new THREE.Color(), WARM = new THREE.Color(0xFFF1D0);
+
+let hintClock = 0;
+function stepHalos(dt){
+  let awake = false;
+  hintClock += dt;
+  for (const k in HALO){
+    const h = HALO[k];
+    if (h.flash > 0){ h.flash = Math.max(0, h.flash - dt * 3.4); awake = true; }
+    let lv = h.flash * 0.50;
+    if (h.focus) lv = Math.max(lv, 0.72);
+    if (h.held) lv = Math.max(lv, 0.36);
+    if (h.hint){
+      lv = Math.max(lv, reduced ? 0.50 : 0.26 + 0.34 * (0.5 + 0.5 * Math.sin(hintClock * 3.6)));
+      if (!reduced) awake = true;
+    }
+    const lit = lv > 0.004;
+    if (lit !== h.lit){ h.lit = lit; h.m.visible = lit; awake = true; }
+    h.m.material.opacity = lv;
+  }
+  return awake;
+}
 
 /* ── input ────────────────────────────────────────────────────── */
 const ray = new THREE.Raycaster();
 const ptr = new THREE.Vector2();
-const anim = new Map();          // mesh -> { t, kind, tilt }
 let hovered = null;
-
-function animate(target, kind, tilt){
-  if (!target) return;
-  if (!target.userData.rest){
-    target.userData.rest = { p:target.position.clone(), r:target.rotation.clone() };
-  }
-  anim.set(target, { t:0, kind, tilt:tilt || [0,0] });
-}
 
 function pickAt(cx, cy){
   const r = canvas.getBoundingClientRect();
@@ -979,54 +1190,106 @@ function pickAt(cx, cy){
   return hits.length ? hits[0].object : null;
 }
 
-let held = null, repeatTimer = null;
-function fire(obj){
-  const d = obj.userData;
-  animate(d.target, d.kind, d.tilt);
-  IRZ.press(d.btn);
-}
-function startHold(obj){
-  fire(obj);
-  const d = obj.userData;
-  /* A game on the panel needs the button's duration, not just the fact
-     that it happened, so report the edges as well as the press. */
-  if (IRZ.hold) IRZ.hold(d.btn, true);
-  if (!/^(up|down|left|right)$/.test(d.btn)) return;
-  clearTimeout(repeatTimer);
-  repeatTimer = setTimeout(function rep(){
-    if (held !== obj) return;
-    fire(obj);
-    repeatTimer = setTimeout(rep, 90);
+/* Everything goes through the console's one input function, which is
+   what lets a keyboard, the flat console and this render all animate
+   the same caps. The fallback is only for a console old enough not to
+   have it. */
+const input = (btn, down) => {
+  if (IRZ.input) IRZ.input(btn, down);
+  else { if (down) IRZ.press(btn); if (IRZ.hold) IRZ.hold(btn, down); }
+};
+const listen = (type, fn) => { if (IRZ.on) IRZ.on(type, fn); };
+
+/* One entry per finger. A lander wants thrust and a turn at the same
+   time, and a single "held" slot meant the second thumb cancelled the
+   first. */
+const DIRS = /^(up|down|left|right)$/;
+const fingers = new Map();
+function grab(id, btn){
+  const f = { btn, timer:null };
+  fingers.set(id, f);
+  input(btn, true);
+  if (!DIRS.test(btn)) return;
+  f.timer = setTimeout(function rep(){
+    if (fingers.get(id) !== f) return;
+    input(btn, true);                      // a repeat: the console knows it is still down
+    f.timer = setTimeout(rep, 90);
   }, 380);
 }
-function endHold(){
-  if (held && IRZ.hold) IRZ.hold(held.userData.btn, false);
-  held = null;
-  clearTimeout(repeatTimer);
+function letGo(id){
+  const f = fingers.get(id); if (!f) return;
+  clearTimeout(f.timer); fingers.delete(id);
+  input(f.btn, false);
 }
 
 canvas.addEventListener('pointerdown', e => {
   const obj = pickAt(e.clientX, e.clientY);
   if (!obj) return;
   e.preventDefault();
-  canvas.setPointerCapture(e.pointerId);
-  held = obj; startHold(obj);
+  try { canvas.setPointerCapture(e.pointerId); } catch(err){}
+  grab(e.pointerId, obj.userData.btn);
 });
-canvas.addEventListener('pointerup', endHold);
-canvas.addEventListener('pointercancel', endHold);
-canvas.addEventListener('pointerleave', endHold);
+canvas.addEventListener('pointerup', e => letGo(e.pointerId));
+canvas.addEventListener('pointercancel', e => letGo(e.pointerId));
+canvas.addEventListener('lostpointercapture', e => letGo(e.pointerId));
 
 let px = 0, py = 0, tx = 0, ty = 0;
 canvas.addEventListener('pointermove', e => {
   const r = canvas.getBoundingClientRect();
   tx = ((e.clientX - r.left) / r.width) * 2 - 1;
   ty = ((e.clientY - r.top) / r.height) * 2 - 1;
+  /* A thumb rolls across a D-pad rather than lifting between arms. */
+  const f = fingers.get(e.pointerId);
+  if (f && DIRS.test(f.btn)){
+    const obj = pickAt(e.clientX, e.clientY), b = obj && obj.userData.btn;
+    if (b && b !== f.btn && DIRS.test(b)){ letGo(e.pointerId); grab(e.pointerId, b); }
+  }
   if (e.pointerType === 'mouse'){
     const obj = pickAt(e.clientX, e.clientY);
     if (obj !== hovered){ hovered = obj; canvas.style.cursor = obj ? 'pointer' : 'default'; }
   }
 });
-canvas.addEventListener('pointerleave', () => { tx = ty = 0; });
+canvas.addEventListener('pointerleave', () => { if (!fingers.size){ tx = ty = 0; } });
+
+/* What the console reports, from any source. */
+listen('hold', e => {
+  const b = e.btn;
+  if (DIRS.test(b)){ DPAD.held[b] = e.down; dpadTargets(); }
+  else if (PUSH[b]) PUSH[b].s.to = e.down ? -PUSH[b].depth : 0;
+  const hk = HALO[haloKey(b)];
+  if (hk){
+    if (e.down) hk.flash = 1;
+    const dp = DPAD.held;
+    hk.held = DIRS.test(b) ? !!(dp.up || dp.down || dp.left || dp.right) : e.down;
+  }
+  invalidate();
+});
+listen('palette', e => { DIAL.contrast.s.to += DETENT * (e.step || 1); invalidate(); });
+listen('volume',  e => { DIAL.volume.s.to = DETENT * e.level; invalidate(); });
+listen('hint', e => {
+  for (const k in HALO) HALO[k].hint = false;
+  (e.btns || []).forEach(b => { const h = HALO[haloKey(b)]; if (h) h.hint = true; });
+  invalidate();
+});
+listen('focus', e => {
+  for (const k in HALO) HALO[k].focus = false;
+  const h = e.btn && HALO[haloKey(e.btn)];
+  if (h) h.focus = true;
+  invalidate();
+});
+listen('anomaly', e => { if (e.kind === 'watcher' && !watcher.t){ watcher.t = 0.0001; invalidate(); } });
+
+let lastNow = 0;
+function applyControls(){
+  for (const b in PUSH){
+    const p = PUSH[b], k = Math.max(0, Math.min(1.2, -p.s.x / p.depth)), sc = 1 - 0.045 * k;
+    p.mesh.position.z = p.restZ + p.s.x;
+    if (p.cyl) p.mesh.scale.set(sc, 1, sc); else p.mesh.scale.set(sc, sc, 1);
+  }
+  DP.rotation.x = DPAD.rx.x; DP.rotation.y = DPAD.ry.x; DP.position.z = DPAD.restZ + DPAD.z.x;
+  DIAL.contrast.mesh.rotation.y = DIAL.contrast.s.x;
+  DIAL.volume.mesh.rotation.y = DIAL.volume.s.x;
+}
 
 /* ── fit and run ──────────────────────────────────────────────── */
 function fit(){
@@ -1083,6 +1346,9 @@ function frame(now){
     invalidate();
     const on = IRZ.powered();
     screenLight.color.set(IRZ.glow());
+    bleedMat.color.set(IRZ.glow());
+    haloTint.set(IRZ.glow()).lerp(WARM, 0.55);
+    for (const k in HALO) HALO[k].m.material.color.copy(haloTint);
     /* When the backlight goes, the room goes with it. A panel that
        flickers on its own is a broken panel; a panel that takes the key
        light and the near source down with it is a building with
@@ -1094,6 +1360,7 @@ function frame(now){
     hands.intensity  = 62   * (1 - d * 0.70);
     wrong.intensity  = 13   * (1 + d * 1.30);
     screenLight.intensity = on ? 8 * (1 - d * 0.80) : 0;
+    bleedMat.opacity = on ? 0.22 * (1 - d * 0.85) : 0;
     lampMat.emissiveIntensity = on ? 1.6 : 0.05;
     lampMat.color.set(on ? 0xE04038 : 0x6A3230);
   }
@@ -1117,24 +1384,13 @@ function frame(now){
   device.position.z = -7 * (1 - intro);
   device.position.y = 0.5 * (1 - intro);
 
-  // buttons returning to rest
-  for (const [mesh, a] of anim){
-    a.t += 0.14;
-    const k = a.t < 0.5 ? a.t * 2 : Math.max(0, 2 - a.t * 2);
-    const rest = mesh.userData.rest;
-    if (a.kind === 'push'){ mesh.position.z = rest.p.z - 0.13 * k; }
-    else if (a.kind === 'tilt'){
-      mesh.rotation.x = rest.r.x + a.tilt[0] * 0.10 * k;
-      mesh.rotation.y = rest.r.y + a.tilt[1] * 0.10 * k;
-      mesh.position.z = rest.p.z - 0.03 * k;
-    }
-    else if (a.kind === 'spin'){ mesh.rotation.y = rest.r.y + (a.t < 1 ? a.t : 1) * 1.05; }
-    if (a.t >= 1){
-      if (a.kind === 'spin') mesh.userData.rest = { p:mesh.position.clone(), r:mesh.rotation.clone() };
-      else { mesh.position.copy(rest.p); mesh.rotation.copy(rest.r); }
-      anim.delete(mesh);
-    }
-  }
+  // the controls, wherever the hands have put them
+  const dt = lastNow ? Math.min(1 / 30, Math.max(0, (now - lastNow) / 1000)) : 0;
+  lastNow = now;
+  const ctrlAwake = stepSprings(dt);
+  applyControls();
+  const glowAwake = stepHalos(dt);
+  const ghostAwake = stepWatcher(dt);
 
   // the switch holds wherever it was left
   const swTarget = IRZ.powered() ? SW_ON : SW_OFF;
@@ -1143,8 +1399,8 @@ function frame(now){
   if (Math.abs(swGap) < 0.0008) powerSwitch.position.x = swTarget;
   const switchMoving = powerSwitch.position.x !== swTarget;
 
-  const moving = introRunning || parallaxMoving || switchMoving || anim.size > 0;
-  if (moving) needsRender = true;
+  const moving = introRunning || parallaxMoving || switchMoving || ctrlAwake;
+  if (moving || glowAwake || ghostAwake) needsRender = true;
 
   if (needsRender){
     needsRender = false;
@@ -1155,5 +1411,9 @@ function frame(now){
 
   if (!started && t > 0.15){ started = true; IRZ.ready(); }
 }
+/* The handles a profiler, and the machine's own diagnostics screen, need to
+   reach. Reading them costs nothing; nothing here writes through them. */
+window.__irzDevice = { renderer, lcdTex, scene, camera, invalidate };
+
 requestAnimationFrame(frame);
 }
