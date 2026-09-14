@@ -469,9 +469,13 @@ function drawList(){
     statusMark(3, row, it.status, on);
     var name = it.name.toUpperCase();
     put(5, row, name.slice(0, G.cols-8), on ? 0 : 3);
+    /* A tag that does not fit is cut back to a whole word rather than
+       dropped, so the column does not read as some rows having one and
+       some not. Under four letters it is not saying anything; leave it. */
     if (wide && it.tag){
-      var t = it.tag.toUpperCase();
-      if (5 + name.length + 2 + t.length < G.cols - 3) put(G.cols - 3 - t.length, row, t, on ? 0 : 2);
+      var room = G.cols - 3 - (5 + name.length + 2), t = it.tag.toUpperCase();
+      if (t.length > room) t = t.slice(0, room).replace(/[\s,]+\S*$/, '');
+      if (t.length >= 4) put(G.cols - 3 - t.length, row, t, on ? 0 : 2);
     }
   }
   // measured in rows, so a double-spaced list still gets a true thumb
@@ -1089,8 +1093,15 @@ function fire(action){
   if (!action) { sfx('deny'); return; }
   if (action.launch){ launch(action.launch); return; }
   sfx('open');
-  var w = window.open(action.href, action.href.indexOf('mailto:') === 0 || action.href.indexOf('tel:') === 0 ? '_self' : '_blank', 'noopener');
-  if (!w) location.href = action.href;
+  /* window.open with noopener returns null by specification, not because a
+     popup was blocked, so the old 'if (!w) location.href' fallback ran on
+     every link: the new tab opened and this one navigated away from the
+     portfolio as well. An anchor click opens the tab and leaves this page
+     where it is. Mail and phone links are meant to stay in place. */
+  if (/^(mailto|tel):/.test(action.href)){ location.href = action.href; return; }
+  var link = document.createElement('a');
+  link.href = action.href; link.target = '_blank'; link.rel = 'noopener';
+  document.body.appendChild(link); link.click(); link.remove();
 }
 
 function cyclePalette(){
