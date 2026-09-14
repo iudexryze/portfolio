@@ -49,6 +49,41 @@ export function createHaunt(api){
     maybe();
   }, 5000);
 
+  /* ── the room ─────────────────────────────────────────────────────
+     The room behind the machine keeps its own, gentler clock, because it
+     belongs to every palette: a visitor who never turns the dial to DREAD
+     still sits in a room with one bad light in it.
+
+     The overhead light stutters every so often. After a minute or so a
+     shadow can cross it, as if someone walked between the lamp and the
+     wall. And after a couple of minutes there may be someone standing
+     behind the machine — but they only ever arrive or leave in the dark
+     between two frames of a flicker, never while you are looking. None of
+     it runs under reduced motion; the marks on the wall are all that is
+     left, and they do not move. */
+  var pageStart = performance.now(), figureOn = false, lastPass = 0;
+  if (!reduced) (function roomClock(){
+    setTimeout(function(){
+      if (!document.hidden){
+        var t = (performance.now() - pageStart) / 1000;
+        api.emit('anomaly', { kind:'roomflicker' });
+        score += 0.5;
+        if (t > 120 || level() >= 2){
+          if (figureOn ? Math.random() < 0.6 : Math.random() < 0.35){
+            figureOn = !figureOn;
+            var kind = figureOn ? 'figure-on' : 'figure-off';
+            setTimeout(function(){ api.emit('anomaly', { kind:kind }); }, 70);
+          }
+        }
+        if (t > 60 && performance.now() - lastPass > 70000 && Math.random() < 0.4){
+          lastPass = performance.now();
+          setTimeout(function(){ api.emit('anomaly', { kind:'passing' }); }, 2500 + Math.random() * 4000);
+        }
+      }
+      roomClock();
+    }, forced ? 6000 : 20000 + Math.random() * 50000);
+  })();
+
   /* The work that is about something wrong weighs more than the rest. */
   var WEIGHT = { 'work/phantom-parry':8, 'work/echolocate':5, 'art/renders':5, 'art/final-boss':3 };
   var seenItems = {};

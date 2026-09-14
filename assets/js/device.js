@@ -698,6 +698,49 @@ function sweep(){
     g.fill();
   }
   g.filter = 'none';
+
+  /* Marks on the wall, inside the pool of light where they can just be
+     made out. Four parallel scratches, low and to the left, deeper at
+     the top where the pressure was and trailing off; and a hand that was
+     dragged down the wall to the right of the machine. Nothing on it is
+     bright enough to read as a picture of something: it reads as the
+     wall. */
+  g.save();
+  g.lineCap = 'round';
+  for (let k = 0; k < 4; k++){
+    const x0 = 132 + k * 9, y0 = 268 + k * 3, len = 64 - k * 6;
+    for (let j = 0; j < 14; j++){
+      const t0 = j / 14, t1 = (j + 1) / 14;
+      g.strokeStyle = 'rgba(0,0,0,' + (0.40 * (1 - t0 * 0.8)).toFixed(3) + ')';
+      g.lineWidth = 2.2 * (1 - t0 * 0.6);
+      g.beginPath();
+      g.moveTo(x0 + t0 * 14, y0 + t0 * len);
+      g.lineTo(x0 + t1 * 14, y0 + t1 * len);
+      g.stroke();
+    }
+    g.strokeStyle = 'rgba(150,160,160,.07)';
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x0 + 1.5, y0); g.lineTo(x0 + 15.5, y0 + len * 0.9); g.stroke();
+  }
+  g.filter = 'blur(1.4px)';
+  const palmX = 372, palmY = 212;
+  g.fillStyle = 'rgba(14,10,8,.30)';
+  g.beginPath(); g.ellipse(palmX, palmY, 13, 16, 0.15, 0, 7); g.fill();
+  for (let k = 0; k < 4; k++){
+    const fx = palmX - 12 + k * 8, top = palmY - 30 + Math.abs(k - 1.5) * 4;
+    g.beginPath(); g.ellipse(fx, top, 3, 9, 0, 0, 7); g.fill();
+  }
+  // the drag: the fingers kept contact on the way down
+  for (let k = 0; k < 4; k++){
+    const fx = palmX - 12 + k * 8;
+    const drag = g.createLinearGradient(0, palmY, 0, palmY + 120);
+    drag.addColorStop(0, 'rgba(14,10,8,.26)');
+    drag.addColorStop(1, 'rgba(14,10,8,0)');
+    g.fillStyle = drag;
+    g.fillRect(fx - 2 + k * 0.6, palmY, 3.4, 120 - k * 14);
+  }
+  g.filter = 'none';
+  g.restore();
   return tex(c);
 }
 const backdrop = new THREE.Mesh(
@@ -705,6 +748,87 @@ const backdrop = new THREE.Mesh(
   new THREE.MeshBasicMaterial({ map:sweep(), toneMapped:false, depthWrite:false })
 );
 backdrop.position.z = -13; backdrop.renderOrder = -1; scene.add(backdrop);
+
+/* ── someone in the room ──────────────────────────────────────────
+   Standing behind the machine, off its right shoulder: on a wide screen
+   they are beside it, on a phone the head clears its top edge. Always
+   darker than the wall and never lit, so it is a shape where the light
+   should be rather than a figure you look at. haunt.js decides when; it
+   only ever changes while the room light is out. */
+function figureTexture(){
+  const [c, g] = pad2d(256, 400);
+  g.clearRect(0, 0, 256, 400);
+  g.filter = 'blur(5px)';
+  g.fillStyle = '#000';
+  g.save(); g.translate(128, 74); g.rotate(-0.12);       // the head is not quite level
+  g.beginPath(); g.ellipse(0, 0, 30, 40, 0, 0, 7); g.fill();
+  g.restore();
+  g.fillRect(112, 104, 30, 30);
+  g.beginPath();
+  g.moveTo(40, 150); g.quadraticCurveTo(128, 112, 216, 150);
+  g.lineTo(206, 400); g.lineTo(50, 400); g.closePath(); g.fill();
+  g.filter = 'none';
+  // gone into the dark below the chest
+  g.globalCompositeOperation = 'destination-out';
+  const fade = g.createLinearGradient(0, 210, 0, 400);
+  fade.addColorStop(0, 'rgba(0,0,0,0)');
+  fade.addColorStop(1, 'rgba(0,0,0,1)');
+  g.fillStyle = fade; g.fillRect(0, 0, 256, 400);
+  return tex(c);
+}
+const figure = new THREE.Mesh(
+  new THREE.PlaneGeometry(6.4, 10),
+  new THREE.MeshBasicMaterial({ map:figureTexture(), transparent:true, opacity:0.66, depthWrite:false, toneMapped:false })
+);
+figure.position.set(7.4, 6.6, -12.4); figure.visible = false; scene.add(figure);
+
+/* A shadow crossing the light, as if someone walked between the lamp and
+   the wall. A tall soft band, left to right, under two seconds. */
+function passingTexture(){
+  const [c, g] = pad2d(128, 256);
+  const grad = g.createRadialGradient(64, 128, 4, 64, 128, 64);
+  grad.addColorStop(0, 'rgba(0,0,0,.9)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  g.save(); g.scale(1, 2); g.fillStyle = grad; g.fillRect(0, 0, 128, 128); g.restore();
+  return tex(c);
+}
+const passing = new THREE.Mesh(
+  new THREE.PlaneGeometry(12, 60),
+  new THREE.MeshBasicMaterial({ map:passingTexture(), transparent:true, opacity:0.55, depthWrite:false, toneMapped:false })
+);
+passing.position.set(-60, 6, -12.3); passing.visible = false; scene.add(passing);
+
+/* The overhead light stutters rather than blinking: dark, back, half,
+   nearly, dark, back, over about a quarter of a second. It is the wall
+   and the key light that go, never the panel. */
+const FLICKER = [[0, 0.32], [60, 1], [130, 0.5], [175, 0.86], [235, 0.28], [290, 1]];
+const ROOM = { flickerT:0, passT:0, k:1 };
+function stepRoom(dt){
+  let awake = false;
+  if (ROOM.flickerT){
+    ROOM.flickerT += dt;
+    const ms = ROOM.flickerT * 1000;
+    let k = 1;
+    for (const [at, v] of FLICKER) if (ms >= at) k = v;
+    if (ms > 320){ ROOM.flickerT = 0; k = 1; }
+    ROOM.k = k;
+    backdrop.material.color.setScalar(k);
+    key.intensity = 1.38 * (1 - (lastDip > 0 ? lastDip : 0) * 0.62) * (0.55 + 0.45 * k);
+    awake = true;
+  }
+  if (ROOM.passT){
+    ROOM.passT += dt;
+    const u = ROOM.passT / 1.8;
+    if (u >= 1){ ROOM.passT = 0; passing.visible = false; }
+    else {
+      const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+      passing.position.x = -34 + 68 * e;
+      passing.visible = true;
+    }
+    awake = true;
+  }
+  return awake;
+}
 
 /* The shadow catcher rides just in front of the sweep so the darkening
    reads as contact rather than as a shape cut out of the wall. */
@@ -1287,7 +1411,14 @@ listen('focus', e => {
   if (h) h.focus = true;
   invalidate();
 });
-listen('anomaly', e => { if (e.kind === 'watcher' && !watcher.t){ watcher.t = 0.0001; invalidate(); } });
+listen('anomaly', e => {
+  if (e.kind === 'watcher' && !watcher.t){ watcher.t = 0.0001; invalidate(); }
+  if (reduced) return;
+  if (e.kind === 'roomflicker' && !ROOM.flickerT){ ROOM.flickerT = 0.0001; invalidate(); }
+  if (e.kind === 'figure-on'){ figure.visible = true; invalidate(); }
+  if (e.kind === 'figure-off'){ figure.visible = false; invalidate(); }
+  if (e.kind === 'passing' && !ROOM.passT){ ROOM.passT = 0.0001; invalidate(); }
+});
 
 let lastNow = 0;
 function applyControls(){
@@ -1439,6 +1570,7 @@ function frame(now){
   applyControls();
   const glowAwake = stepHalos(dt);
   const ghostAwake = stepWatcher(dt);
+  const roomAwake = stepRoom(dt);
 
   // the switch holds wherever it was left
   const swTarget = IRZ.powered() ? SW_ON : SW_OFF;
@@ -1448,7 +1580,7 @@ function frame(now){
   const switchMoving = powerSwitch.position.x !== swTarget;
 
   const moving = introRunning || parallaxMoving || switchMoving || ctrlAwake;
-  if (moving || glowAwake){ needsRender = true; fullRender = true; }
+  if (moving || glowAwake || roomAwake){ needsRender = true; fullRender = true; }
   else if (ghostAwake) needsRender = true;
 
   if (needsRender){

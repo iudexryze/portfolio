@@ -4,38 +4,40 @@
 
 /* ══ TOKENS ═══════════════════════════════════════════════════
    Every colour on this page is lifted from a screen palette the
-   console at index.html can actually display — the same arrays in
+   console at index.html can actually display — the PALETTES array in
    assets/js/console.js. The page is not "inspired by" the machine;
    it is the machine's panel, at document size.
 
-     DREAD     #2A2E1B #3A3F26 #949F52 #C6D084   the default panel
-     VANGUARD  #0E1108 #1C2A10 #6FA82C #8FC93A   the lime one
+     COBALT    #0A1230 #16295A #4A86C8 #B8DEFF   the one it starts on
+     DREAD     #2A2E1B #3A3F26 #949F52 #C6D084   the failing one
      AMBER     #22160A #4A2E0C #D9922B #FFC24B   the amber one
 
-   Surfaces are the dark end of that ramp, text the pale end, and
+   Surfaces are the dark end of COBALT's ramp pushed further toward
+   black so a whole page of it stays restful, text is the pale end, and
    the two accents keep the jobs they had: amber = active/selected,
-   lime = live/running. Nothing here is a neutral grey, because a
-   green LCD does not have any.
+   the panel's own blue = live/running. Nothing here is a neutral grey,
+   because a backlit panel does not have any. Contrast figures are
+   against --ink.
    ═════════════════════════════════════════════════════════════ */
 :root{
-  --ink:      #0E1108;   /* VANGUARD, darkest  — the page ground   */
-  --panel:    #171B0F;
-  --raised:   #222719;
-  --sunken:   #080A05;
-  --rule:     #2F341F;
-  --rule-hi:  #3A3F26;   /* DREAD, second shade                    */
-  --dim:      #949F52;   /* DREAD, third shade —  6.7:1 on --ink   */
-  --mid:      #B3BE79;   /*                       9.7:1 on --ink   */
-  --bone:     #D2DB99;   /* DREAD, brightest   — 13.0:1 on --ink   */
-  --amber:    #FFC24B;   /* AMBER, brightest   — active/selected   */
-  --live:     #8FC93A;   /* VANGUARD, brightest — live/running     */
-  --live-hi:  #A6DC55;   /* the same lamp, leaned on               */
+  --ink:      #070C1C;   /* the page ground                          */
+  --panel:    #0C1430;
+  --raised:   #121C3E;
+  --sunken:   #040815;
+  --rule:     #1B2850;
+  --rule-hi:  #28396B;
+  --dim:      #7E9BCB;   /*  6.9:1 — labels                          */
+  --mid:      #A9C2E8;   /* 10.7:1 — sentences                       */
+  --bone:     #D4E8FF;   /* 15.6:1 — COBALT's brightest, warmed      */
+  --amber:    #FFC24B;   /* 12.1:1 — AMBER, brightest: active/selected */
+  --live:     #5AA8FF;   /*  7.9:1 — COBALT glow: live/running       */
+  --live-hi:  #82BFFF;   /* the same lamp, leaned on                 */
 
   /* Two hues the arcade artwork needs that no token here can carry:
      the card thumbnails are inline SVG, and a presentation attribute
      cannot read a custom property, so those files hold the literals.
      They are written down here because this is where someone looks.
-       #6FA82C  VANGUARD third shade — a rival; a thing that is not you
+       #3E7CC8  COBALT third shade — a rival; a thing that is not you
        #E0503A  the power lamp on the machine itself. A four-shade LCD
                 has no red in it, but the object does, and a fail state
                 has to read as a fail state. Same value in play/*. */
@@ -295,7 +297,7 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
 }
 .attract::after{
   content:''; position:absolute; inset:0; pointer-events:none;
-  background:repeating-linear-gradient(180deg, rgba(210,219,153,.035) 0 1px, transparent 1px 3px);
+  background:repeating-linear-gradient(180deg, rgba(184,222,255,.035) 0 1px, transparent 1px 3px);
 }
 .attract-log{
   font-family:var(--f-mono); font-size:clamp(10px,1.15vw,12.5px); line-height:1.85;
@@ -356,7 +358,7 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
   text-transform:uppercase; color:var(--dim);
 }
 .pill::before{content:''; width:6px; height:6px; border-radius:50%; background:currentColor}
-.pill.live{color:var(--live); border-color:rgba(143,201,58,.45); background:rgba(143,201,58,.10)}
+.pill.live{color:var(--live); border-color:rgba(90,168,255,.45); background:rgba(90,168,255,.10)}
 .pill.wip{color:var(--amber); border-color:rgba(255,194,75,.45); background:rgba(255,194,75,.10)}
 .pill.shipped{color:var(--mid); border-color:var(--rule-hi)}
 
@@ -460,11 +462,11 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
 .game-screen svg{position:absolute; inset:0; width:100%; height:100%; display:block}
 .game-screen::after{
   content:''; position:absolute; inset:0; pointer-events:none;
-  background:repeating-linear-gradient(180deg, rgba(210,219,153,.04) 0 1px, transparent 1px 3px);
+  background:repeating-linear-gradient(180deg, rgba(184,222,255,.04) 0 1px, transparent 1px 3px);
 }
 .game-screen .go{
   position:absolute; inset:0; z-index:1; display:grid; place-items:center;
-  background:rgba(8,10,5,.62); opacity:0;
+  background:rgba(4,8,21,.62); opacity:0;
 }
 .game-screen:hover .go, .game-screen:focus-visible .go{opacity:1}
 .game-screen .go span{
@@ -499,12 +501,12 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
   position:absolute; z-index:1; top:9px; right:9px;
   display:inline-flex; align-items:center; gap:6px;
   padding:3px 8px; border-radius:2px;
-  border:1px solid var(--rule-hi); background:rgba(8,10,5,.86);
+  border:1px solid var(--rule-hi); background:rgba(4,8,21,.86);
   font-family:var(--f-mono); font-size:9.5px; letter-spacing:.1em;
   text-transform:uppercase; color:var(--dim); white-space:nowrap;
 }
 .fits::before{content:''; width:5px; height:5px; border-radius:50%; background:currentColor}
-.fits.any{color:var(--live); border-color:rgba(143,201,58,.5)}
+.fits.any{color:var(--live); border-color:rgba(90,168,255,.5)}
 .fits.wide{color:var(--mid)}
 .fits.desk{color:var(--amber); border-color:rgba(255,194,75,.5)}
 
@@ -677,8 +679,8 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
 .glass{
   position:fixed; inset:0; z-index:90; pointer-events:none;
   background:
-    repeating-linear-gradient(180deg, rgba(210,219,153,.030) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(90deg,  rgba(210,219,153,.014) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(180deg, rgba(184,222,255,.030) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg,  rgba(184,222,255,.014) 0 1px, transparent 1px 3px),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
   background-size: auto, auto, 160px 160px;
 }
@@ -690,7 +692,7 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
 .glass::after{
   content:''; position:absolute; inset:0;
   background:radial-gradient(118% 92% at 50% 42%,
-    rgba(6,8,4,0) 30%, rgba(6,8,4,.42) 72%, rgba(6,8,4,.80) 100%);
+    rgba(3,6,14,0) 30%, rgba(3,6,14,.42) 72%, rgba(3,6,14,.80) 100%);
   animation:sick 12s ease-in-out infinite;
 }
 
@@ -705,10 +707,38 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
   /* A dim, not a blackout. At .74 every few seconds the whole page went
      dark under someone reading it, which is the one place on the site
      the fault was costing the visitor the work. */
-  background:rgba(3,5,2,.36); opacity:0;
+  background:rgba(2,4,10,.36); opacity:0;
 }
 html.out .glass::before{ opacity:1 }
 html.out .glass::after{ opacity:1 }
+
+/* Someone standing in the dark at the edge of the page. Only ever there
+   for the length of a flicker, and only on the flickers page.js marks as
+   seen; dark on dark, at the margin, so it is a shape where the light
+   should be and never something covering the text. */
+.glass .figure{
+  position:absolute; right:2vw; bottom:0;
+  width:min(22vw,300px); height:min(82vh,860px); opacity:0;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 300' preserveAspectRatio='xMaxYMax meet'%3E%3Cdefs%3E%3ClinearGradient id='f' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='0' y2='300'%3E%3Cstop offset='0' stop-color='%23000'/%3E%3Cstop offset='.5' stop-color='%23000' stop-opacity='.9'/%3E%3Cstop offset='1' stop-color='%23000' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='url(%23f)'%3E%3Cellipse cx='51' cy='44' rx='11' ry='15' transform='rotate(-8 51 44)'/%3E%3Cpath d='M46 57 L55 57 L57 72 L44 72 Z'/%3E%3Cpath d='M22 104 Q30 76 50 72 Q70 76 78 104 L74 300 L26 300 Z'/%3E%3C/g%3E%3C/svg%3E") no-repeat right bottom / contain;
+  filter:blur(6px);
+}
+html.out.seen .glass .figure{ opacity:.58 }
+@media (max-width:880px){ .glass .figure{ width:42vw; right:-8vw } }
+
+/* A shadow crossing the page, as if someone walked between the lamp and
+   the wall. A transform, so it costs a composite and nothing else. */
+.glass .passing{
+  position:absolute; top:-10vh; left:0; width:34vw; height:120vh; opacity:0;
+  background:radial-gradient(closest-side, rgba(0,0,0,.34), rgba(0,0,0,0));
+  transform:translateX(-40vw);
+}
+html.pass .glass .passing{ animation:passby 2.3s cubic-bezier(.45,.05,.55,.95) 1 both }
+@keyframes passby{
+  0%  { transform:translateX(-40vw); opacity:0 }
+  12% { opacity:1 }
+  88% { opacity:1 }
+  100%{ transform:translateX(110vw); opacity:0 }
+}
 @keyframes sick{
   0%,100%{ opacity:.90 }
   44%    { opacity:1    }
@@ -724,7 +754,7 @@ html.out .glass::after{ opacity:1 }
 .boot.back{
   color:var(--bone); background:transparent; border:1px solid var(--rule-hi);
 }
-.boot.back:hover{ color:var(--live); border-color:var(--live); background:rgba(143,201,58,.10) }
+.boot.back:hover{ color:var(--live); border-color:var(--live); background:rgba(90,168,255,.10) }
 .boot.back::before{
   content:''; flex:none; width:9px; height:13px; border:0;
   border-radius:2px 2px 3px 2px;

@@ -22,8 +22,9 @@ import { createHaunt } from './haunt.js';
 /* ── screen palettes, cycled by the contrast dial ─────────────── */
 var PALETTES = [
   /* The panel is not well. Sickly olive, the backlight uneven, the text
-     pale enough to read but never bright. DMG is still in the list —
-     the contrast dial gets you out of here. */
+     pale enough to read but never bright. It is first in the list so it is
+     the first turn of the contrast dial away from COBALT, which is where
+     the machine starts. */
   { name:'DREAD',    a:'#2A2E1B', b:'#3A3F26', c:'#949F52', d:'#C6D084', glow:'#6F7C39' },
   { name:'DMG',      a:'#9BBC0F', b:'#8BAC0F', c:'#1D4A1A', d:'#0F380F', glow:'#9BBC0F' },
   { name:'POCKET',   a:'#C7CBB4', b:'#AAAF98', c:'#3E4133', d:'#22241C', glow:'#C7CBB4' },
@@ -43,7 +44,11 @@ var ctx  = cv.getContext('2d');
 var CW_PX = cv.width, CH_PX = cv.height;
 
 var G = { cols:60, rows:27, cw:16, ch:32, fs:26 };
-var pal = PALETTES[0];
+/* The machine comes up on COBALT: a working panel, cold and clear, so the
+   work reads first. DREAD is one turn of the contrast dial away, and the
+   room behind the machine is not well on any palette. */
+var START_PAL = Math.max(0, PALETTES.map(function(p){ return p.name; }).indexOf('COBALT'));
+var pal = PALETTES[START_PAL];
 
 /* The panel font, in one place. setGrid measures the glyph advance with
    it and every draw call sets it, so the two disagreeing would drift the
@@ -139,7 +144,7 @@ var APP = {
   item: 0,
   scroll: 0,
   menuSel: 0,
-  palIdx: 0,
+  palIdx: START_PAL,
   sound: true,
   vol: 2,
   bootLong: false,

@@ -42,18 +42,36 @@
      Never under reduced motion. An involuntary full-page flash is the
      single thing that setting most clearly exists to prevent, and the
      page has to be worth reading without it. */
+  var pageStart = Date.now();
   if (!reduced) {
     (function fail(){
       setTimeout(function(){
         var r = document.documentElement;
+        /* Once someone has been reading for a while, the dark sometimes
+           has someone standing in it. Only for the length of the flicker. */
+        var seen = Date.now() - pageStart > 40000 && Math.random() < 0.25;
         r.classList.add('out');
-        setTimeout(function(){ r.classList.remove('out'); }, 70 + Math.random() * 60);
+        if (seen) r.classList.add('seen');
+        setTimeout(function(){ r.classList.remove('out', 'seen'); }, 70 + Math.random() * 60);
         if (Math.random() < 0.38) setTimeout(function(){
           r.classList.add('out');
           setTimeout(function(){ r.classList.remove('out'); }, 45);
         }, 200 + Math.random() * 120);
         fail();
       }, 7000 + Math.random() * 16000);
+    })();
+
+    /* And now and then a shadow crosses the page, as if someone walked
+       between the lamp and the wall. Never in the first minute or so. */
+    (function passBy(){
+      setTimeout(function(){
+        if (!document.hidden && Date.now() - pageStart > 45000){
+          var r = document.documentElement;
+          r.classList.add('pass');
+          setTimeout(function(){ r.classList.remove('pass'); }, 2400);
+        }
+        passBy();
+      }, 55000 + Math.random() * 70000);
     })();
   }
 

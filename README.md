@@ -58,8 +58,10 @@ npx serve .          # or: python -m http.server 8000
 called **IudexRyze**, built in Three.js, where every control is on
 the machine. The D-pad moves and scrolls, A opens, B goes back, START returns
 to the menu, SELECT fires an item's second action or cycles the screen palette,
-the contrast dial cycles palettes, the volume dial mutes, and the power switch
-genuinely turns it off. Keyboard mirrors all of it (arrows or WASD, Z/Enter,
+the contrast dial cycles palettes, the volume dial steps through four levels,
+and the power switch genuinely turns it off. The machine starts on COBALT, a
+working blue panel, and the reading version is set in the same colours;
+DREAD, the failing panel, is one turn of the contrast dial away. Keyboard mirrors all of it (arrows or WASD, Z/Enter,
 X/Esc, Shift, P), and the buttons are real focusable `<button>` elements for
 anyone driving it by keyboard or screen reader.
 
@@ -192,6 +194,15 @@ contrast dial is always a way out; under reduced motion only the words
 remain.
 
 `?haunt=0` to `?haunt=4` starts a page at a level, for tuning.
+
+The room behind the machine keeps its own, gentler clock, because it belongs
+to every palette. The overhead light stutters every so often; after a minute
+a shadow can cross it; after a couple of minutes someone may be standing
+behind the machine, and they only ever arrive or leave in the dark between
+two frames of a flicker. There are marks on the wall that are always there.
+The reading version does the same in its own way: the page's failing light
+sometimes has someone in it, and a shadow crosses now and then. None of the
+moving part runs under reduced motion.
 
 There is also a DIAGNOSTICS screen with a live readout of the render —
 draw calls in the last frame, shader programs, the GPU, paint rate. It is

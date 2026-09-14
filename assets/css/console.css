@@ -18,8 +18,9 @@
    so the screen font has to be monospace or the layout collapses. */
 
 /* The chrome around the machine is coloured out of the machine's own
-   screen — the DREAD/VANGUARD/AMBER arrays in assets/js/console.js —
-   so page.html, this page, and the panel itself are one palette.
+   screen — the COBALT palette the machine starts on, in the PALETTES
+   array in assets/js/console.js — so page.html, this page and the panel
+   are one palette.
    The stage stays neutral black: it is the room the object sits in,
    and it has to agree with the sky gradient in device.js, not the LCD.
 
@@ -31,13 +32,13 @@
 :root{
   --f-display:'Rubik Distressed','IBM Plex Sans Condensed',system-ui,sans-serif;
   --stage:#07080A;
-  --pool:#12160F;
-  --ink:#E4EAC4;          /* 16.1:1 — names, values, anything read once */
-  --mid:#B3BE79;          /*  9.7:1 — sentences */
-  --dim:#949F52;          /*  7.0:1 — DREAD's third shade; labels */
-  --rule:rgba(210,219,153,.22);
-  --rule-hi:rgba(210,219,153,.42);
-  --live:#8FC93A;
+  --pool:#0C1424;
+  --ink:#E3F0FF;          /* 17.3:1 — names, values, anything read once */
+  --mid:#A9C4E6;          /* 11.2:1 — sentences */
+  --dim:#7F9CC8;          /*  7.2:1 — labels */
+  --rule:rgba(184,222,255,.22);
+  --rule-hi:rgba(184,222,255,.42);
+  --live:#5AA8FF;          /*  8.1:1 — COBALT glow */
   --scrim:7,8,10;
   --pad-x:clamp(16px,3.4vw,40px);
   --pad-y:clamp(14px,2.6vh,26px);
@@ -60,7 +61,7 @@ body{
 .stage{
   position:fixed; inset:0; z-index:0;
   background:
-    radial-gradient(62% 48% at 50% 38%, var(--pool) 0%, #0B0F11 44%, var(--stage) 74%),
+    radial-gradient(62% 48% at 50% 38%, var(--pool) 0%, #0A0F16 44%, var(--stage) 74%),
     var(--stage);
 }
 /* A canvas is a replaced element, so width:auto resolves to its intrinsic
@@ -124,7 +125,7 @@ html.no3d body::before{ display:none }
 .reach{margin:0; text-align:right; font-size:13.5px; line-height:1.6; color:var(--mid)}
 .reach b{display:block; font-weight:400; color:var(--ink)}
 .reach .on{display:inline-flex; align-items:center; gap:7px; color:var(--live); font-size:12.5px; letter-spacing:.03em}
-.reach .on i{width:7px; height:7px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(143,201,58,.18), 0 0 10px rgba(143,201,58,.55)}
+.reach .on i{width:7px; height:7px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px rgba(90,168,255,.18), 0 0 10px rgba(90,168,255,.55)}
 /* The email is the one thing on this page a recruiter is looking for.
    It gets a real underline rather than a hairline you have to hunt for. */
 .reach a{color:var(--ink); text-decoration:underline; text-decoration-color:var(--rule-hi); text-underline-offset:3px; text-decoration-thickness:1px}
@@ -141,7 +142,7 @@ html.no3d body::before{ display:none }
   font-style:normal; margin:0; color:var(--ink); font-size:11px; line-height:1;
   padding:4px 6px; min-width:22px; text-align:center;
   border:1px solid var(--rule-hi); border-radius:4px;
-  background:rgba(var(--scrim),.55); box-shadow:0 1px 0 rgba(210,219,153,.10) inset;
+  background:rgba(var(--scrim),.55); box-shadow:0 1px 0 rgba(184,222,255,.10) inset;
   text-shadow:none;
 }
 
@@ -156,7 +157,7 @@ html.no3d body::before{ display:none }
   color:var(--mid); font-size:12.5px; letter-spacing:.02em; text-decoration:none;
   transition:color .12s, border-color .12s, background-color .12s;
 }
-.escape a:hover{color:var(--ink); border-color:var(--live); background:rgba(143,201,58,.12)}
+.escape a:hover{color:var(--ink); border-color:var(--live); background:rgba(90,168,255,.12)}
 /* First link out is the reading version — the one people actually need
    when the machine is not what they came for. */
 .escape a:first-child{color:var(--ink); border-color:var(--rule-hi)}
@@ -213,14 +214,14 @@ html.no3d .chrome{position:fixed; pointer-events:none}
 html.no3d .warming{display:none}
 
 /* ── cartridge overlay: a game running full-frame ──────────────── */
-.cart{position:fixed; inset:0; z-index:9; display:none; flex-direction:column; background:rgba(8,10,5,.95); backdrop-filter:blur(10px)}
+.cart{position:fixed; inset:0; z-index:9; display:none; flex-direction:column; background:rgba(4,7,16,.95); backdrop-filter:blur(10px)}
 .cart[data-open]{display:flex}
 .cart-bar{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:11px var(--pad-x); border-bottom:1px solid var(--rule); font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.06em; color:var(--mid)}
 .cart-bar b{color:var(--ink); font-weight:500}
 .cart-bar button{background:rgba(var(--scrim),.5); border:1px solid var(--rule-hi); color:var(--ink); font:inherit; letter-spacing:.06em; padding:6px 13px; border-radius:5px; cursor:pointer}
-.cart-bar button:hover{border-color:var(--live); color:var(--live); background:rgba(143,201,58,.12)}
+.cart-bar button:hover{border-color:var(--live); color:var(--live); background:rgba(90,168,255,.12)}
 .cart-bar button:focus-visible{outline:2px solid var(--live); outline-offset:3px}
-.cart iframe{flex:1; width:100%; border:0; background:#080A05}
+.cart iframe{flex:1; width:100%; border:0; background:#040815}
 
 /* Where a game actually runs while it is on the panel. It has to stay
    a rendered element — a display:none iframe gets its animation frames
