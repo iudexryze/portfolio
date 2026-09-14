@@ -4,7 +4,7 @@
    {id, name, tag, status, body, props, actions}; an action is either
    {label, href} or {label, launch} where launch is an arcade slug.
    Adding an entry needs nothing else, anywhere.
-   Part of IudexRzye. See README.md for how the pieces fit. */
+   Part of IudexRyze. See README.md for how the pieces fit. */
 
 /* Where the rest of the site sits relative to this page. The content
    below builds links off it, and the cartridge slot loads games from

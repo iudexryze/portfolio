@@ -2,7 +2,7 @@
 
    Loaded on its own. If it never arrives, the flat console in the
    markup takes over and nothing is lost but the plastic.
-   Part of IudexRzye. See README.md for how the pieces fit. */
+   Part of IudexRyze. See README.md for how the pieces fit. */
 
 const IRZ  = window.IRZ;
 const root = document.documentElement;
@@ -499,8 +499,8 @@ function shellPrint(){
   g.letterSpacing = '0px';
   g.fillStyle = NAVY;
   g.font = u(1.06) + 'px "Rubik Distressed", "IBM Plex Sans Condensed", sans-serif';
-  g.fillText('IudexRzye', px(-3.68), py(-0.98));
-  const wmw = g.measureText('IudexRzye').width;
+  g.fillText('IudexRyze', px(-3.68), py(-0.98));
+  const wmw = g.measureText('IudexRyze').width;
   g.font = u(0.22) + 'px "IBM Plex Sans Condensed", sans-serif';
   g.fillText('TM', px(-3.68) + wmw + u(0.08), py(-0.62));
 

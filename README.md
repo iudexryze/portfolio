@@ -4,7 +4,7 @@ Varun Saini's portfolio — one static page, plus the arcade it serves.
 
 Live at **https://iudexryze.github.io/portfolio/**
 
-The front door is a machine. `index.html` is **IudexRzye**, a handheld
+The front door is a machine. `index.html` is **IudexRyze**, a handheld
 console built in Three.js that you operate with its own D-pad and
 buttons; the portfolio is what is on its screen. `page.html` is the same
 work as an ordinary scrolling document, for anyone who would rather read
@@ -54,7 +54,7 @@ npx serve .          # or: python -m http.server 8000
 ## The console
 
 `index.html` is the portfolio presented as a physical object: a handheld
-called **IudexRzye**, built in Three.js, where every control is on
+called **IudexRyze**, built in Three.js, where every control is on
 the machine. The D-pad moves and scrolls, A opens, B goes back, START returns
 to the menu, SELECT fires an item's second action or cycles the screen palette,
 the contrast dial cycles palettes, the volume dial mutes, and the power switch

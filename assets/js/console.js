@@ -1,7 +1,7 @@
 /* The machine itself: the dot-matrix screen engine, the state it
    draws from, sound, navigation, input, deep links and the
    cartridge slot. Publishes window.IRZ for the 3D shell to drive.
-   Part of IudexRzye. See README.md for how the pieces fit. */
+   Part of IudexRyze. See README.md for how the pieces fit. */
 
 /* A static import, deliberately. Making this a dynamic one to carry the
    cache-busting query across gave console.js a top-level await, and a
@@ -319,7 +319,7 @@ function item(){ return sec().items[APP.item]; }
 
 function drawMenu(){
   var v = viewport(), i, row = v.top;
-  titleBar('IudexRzye', PALETTES[APP.palIdx].name);
+  titleBar('IudexRyze', PALETTES[APP.palIdx].name);
 
   var wide = G.cols >= 40;
   if (wide && v.rows > 9){
@@ -469,7 +469,7 @@ function drawBoot(t){
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = shade(3);
   ctx.font = Math.round(CW_PX*0.115) + 'px "Rubik Distressed", "IBM Plex Sans Condensed", sans-serif';
-  ctx.fillText('IudexRzye', CW_PX/2, y);
+  ctx.fillText('IudexRyze', CW_PX/2, y);
   if (t > 1050){
     ctx.font = screenFont(Math.round(CW_PX*0.030));
     ctx.fillStyle = shade(2);
