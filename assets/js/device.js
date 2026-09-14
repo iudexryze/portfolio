@@ -42,10 +42,17 @@ else {
   if (document.fonts && document.fonts.ready) {
     try { await document.fonts.ready; } catch(e){}
   }
-  if (THREE) build(THREE);
+  /* The prologue is its own module, fetched only when the console says
+     this visit should see it. If it fails to load, the machine is built as
+     usual and the console switches itself on. */
+  let INTRO = null;
+  if (THREE && IRZ.intro && IRZ.intro.planned()){
+    try { INTRO = await import('./intro.js'); } catch(e){ INTRO = null; }
+  }
+  if (THREE) build(THREE, INTRO);
 }
 
-function build(THREE){
+function build(THREE, INTRO){
 /* ── the machine, in centimetres ──────────────────────────────────
    Not a Game Boy: the same hand, a much larger panel. The screen is
    the whole point of this object, so it gets the room.            */
@@ -632,7 +639,8 @@ camera.position.set(0, 0, 40);
    stop and a half under the screen end. Everything below lifts the
    lower half and the silhouette without touching what makes it feel
    like a room with one bad light in it. */
-scene.add(new THREE.HemisphereLight(0x5C6C78, 0x141216, 0.34));
+const hemi = new THREE.HemisphereLight(0x5C6C78, 0x141216, 0.34);
+scene.add(hemi);
 
 /* Something sickly and low, off to one side, that should not be on. */
 const wrong = new THREE.PointLight(0x8FB55A, 13, 20, 2);
@@ -813,7 +821,7 @@ function stepRoom(dt){
     if (ms > 320){ ROOM.flickerT = 0; k = 1; }
     ROOM.k = k;
     backdrop.material.color.setScalar(k);
-    key.intensity = 1.38 * (1 - (lastDip > 0 ? lastDip : 0) * 0.62) * (0.55 + 0.45 * k);
+    applyLights();
     awake = true;
   }
   if (ROOM.passT){
@@ -1357,6 +1365,7 @@ function letGo(id){
 }
 
 canvas.addEventListener('pointerdown', e => {
+  if (introCtl && introCtl.pointer(e)){ e.preventDefault(); return; }
   const obj = pickAt(e.clientX, e.clientY);
   if (!obj) return;
   e.preventDefault();
@@ -1412,6 +1421,7 @@ listen('focus', e => {
   invalidate();
 });
 listen('anomaly', e => {
+  if (introCtl && introCtl.ownsCamera()) return;           // the room is not here yet
   if (e.kind === 'watcher' && !watcher.t){ watcher.t = 0.0001; invalidate(); }
   if (reduced) return;
   if (e.kind === 'roomflicker' && !ROOM.flickerT){ ROOM.flickerT = 0.0001; invalidate(); }
@@ -1420,7 +1430,7 @@ listen('anomaly', e => {
   if (e.kind === 'passing' && !ROOM.passT){ ROOM.passT = 0.0001; invalidate(); }
 });
 
-let lastNow = 0;
+let lastNow = 0, lastGlowFrame = 0;
 function applyControls(){
   for (const b in PUSH){
     const p = PUSH[b], k = Math.max(0, Math.min(1.2, -p.s.x / p.depth)), sc = 1 - 0.045 * k;
@@ -1433,6 +1443,7 @@ function applyControls(){
 }
 
 /* ── fit and run ──────────────────────────────────────────────── */
+let introCtl = null, homeZ = 40;
 function fit(){
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false);
@@ -1450,7 +1461,8 @@ function fit(){
     ((H + margin) / 2) / Math.tan(vFov / 2),
     ((W + 1.8) / 2) / Math.tan(vFov / 2) / camera.aspect
   );
-  camera.position.z = need;
+  homeZ = need;
+  if (!(introCtl && introCtl.ownsCamera())) camera.position.z = need;
   camera.updateProjectionMatrix();
 
   // Tell the screen how many real pixels it has to work with, so the
@@ -1463,6 +1475,26 @@ fit();
 
 let lastRev = -1, started = false;
 let lastGlow = null, lastDip = -1, lastOn = null, fullRender = true;
+
+/* Every light that answers to something — the backlight dipping, the
+   power, the room's own flicker, and the prologue bringing the room up
+   with the panel — is set here, so no two places disagree about it.
+   studioK scales the lights that belong to the room the machine sits in;
+   the rim lights and the sky are the prologue's to move and restore. */
+let studioK = 1, envK = 1, bleedIdle = 0;
+function applyLights(){
+  const d = lastDip > 0 ? lastDip : 0, on = IRZ.powered();
+  key.intensity    = 1.38 * (1 - d * 0.62) * (0.55 + 0.45 * ROOM.k) * studioK;
+  shaper.intensity = 175  * (1 - d * 0.55) * studioK;
+  hands.intensity  = 62   * (1 - d * 0.70) * studioK;
+  fill.intensity   = 70   * studioK;
+  wrong.intensity  = 13   * (1 + d * 1.30) * studioK;
+  screenLight.intensity = on ? 8 * (1 - d * 0.80) : 0;
+  bleedMat.opacity = on ? 0.22 * (1 - d * 0.85) : bleedIdle;
+  lampMat.emissiveIntensity = on ? 1.6 : 0.05;
+  lampMat.color.set(on ? 0xE04038 : 0x6A3230);
+  scene.environmentIntensity = 0.42 * envK;
+}
 let t0 = performance.now();
 
 /* ── Render on demand ────────────────────────────────────────────
@@ -1533,39 +1565,51 @@ function frame(now){
        light and the near source down with it is a building with
        something wrong in it, which is a different feeling entirely. The
        sickly green is the one thing that gets brighter. */
-    const d = IRZ.dip ? IRZ.dip() : 0;
-    key.intensity    = 1.38 * (1 - d * 0.62);
-    shaper.intensity = 175  * (1 - d * 0.55);
-    hands.intensity  = 62   * (1 - d * 0.70);
-    wrong.intensity  = 13   * (1 + d * 1.30);
-    screenLight.intensity = on ? 8 * (1 - d * 0.80) : 0;
-    bleedMat.opacity = on ? 0.22 * (1 - d * 0.85) : 0;
-    lampMat.emissiveIntensity = on ? 1.6 : 0.05;
-    lampMat.color.set(on ? 0xE04038 : 0x6A3230);
+    lastDip = dipNow;
+    applyLights();
+  }
+
+  const dt = lastNow ? Math.min(1 / 30, Math.max(0, (now - lastNow) / 1000)) : 0;
+  lastNow = now;
+
+  /* The prologue, while there is one. It poses the machine and moves the
+     camera until the machine is in the visitor's hands; after that it only
+     brings the lights up, and then it is gone and this loop is exactly
+     what it was before. */
+  let introAwake = false, introCam = false;
+  if (introCtl){
+    introAwake = introCtl.update(dt);
+    introCam = introCtl.ownsCamera();
+    if (introCtl.done()){
+      introCtl = null; introCam = false;
+      t0 = now - 5000;                      // the settle happened in the forest
+      renderer.shadowMap.needsUpdate = true; needsRender = true; fullRender = true;
+    }
   }
 
   // the one piece of motion nobody asked for: settling into place
   const t = (now - t0) / 1000;
-  let intro = reduced ? 1 : Math.min(1, t / 1.3);
-  const introRunning = intro < 1;
-  intro = 1 - Math.pow(1 - intro, 4);
+  let introRunning = false, parallaxMoving = false;
+  if (!introCam){
+    let intro = reduced ? 1 : Math.min(1, t / 1.3);
+    introRunning = intro < 1;
+    intro = 1 - Math.pow(1 - intro, 4);
 
-  /* Exponential easing never actually arrives, so snap it once it is
-     under a pixel of travel — otherwise the scene is "still moving"
-     forever and never stops redrawing. */
-  px += (tx - px) * 0.06;
-  py += (ty - py) * 0.06;
-  if (Math.abs(tx - px) < 0.0004) px = tx;
-  if (Math.abs(ty - py) < 0.0004) py = ty;
-  const parallaxMoving = px !== tx || py !== ty;
-  device.rotation.y = (-0.30 * (1 - intro)) + px * 0.20 * intro;
-  device.rotation.x = (0.16 * (1 - intro)) + py * 0.13 * intro;
-  device.position.z = -7 * (1 - intro);
-  device.position.y = 0.5 * (1 - intro);
+    /* Exponential easing never actually arrives, so snap it once it is
+       under a pixel of travel — otherwise the scene is "still moving"
+       forever and never stops redrawing. */
+    px += (tx - px) * 0.06;
+    py += (ty - py) * 0.06;
+    if (Math.abs(tx - px) < 0.0004) px = tx;
+    if (Math.abs(ty - py) < 0.0004) py = ty;
+    parallaxMoving = px !== tx || py !== ty;
+    device.rotation.y = (-0.30 * (1 - intro)) + px * 0.20 * intro;
+    device.rotation.x = (0.16 * (1 - intro)) + py * 0.13 * intro;
+    device.position.z = -7 * (1 - intro);
+    device.position.y = 0.5 * (1 - intro);
+  }
 
   // the controls, wherever the hands have put them
-  const dt = lastNow ? Math.min(1 / 30, Math.max(0, (now - lastNow) / 1000)) : 0;
-  lastNow = now;
   const ctrlAwake = stepSprings(dt);
   applyControls();
   const glowAwake = stepHalos(dt);
@@ -1580,13 +1624,20 @@ function frame(now){
   const switchMoving = powerSwitch.position.x !== swTarget;
 
   const moving = introRunning || parallaxMoving || switchMoving || ctrlAwake;
-  if (moving || glowAwake || roomAwake){ needsRender = true; fullRender = true; }
+  /* A hint that breathes is a slow sine, and on its own it does not need
+     sixty full frames a second to look smooth: about fifteen will do.
+     Anything else that moves still gets every frame. */
+  let glowDue = glowAwake;
+  if (glowAwake && !moving && !roomAwake && !introAwake){
+    if (now - lastGlowFrame < 66) glowDue = false; else lastGlowFrame = now;
+  }
+  if (moving || glowDue || roomAwake || introAwake){ needsRender = true; fullRender = true; }
   else if (ghostAwake) needsRender = true;
 
   if (needsRender){
     needsRender = false;
     /* Re-shadow only when the geometry under the light actually moved. */
-    if (moving) renderer.shadowMap.needsUpdate = true;
+    if (moving && !introCam) renderer.shadowMap.needsUpdate = true;
     if (fullRender){
       fullRender = false;
       renderer.render(scene, camera);
@@ -1618,7 +1669,30 @@ window.__irzDevice = { renderer, lcdTex, scene, camera, invalidate };
    it does not exist it is the same compile as before. The intro clock
    starts when the first frame is actually drawn, so the settle still
    plays instead of having finished behind WARMING UP. */
-const begin = () => { t0 = performance.now(); requestAnimationFrame(frame); };
+/* ── the prologue ─────────────────────────────────────────────────
+   Built here, before the programs are compiled, so the forest compiles
+   behind WARMING UP alongside the machine instead of after it. */
+if (INTRO){
+  try {
+    introCtl = INTRO.createIntro({
+      THREE, renderer, scene, camera, device, IRZ, reduced,
+      lights:{ key, rim, rim2, hemi },
+      room:[ backdrop, shadowCatcher, figure, passing ],
+      dims:{ W, H, D, LC_W, LC_H, LC_Y, BZ_FRONT },
+      homeZ:() => homeZ,
+      studio:(k, env) => { studioK = k; envK = env; applyLights(); },
+      bleedIdle:(v) => { bleedIdle = v; applyLights(); },
+      input:(btn, down) => input(btn, down),
+      invalidate
+    });
+    applyLights();
+  } catch(err){ introCtl = null; }
+}
+const begin = () => {
+  t0 = performance.now();
+  if (introCtl){ try { introCtl.start(); } catch(err){ introCtl = null; } }
+  requestAnimationFrame(frame);
+};
 if (renderer.compileAsync) renderer.compileAsync(scene, camera).then(begin, begin);
 else begin();
 }

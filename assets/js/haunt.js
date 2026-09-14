@@ -61,14 +61,14 @@ export function createHaunt(api){
      between two frames of a flicker, never while you are looking. None of
      it runs under reduced motion; the marks on the wall are all that is
      left, and they do not move. */
-  var pageStart = performance.now(), figureOn = false, lastPass = 0;
+  var pageStart = performance.now(), figureOn = false, lastPass = 0, found = false;
   if (!reduced) (function roomClock(){
     setTimeout(function(){
       if (!document.hidden){
         var t = (performance.now() - pageStart) / 1000;
         api.emit('anomaly', { kind:'roomflicker' });
         score += 0.5;
-        if (t > 120 || level() >= 2){
+        if (t > (found ? 60 : 120) || level() >= 2){
           if (figureOn ? Math.random() < 0.6 : Math.random() < 0.35){
             figureOn = !figureOn;
             var kind = figureOn ? 'figure-on' : 'figure-off';
@@ -152,6 +152,8 @@ export function createHaunt(api){
       if (!seenItems[key]){ seenItems[key] = true; score += WEIGHT[key] || 0.6; }
     }
     if (type === 'menu') score += 0.5;
+    /* It was already wrong when you found it. */
+    if (type === 'intro'){ found = true; score = Math.max(score, 9); }
     if (type === 'power') score += d ? 2 : 6;
     if (type === 'cart') score += 3;
     if (type === 'palette' && d === 'DREAD') score += 2;
@@ -290,7 +292,7 @@ export function createHaunt(api){
           api.put(1, row, rows[i][0], 2);
           api.put(12, row, val.length > W ? val.slice(0, W) : val, i === rows.length - 1 && level() >= 3 ? 3 : 3);
         }
-        api.footBar([{ key:'B', label:'EXIT' }]);
+        api.footBar([{ key:'A', label:'REPLAY INTRO' }, { key:'B', label:'EXIT' }]);
       };
     })()
   };

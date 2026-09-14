@@ -149,6 +149,10 @@ var APP = {
   vol: 2,
   bootLong: false,
   offAt: 0,
+  introQuiet: false,     // the prologue has the machine: no hints, no captions
+  introGlow: 0,          // how lit the dead panel is when it is found
+  introPixel: false,
+  introBoot: false,      // the first power-on after it was found
   bootAt: 0,
   rev: 0
 };
@@ -690,6 +694,10 @@ function drawItem(){
 function drawOff(){
   var age = performance.now() - APP.offAt;
   ctx.fillStyle = '#1E2119'; ctx.fillRect(0,0,CW_PX,CH_PX);
+  /* Found like this: not on, and not quite off either. A wash of the
+     panel's second shade, and now and then a single dot. */
+  if (APP.introGlow){ ctx.globalAlpha = APP.introGlow; ctx.fillStyle = shade(1); ctx.fillRect(0, 0, CW_PX, CH_PX); ctx.globalAlpha = 1; }
+  if (APP.introPixel){ ctx.fillStyle = shade(3); ctx.fillRect(Math.round(CW_PX * 0.62 / 3) * 3, Math.round(CH_PX * 0.41 / 3) * 3, 6, 6); }
   if (!reduced && snapValid && age < 380){
     var k = age / 380, sh = CH_PX * (1 - k * k * 0.94);
     ctx.globalAlpha = (1 - k) * (1 - k);
@@ -698,8 +706,10 @@ function drawOff(){
   }
   haunt.afterimage(ctx, age, CW_PX, CH_PX);
   ctx.globalAlpha = .5; matrix(); ctx.globalAlpha = 1;
-  say('The console is switched off. Press the power switch to turn it on.');
-  legend('POWER turn on');
+  if (!APP.introQuiet){
+    say('The console is switched off. Press the power switch to turn it on.');
+    legend('POWER turn on');
+  }
 }
 
 /* ── boot ─────────────────────────────────────────────────────── */
@@ -719,6 +729,7 @@ function startBoot(long){
 }
 function finishBoot(){
   remember('irz.booted', '1');
+  APP.introBoot = false;
   toMenu(true, 'in');
 }
 
@@ -741,7 +752,12 @@ function postLines(){
     { t:leader('RAM', '64K  OK', w), s:2 },
     { t:leader('CART', carts + ' TITLES', w), s:2 },
     { t:leader('PANEL', sick ? 'FAULT' : 'OK', w), s:sick ? 3 : 2 }
-  ];
+  ].concat(APP.introBoot ? [
+    /* The first time it comes up in your hands it has been lying in the
+       wet for a while, and it says so. It does not say whose it was. */
+    { t:leader('BACKLIGHT', 'DEGRADED', w), s:3 },
+    { t:leader('OWNER', 'NOT FOUND', w), s:2 }
+  ] : []);
 }
 
 /* The long boot is the first visit's: the backlight comes up on an
@@ -749,7 +765,8 @@ function postLines(){
    visit after that the machine comes up the way one you own does, and
    any button gets you straight to the menu either way. */
 function drawBoot(t){
-  var long = APP.bootLong, POST = long ? 1300 : 0, END = long ? 2700 : 1150;
+  var extra = APP.introBoot ? 320 : 0;
+  var long = APP.bootLong, POST = long ? 1300 + extra : 0, END = long ? 2700 + extra : 1150;
   frame();
   ctx.save();
   if (t < POST){
@@ -775,7 +792,7 @@ function drawBoot(t){
       ctx.fillText('P O R T F O L I O   S Y S T E M', CW_PX/2, mid + CH_PX*0.10);
     }
     if (u > 820){
-      var sick = pal.name === 'DREAD';
+      var sick = pal.name === 'DREAD' || APP.introBoot;
       ctx.font = screenFont(Math.round(CW_PX*0.026));
       ctx.fillStyle = shade(sick ? 3 : 2);
       ctx.fillText(sick ? 'BACKLIGHT   DEGRADED' : 'BACKLIGHT   NOMINAL', CW_PX/2, mid + CH_PX*0.19);
@@ -899,6 +916,7 @@ function drawOSD(){
 var coach = { stage: remembered('irz.coach') === 'done' ? 3 : 0 };
 var lastHint = '';
 function coachHints(){
+  if (APP.introQuiet) return [];
   if (!APP.power) return ['power'];
   if (coach.stage >= 3 || APP.view === 'boot' || APP.view === 'cart') return [];
   if (APP.view === 'menu') return coach.stage === 0 ? ['down', 'a'] : ['a'];
@@ -948,7 +966,10 @@ function paint(){
 /* Boot, a running game, a transition and a machine powering down all
    animate; everything else waits for dirty(). */
 function animating(){
-  return APP.view === 'boot' || APP.view === 'cart' || APP.view === 'diag' || !!trans ||
+  /* A machine that is off is not booting, whatever view it was left in:
+     the prologue holds it switched off in 'boot', and repainting a dead
+     panel sixty times a second made the whole scene redraw with it. */
+  return (APP.view === 'boot' && APP.power) || APP.view === 'cart' || APP.view === 'diag' || !!trans ||
          (!APP.power && performance.now() - APP.offAt < 1450);
 }
 function tick(){
@@ -1141,7 +1162,14 @@ function press(btn){
       sctx.drawImage(cv, 0, 0); snapValid = true;
       APP.power = false; APP.offAt = performance.now(); trans = null; osd = null;
     } else {
-      APP.power = true; sfx('boot'); startBoot(false);
+      APP.power = true; sfx('boot');
+      if (introPlanned && !introPowered){
+        /* The first time it is switched on is the one it was found for:
+           the whole self test, with what it has to say about where it
+           has been. */
+        introPowered = true; APP.introBoot = !reduced;
+        if (reduced) toMenu(true); else startBoot(true);
+      } else startBoot(false);
     }
     emit('power', { on:APP.power });
     if (haunt) haunt.note('power', APP.power);
@@ -1165,7 +1193,11 @@ function press(btn){
   }
 
   if (APP.view === 'boot'){ finishBoot(); return; }
-  if (APP.view === 'diag'){ if (btn === 'b' || btn === 'start') toMenu(); return; }
+  if (APP.view === 'diag'){
+    if (btn === 'a'){ location.href = location.pathname + '?intro=1'; return; }
+    if (btn === 'b' || btn === 'start') toMenu();
+    return;
+  }
   if (btn === 'select' && APP.view !== 'item'){ cyclePalette(); return; }
   if (btn === 'start'){ if (APP.view !== 'menu') toMenu(); else sfx('deny'); return; }
 
@@ -1755,6 +1787,8 @@ var heldBtn = {}, keyBtn = {};
 var SYSTEM_BTN = { start:1, select:1, power:1, contrast:1, volume:1 };
 function input(btn, isDown){
   if (!btn) return;
+  /* While the prologue has the camera, every button belongs to it. */
+  if (introGate && introGate(btn, isDown)) return;
   if (isDown){
     if (heldBtn[btn]){
       if (APP.view !== 'cart' && /^(up|down|left|right)$/.test(btn)) press(btn);
@@ -1913,7 +1947,32 @@ var haunt = createHaunt({
    to the menu, and everyone else gets the self test once and the short
    boot after that. */
 var deep = readHash();
+
+/* ── the prologue ─────────────────────────────────────────────────
+   Whether the visitor first finds the machine in the forest is decided
+   here, because this is what knows about deep links and what this
+   browser has already seen: a first visit with no link, or ?intro=1.
+   device.js asks, and plays it. If it never does — no WebGL, no
+   Three.js, the module did not load — cancelIntro() switches the machine
+   on the ordinary way, so nobody is ever left holding a dead console. */
+var forceIntro = /[?&]intro=1/.test(location.search);
+var introPlanned = !deep && (forceIntro || !remembered('irz.introSeen'));
+var introStarted = false, introPowered = false, introGate = null;
+function cancelIntro(){
+  if (!introPlanned || introStarted) return;
+  introPlanned = false; introGate = null;
+  APP.introQuiet = false; APP.introGlow = 0; APP.introPixel = false;
+  if (!APP.power){ APP.power = true; emit('power', { on:true }); }
+  if (reduced) APP.view = 'menu';
+  else startBoot(!remembered('irz.booted'));
+  dirty();
+}
+
 if (deep){ /* readHash has already put the machine where the link points */ }
+else if (introPlanned){
+  APP.power = false; APP.offAt = -1e9; APP.view = 'boot'; APP.introQuiet = true;
+  setTimeout(function(){ if (!introStarted) cancelIntro(); }, 9000);
+}
 else if (reduced){ APP.view = 'menu'; }
 else {
   startBoot(!remembered('irz.booted'));
@@ -1962,8 +2021,27 @@ window.IRZ = {
   sound: function(){ return APP.sound; },
   volume: function(){ return APP.vol; },
   fitGrid: function(px){ screenPx = px; pickGrid(); },
+  /* The prologue's side of the machine. It asks whether to play, takes
+     the buttons while it has the camera, lights the dead panel, and hands
+     the machine back switched off and ready for its power button. */
+  intro: {
+    planned: function(){ return introPlanned; },
+    begin: function(){ introStarted = true; APP.introQuiet = true; dirty(); },
+    gate: function(fn){ introGate = fn || null; },
+    glow: function(level, pixel){ APP.introGlow = level; APP.introPixel = !!pixel; dirty(); },
+    handheld: function(){
+      APP.introQuiet = false; APP.introGlow = 0; APP.introPixel = false; introGate = null;
+      remember('irz.introSeen', '1');
+      haunt.note('intro');
+      dirty();
+    },
+    say: function(s){ say(s); },
+    legend: function(s){ legend(s); },
+    cancel: function(){ cancelIntro(); }
+  },
   ready: function(){
     document.getElementById('warming').hidden = true;
+    if (introPlanned && !introStarted) cancelIntro();
     if (APP.view === 'boot' && APP.bootAt === Infinity){ APP.bootAt = performance.now(); dirty(); }
   }
 };

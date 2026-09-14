@@ -22,6 +22,7 @@ assets/js/
   console.js            screen engine, state, sound, navigation, input
   device.js             the machine in three dimensions (Three.js)
   haunt.js              the part of the machine that is not well
+  intro.js              the prologue: where the machine was found
   page.js               the text version's arcade and scroll spy
 play/
   bt-7274n/             terminal roguelike        typed, better with keys
@@ -78,6 +79,7 @@ to change:
 | `assets/js/console.js` | how the screen draws or the controls behave |
 | `assets/js/device.js` | how the object looks |
 | `assets/js/haunt.js` | how the machine misbehaves |
+| `assets/js/intro.js` | how the machine is found |
 | `assets/css/console.css` | the page around the machine |
 | `index.html` | almost never — it is markup and two script tags |
 
@@ -164,6 +166,65 @@ Three.js and the core module it imports are `modulepreload`ed. The boot
 sequence waits for the machine to be on screen rather than playing behind
 WARMING UP.
 
+### The prologue
+
+The portfolio begins before the machine appears. On a first visit the
+visitor finds it: a low camera moving through a wet forest at night, fog
+between the trees, a catch of moonlight on the glass of something lying in
+the leaves. They pick it up, the camera follows the screen in until the dark
+panel fills the view, and when it pulls back the machine is in their hands,
+in its room, switched off. They switch it on, and the self test that follows
+is the one the portfolio has always had — with two lines it only prints the
+first time: `BACKLIGHT DEGRADED` and `OWNER NOT FOUND`.
+
+It lives in `assets/js/intro.js` and follows these decisions:
+
+- **One console.** The prologue poses, lights and frames the device
+  `device.js` already built and hands it back exactly where the normal
+  presentation expects it. There is no second model and no second loop:
+  `device.js` calls `intro.update(dt)` from its own frame.
+- **No recompile at the handoff.** Adding lights or fog to the console's
+  materials would change their shader programs and force a hitch when the
+  forest goes. So the moon is the machine's existing rim light, moved and
+  recoloured, and every console material is marked `fog: false` before the
+  forest is added. Only the forest's materials fog.
+- **It hides the load rather than adding to it.** The forest is built and
+  compiled behind WARMING UP together with the machine.
+- **The cut hides in the dark.** The device rises and turns to face the
+  camera while the camera goes in after the screen; at full occlusion, under
+  a short fade, the forest is removed and disposed, the room, lights, camera
+  range and pixel ratio are restored, and the pull-back starts from exactly
+  the framing the forest left. Going through the screen is going inside.
+- **The console decides whether it plays.** `console.js` knows about deep
+  links and what this browser has seen: a first visit with no hash, or
+  `?intro=1`. It holds the machine switched off, takes every button through
+  an input gate while the prologue has the camera, and cancels itself —
+  switching the machine on the ordinary way — if the prologue never starts
+  (no WebGL, no Three.js, the module failed).
+- **Found, not presented.** The glass catches the moon twice, the dead panel
+  shows a faint wash and once a single dot, and for about a second there is
+  someone far back in the trees, arriving and leaving behind a sheet of fog.
+  `haunt.js` is told the machine was found, which moves it a little further
+  in and lets the figure behind the machine come sooner. It was already
+  wrong when you found it.
+- **Nobody has to work it out.** One line says what to do at each step. If
+  the visitor does not switch the machine on, it switches itself on. ESC or
+  the SKIP button go straight to power-on at any point.
+- **Adaptive resolution.** The forest is a soft picture, so it renders a
+  little under native resolution and steps down if the first frames are slow
+  (measured: 42 fps native, 50 at 0.75, 55 at 0.6 on the test machine). The
+  machine goes back to full resolution the moment it is in your hands.
+- **Reduced motion** gets a still frame, the prompt and a cut, with no camera
+  movement, rain, fog drift or figure. Nothing is drawn while it waits.
+- **Sound** is made in code — wind, insects, the lift, the click, a hum — and
+  starts only on the first interaction, at the console's volume.
+- **It leaves nothing behind.** When the lights are up the forest has been
+  disposed, the page layer removed, the audio context closed, and the machine
+  is back to drawing only when something changes.
+
+Return visits go straight to the machine. It can be replayed from the
+DIAGNOSTICS screen (A) or with `?intro=1`.
+
 ### What it remembers
 
 Three `localStorage` keys, all optional — a private window simply gets a
@@ -174,6 +235,7 @@ first visit every time:
 | `irz.booted` | the long self test has been seen; later boots are short |
 | `irz.coach` | the visitor has learned the buttons; the machine stops lighting them |
 | `irz.visits` | how many sessions there have been, for `haunt.js` |
+| `irz.introSeen` | the prologue has been seen; later visits go straight to the machine |
 
 ### The part that is not well
 
