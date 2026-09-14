@@ -27,7 +27,12 @@ var PALETTES = [
   { name:'DMG',      a:'#9BBC0F', b:'#8BAC0F', c:'#1D4A1A', d:'#0F380F', glow:'#9BBC0F' },
   { name:'POCKET',   a:'#C7CBB4', b:'#AAAF98', c:'#3E4133', d:'#22241C', glow:'#C7CBB4' },
   { name:'AMBER',    a:'#22160A', b:'#4A2E0C', c:'#D9922B', d:'#FFC24B', glow:'#FFB43C' },
-  { name:'VANGUARD', a:'#0E1108', b:'#1C2A10', c:'#6FA82C', d:'#8FC93A', glow:'#8FC93A' }
+  { name:'VANGUARD', a:'#0E1108', b:'#1C2A10', c:'#6FA82C', d:'#8FC93A', glow:'#8FC93A' },
+  /* A blue backlit STN panel, the kind a pager or a calculator had: deep
+     navy glass and ice-white segments. edge is the colour its corners
+     fall away into — the others go to a dark olive, which would muddy
+     this one green. */
+  { name:'COBALT',   a:'#0A1230', b:'#16295A', c:'#4A86C8', d:'#B8DEFF', glow:'#4F9BFF', edge:'4,9,24' }
 ];
 
 /* ── the screen ───────────────────────────────────────────────── */
@@ -216,8 +221,8 @@ function band(){
 /* The backlight is failing, so every so often it fails. Two frames
    down and one back, at a random moment inside a window you cannot
    anticipate, which is the only thing that makes a flicker land — a
-   flicker on a timer is a metronome. Only on DREAD: the other four
-   palettes are what a working panel looks like, and the contrast dial
+   flicker on a timer is a metronome. Only on DREAD: every other
+   palette is what a working panel looks like, and the contrast dial
    is the way out of this one.
 
    It costs three extra paints when it fires and nothing at all when it
@@ -304,10 +309,11 @@ function falloff(){
     Math.min(CW_PX, CH_PX) * (sick ? 0.07 : 0.16),
     CW_PX * 0.50, CH_PX * 0.50,
     Math.max(CW_PX, CH_PX) * (sick ? 0.60 : 0.70));
-  g.addColorStop(0,    'rgba(10,14,5,0)');
-  g.addColorStop(0.58, 'rgba(10,14,5,' + (0.045 * k).toFixed(3) + ')');
-  g.addColorStop(0.85, 'rgba(9,13,4,'  + (0.130 * k).toFixed(3) + ')');
-  g.addColorStop(1,    'rgba(8,12,4,'  + (0.240 * k).toFixed(3) + ')');
+  var e = pal.edge || '10,14,5';
+  g.addColorStop(0,    'rgba(' + e + ',0)');
+  g.addColorStop(0.58, 'rgba(' + e + ',' + (0.045 * k).toFixed(3) + ')');
+  g.addColorStop(0.85, 'rgba(' + e + ',' + (0.130 * k).toFixed(3) + ')');
+  g.addColorStop(1,    'rgba(' + e + ',' + (0.240 * k).toFixed(3) + ')');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, CW_PX, CH_PX);
 }
@@ -776,10 +782,18 @@ var dctx = dot.getContext('2d', { willReadFrequently:true });
    thing a tail, which is exactly what these screens did and is also the
    quiet reason a game on here feels like it is being watched through
    something. It decays as 0.34^n, so it is gone in three frames and
-   never accumulates. */
-var ghost = document.createElement('canvas');
-ghost.width = DOT_W; ghost.height = DOT_H;
-var gctx = ghost.getContext('2d');
+   never accumulates.
+
+   It is held as brightness, before the four shades are chosen, and that
+   is the whole point. The first cut kept the previous frame as the
+   finished, posterised picture and blended that back in — so the panel's
+   own colours were fed back through the brightness thresholds. On DMG
+   and POCKET, where the background shade is the brightest of the four,
+   a pixel near a threshold was pushed over it by its own ghost, then
+   pulled back by the next one, and flipped shade every single frame:
+   the static title screen of a game shimmered. Brightness in, brightness
+   out, and a still pixel settles instead of oscillating on any palette. */
+var persist = new Float32Array(DOT_W * DOT_H);
 
 var slot = null;
 var SLOT = { on:false, slug:'', cfg:null, gcv:null, held:{}, cur:null, t0:0, back:null,
@@ -839,7 +853,7 @@ function insert(slug){
   document.body.appendChild(slot);
   SLOT.on = true; SLOT.slug = slug; SLOT.cfg = cfg; SLOT.gcv = null;
   SLOT.held = {}; SLOT.cur = { x:0.5, y:0.5, down:false }; SLOT.t0 = performance.now();
-  gctx.clearRect(0, 0, DOT_W, DOT_H);
+  persist.fill(0);
   APP.view = 'cart';
   sfx('open');
   say(cartTitle(slug) + ' is running on the console screen. Play it with the D-pad and A. START ejects the cartridge.');
@@ -862,9 +876,15 @@ function ejectPanel(){
    is not lost by accident: the panel has four shades and no hue, so a
    game running on the panel has four shades and no hue. */
 function posterise(){
-  var img = dctx.getImageData(0, 0, DOT_W, DOT_H), p = img.data, r = ramp(), i, y, s;
-  for (i = 0; i < p.length; i += 4){
+  var img = dctx.getImageData(0, 0, DOT_W, DOT_H), p = img.data, r = ramp(), i, j, y, s;
+  for (i = 0, j = 0; i < p.length; i += 4, j++){
     y = (p[i]*77 + p[i+1]*151 + p[i+2]*28) >> 8;
+    /* Snapped once it is within half a level. Decay alone only ever
+       approaches, so a still pixel sitting exactly on a threshold would
+       creep up to it for half a second and then change shade, late,
+       for no visible reason. */
+    s = y + (persist[j] - y) * 0.34;
+    y = persist[j] = (s - y < 0.5 && y - s < 0.5) ? y : s;
     s = y < 26 ? 0 : y < 84 ? 1 : y < 168 ? 2 : 3;
     p[i] = r[s][0]; p[i+1] = r[s][1]; p[i+2] = r[s][2]; p[i+3] = 255;
   }
@@ -913,13 +933,13 @@ function drawCart(){
   var k = Math.min(DOT_W / g.width, DOT_H / g.height);
   var w = Math.round(g.width * k), h = Math.round(g.height * k);
   var ox = (DOT_W - w) >> 1, oy = (DOT_H - h) >> 1;
-  if (ox || oy){ dctx.fillStyle = '#000'; dctx.fillRect(0, 0, DOT_W, DOT_H); }
+  /* Every frame, not only when letterboxed: anything the game leaves
+     transparent would otherwise show last frame's picture through it. */
+  dctx.fillStyle = '#000'; dctx.fillRect(0, 0, DOT_W, DOT_H);
   SLOT.box = { ox:ox, oy:oy, w:w, h:h };
   dctx.imageSmoothingEnabled = true;
   dctx.drawImage(g, 0, 0, g.width, g.height, ox, oy, w, h);
-  dctx.globalAlpha = 0.34; dctx.drawImage(ghost, 0, 0); dctx.globalAlpha = 1;
   posterise();
-  gctx.clearRect(0, 0, DOT_W, DOT_H); gctx.drawImage(dot, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(dot, 0, 0, DOT_W, DOT_H, 0, 0, CW_PX, CH_PX);
   ctx.imageSmoothingEnabled = true;
