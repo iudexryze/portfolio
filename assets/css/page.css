@@ -702,7 +702,10 @@ code{font-family:var(--f-mono); font-size:.92em; color:var(--bone)}
    decoration inside two cycles. */
 .glass::before{
   content:''; position:absolute; inset:0;
-  background:rgba(3,5,2,.74); opacity:0;
+  /* A dim, not a blackout. At .74 every few seconds the whole page went
+     dark under someone reading it, which is the one place on the site
+     the fault was costing the visitor the work. */
+  background:rgba(3,5,2,.36); opacity:0;
 }
 html.out .glass::before{ opacity:1 }
 html.out .glass::after{ opacity:1 }
@@ -741,7 +744,17 @@ html.out .glass::after{ opacity:1 }
   .statusbar .hide-sm{display:none}
   .statusbar{gap:16px}
 }
+/* On a phone the tabs were squeezed into whatever the brand and the two
+   buttons left, which was room for About and nothing else: the other six
+   sections scrolled out of sight with no sign they were there. They get a
+   row of their own, full width, with the edge fading so it reads as a
+   strip that scrolls. */
 @media (max-width:620px){
+  .topbar{flex:0 0 auto; flex-wrap:wrap; padding-right:12px}
+  .brand, .topbar-end{height:var(--bar-h)}
+  .tabs{order:3; flex:1 0 100%; height:40px; margin:0 calc(-1 * var(--pad)); padding:0 calc(var(--pad) - 11px);
+        border-top:1px solid var(--rule);
+        -webkit-mask-image:linear-gradient(90deg,#000 82%,transparent); mask-image:linear-gradient(90deg,#000 82%,transparent)}
   .tab{padding:0 11px; font-size:13px}
   .brand{font-size:15px; margin-right:12px}
   .boot span{display:none}

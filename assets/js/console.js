@@ -11,6 +11,7 @@
    time. The version reaches content.js through an import map instead;
    see the loader in index.html. */
 import { SECTIONS, BASE } from './content.js';
+import { createHaunt } from './haunt.js';
 (function(){
 'use strict';
 
@@ -262,10 +263,10 @@ setInterval(function(){
   if (pal.name !== 'DREAD') return;
   if (Math.random() > 0.42) return;
   dip = 1; bandY = Math.random(); dirty();
-  var seen = Math.random() < 0.20;
+  var seen = Math.random() < haunt.faceChance();
   setTimeout(function(){ dip = 0.5; if (seen) face = 0.5; dirty(); }, 60);
   setTimeout(function(){ dip = 0.28; if (seen) face = 0.34; dirty(); }, 118);
-  setTimeout(function(){ dip = 0; face = 0; dirty(); }, 190);
+  setTimeout(function(){ dip = 0; face = 0; dirty(); haunt.note('dipEnd'); }, 190);
 }, 2800);
 
 /* ── the thing in the panel ───────────────────────────────────────
@@ -382,7 +383,7 @@ function keycap(col, row, label, inverse){
 
 function drawMenu(){
   var v = viewport(), i, row = v.top, wide = G.cols >= 40;
-  titleBar('IudexRyze', wide ? clock() + '  ' + pal.name : pal.name);
+  titleBar('IudexRyze', haunt.title(wide ? clock() + '  ' + pal.name : pal.name));
 
   if (v.rows > 9){
     put(1, row, 'VARUN SAINI', 3);
@@ -422,12 +423,14 @@ function drawMenu(){
       keycap(cx, row, 'A', true);
       put(cx + 3, row, 'OPEN', 0);
     } else if (wide && free >= 8){
-      var gl = s.gloss;
+      var gl = haunt.gloss(i, s.gloss);
       if (gl.length > free) gl = gl.slice(0, free).replace(/[\s,]+\S*$/, '');
       put(G.cols - 2 - gl.length, row, gl, on ? 0 : 2);
     }
   }
-  footBar([{icon:'ud',label:'MOVE'},{key:'A',label:'OPEN'},{key:'SEL',label:'COLOUR'}]);
+  var idle = haunt.footer();
+  if (idle){ fillCells(0, G.rows - 1, G.cols, 1, 3); put(1, G.rows - 1, idle, 0); }
+  else footBar([{icon:'ud',label:'MOVE'},{key:'A',label:'OPEN'},{key:'SEL',label:'COLOUR'}]);
   say('Main menu. ' + SECTIONS[APP.menuSel].title + ', ' + SECTIONS[APP.menuSel].gloss + '. ' + SECTIONS.length + ' sections.');
   legend('↑↓ move · A open · SELECT colour');
 }
@@ -684,6 +687,7 @@ function drawOff(){
     ctx.drawImage(snap, 0, (CH_PX - sh) / 2, CW_PX, sh);
     ctx.globalAlpha = 1;
   }
+  haunt.afterimage(ctx, age, CW_PX, CH_PX);
   ctx.globalAlpha = .5; matrix(); ctx.globalAlpha = 1;
   say('The console is switched off. Press the power switch to turn it on.');
   legend('POWER turn on');
@@ -740,7 +744,7 @@ function drawBoot(t){
   frame();
   ctx.save();
   if (t < POST){
-    var lines = postLines(), shown = Math.min(lines.length, Math.floor((t - 420) / 150) + 1), i;
+    var lines = haunt.post(postLines(), t, leader, Math.min(G.cols - 4, 32)), shown = Math.min(lines.length, Math.floor((t - 420) / 150) + 1), i;
     var top = Math.max(1, Math.floor((G.rows - lines.length * 2) / 2));
     for (i = 0; i < shown; i++) put(2, top + i * 2, lines[i].t, lines[i].s);
     if (Math.floor(t / 260) % 2 === 0){
@@ -920,7 +924,9 @@ function paint(){
   frame();
   if (APP.view === 'menu') drawMenu();
   else if (APP.view === 'list') drawList();
+  else if (APP.view === 'diag') haunt.diagnostics();
   else drawItem();
+  if (APP.view !== 'diag') haunt.overlay(ctx);
   drawOSD();
   /* The picture as painted, before the grid and the light go over it, is
      what the next transition leaves from. */
@@ -933,8 +939,8 @@ function paint(){
 /* Boot, a running game, a transition and a machine powering down all
    animate; everything else waits for dirty(). */
 function animating(){
-  return APP.view === 'boot' || APP.view === 'cart' || !!trans ||
-         (!APP.power && performance.now() - APP.offAt < 420);
+  return APP.view === 'boot' || APP.view === 'cart' || APP.view === 'diag' || !!trans ||
+         (!APP.power && performance.now() - APP.offAt < 1450);
 }
 function tick(){
   if (needsPaint || animating()){
@@ -1040,6 +1046,7 @@ function buzz(kind){
 
 function sfx(kind){
   buzz(kind);
+  if (haunt) haunt.note('sfx', kind);
   if (kind === 'move')  tone(720, 0.05);
   if (kind === 'open')  { tone(560, 0.05); setTimeout(function(){ tone(880, 0.07); }, 55); }
   if (kind === 'back')  tone(340, 0.07);
@@ -1055,6 +1062,14 @@ function toMenu(silent, kind){
   APP.view = 'menu'; APP.scroll = 0;
   if (!silent) sfx('back');
   setHash(''); dirty();
+}
+function openDiagnostics(){
+  transition('in');
+  APP.view = 'diag'; APP.scroll = 0;
+  sfx('open');
+  say('Diagnostics. A live readout of the machine: draw calls, shader programs, the GPU, paint rate. B exits.');
+  legend('B exit');
+  dirty();
 }
 function openSection(i){
   transition('in');
@@ -1084,6 +1099,7 @@ function cyclePalette(){
   pal = PALETTES[APP.palIdx];
   buzz('tick'); tone(880, 0.04, 'triangle');
   emit('palette', { index:APP.palIdx, count:PALETTES.length, step:1, name:pal.name });
+  haunt.note('palette', pal.name);
   showOSD('CONTRAST', APP.palIdx + 1, PALETTES.length, pal.name);
   dirty();
 }
@@ -1112,6 +1128,7 @@ function press(btn){
       APP.power = true; sfx('boot'); startBoot(false);
     }
     emit('power', { on:APP.power });
+    if (haunt) haunt.note('power', APP.power);
     dirty(); return;
   }
   if (!APP.power) return;
@@ -1132,6 +1149,7 @@ function press(btn){
   }
 
   if (APP.view === 'boot'){ finishBoot(); return; }
+  if (APP.view === 'diag'){ if (btn === 'b' || btn === 'start') toMenu(); return; }
   if (btn === 'select' && APP.view !== 'item'){ cyclePalette(); return; }
   if (btn === 'start'){ if (APP.view !== 'menu') toMenu(); else sfx('deny'); return; }
 
@@ -1467,6 +1485,7 @@ function insert(slug){
   SLOT.held = {}; SLOT.cur = { x:0.5, y:0.5, down:false }; SLOT.t0 = performance.now();
   persist.fill(0);
   if (panelShader()) gpu.reset();
+  haunt.note('cart', slug);
   APP.view = 'cart';
   sfx('open');
   say(cartTitle(slug) + ' is running on the console screen. Play it with the D-pad and A. START ejects the cartridge.');
@@ -1580,6 +1599,7 @@ function drawCart(){
   ctx.drawImage(out, 0, 0, DOT_W, DOT_H, 0, 0, CW_PX, CH_PX);
   ctx.imageSmoothingEnabled = true;
   if (SLOT.cfg.cursor) drawCursor();
+  haunt.overlay(ctx);
   drawOSD();
   if (trans) composeTransition();
   matrix();
@@ -1727,6 +1747,9 @@ function input(btn, isDown){
     heldBtn[btn] = true;
     emit('hold', { btn:btn, down:true });
     coachNote(btn);
+    if (haunt.note('input', btn) === 'diagnostics' && APP.power && APP.view !== 'cart' && APP.view !== 'boot'){
+      openDiagnostics(); return;
+    }
     if (APP.view === 'cart' && !SYSTEM_BTN[btn]) cartHold(btn, true);
     else press(btn);
   } else {
@@ -1817,6 +1840,7 @@ padEl.addEventListener('focusout', function(){
 
 var writingHash = false;
 function setHash(h){
+  if (haunt){ var hp = h.split('/'); haunt.note(h ? 'view' : 'menu', { sec:hp[0], item:hp[1] }); }
   writingHash = true;
   var next = h ? '#' + h : ' ';
   if (h) history.replaceState(null, '', '#' + h);
@@ -1851,6 +1875,22 @@ window.addEventListener('hashchange', function(){
   if (SLOT.on) ejectPanel();
   if (readHash()){ APP.scroll = 0; sfx('open'); dirty(); }
   else toMenu(true);
+});
+
+/* The part of the machine that is not well: see haunt.js. It draws
+   through what it is handed here and nothing else. */
+var haunt = createHaunt({
+  reduced: reduced,
+  remembered: remembered, remember: remember,
+  pal: function(){ return pal; },
+  view: function(){ return APP.view; },
+  power: function(){ return APP.power; },
+  transitioning: function(){ return !!trans; },
+  sections: function(){ return SECTIONS; },
+  soundOn: function(){ return APP.sound; },
+  dirty: dirty, emit: emit, tone: tone, osd: showOSD,
+  shade: shade, put: put, titleBar: titleBar, footBar: footBar, viewport: viewport,
+  G: function(){ return G; }
 });
 
 /* A deep link arrives rather than boots, reduced motion goes straight

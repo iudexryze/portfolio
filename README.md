@@ -21,6 +21,7 @@ assets/js/
   content.js            EVERYTHING THE SITE SAYS — edit this one
   console.js            screen engine, state, sound, navigation, input
   device.js             the machine in three dimensions (Three.js)
+  haunt.js              the part of the machine that is not well
   page.js               the text version's arcade and scroll spy
 play/
   bt-7274n/             terminal roguelike        typed, better with keys
@@ -74,6 +75,7 @@ to change:
 | `assets/js/content.js` | you shipped something, or a link moved |
 | `assets/js/console.js` | how the screen draws or the controls behave |
 | `assets/js/device.js` | how the object looks |
+| `assets/js/haunt.js` | how the machine misbehaves |
 | `assets/css/console.css` | the page around the machine |
 | `index.html` | almost never — it is markup and two script tags |
 
@@ -89,8 +91,9 @@ promises each is short enough to read in an afternoon. Do not tidy those.
 Three more things worth knowing before editing:
 
 - **Content lives in one `SECTIONS` array** in `content.js`. Every section
-  is a list of items; an item is `{id, name, tag, status, body, props,
-  actions}`, and an action is either `{label, href}` or `{label, launch}`
+  is a list of items; an item is `{id, name, tag, status, body, media, props,
+  actions}`, `media` is a list of `{src, cap}` pictures from `assets/art`
+  that the panel dithers onto its four shades, and an action is either `{label, href}` or `{label, launch}`
   where `launch` is an arcade slug. Adding an entry needs nothing else,
   anywhere.
 - **The screen is a character grid drawn to a canvas**, used as a texture on the
@@ -111,6 +114,90 @@ Three more things worth knowing before editing:
 
 Sections and items deep-link: `#arcade`, `#work/echolocate`.
 
+### One input, every hand
+
+Every button — keyboard, the flat console, the 3D render, a finger — goes
+down and comes up through one function, `input(btn, down)` in
+`console.js`. The screen engine is the only thing that knows what actually
+happened, so it reports it (`IRZ.on('hold' | 'palette' | 'volume' | 'hint'
+| 'focus' | 'power' | 'anomaly', fn)`) and `device.js` only listens. That is
+why a key on a keyboard moves the cap on the machine, why a held button
+stays down, and why a lander can have thrust and a turn held by two
+fingers at once.
+
+Controls in the render are damped springs toward where the hand is putting
+them: pressed, they stay down; released, they come back past rest and
+settle. The dials turn by detents that match what they set. Springs go to
+sleep once they arrive, and under reduced motion they are critically
+damped.
+
+The hidden `<button>`s behind the render are real and focusable. Keyboard
+focus lights the control it belongs to on the machine.
+
+### The panel's own shader
+
+Games on the panel are posterised to its four shades with a two-pass
+WebGL2 shader (brightness held against the previous frame, then the
+palette), on a small canvas of its own. The CPU version read the game's
+pixels back off the GPU every frame, and that one `getImageData` was 26 ms
+of a 16 ms budget. The CPU path is still there for browsers without
+WebGL2 and for a lost context.
+
+### Only the glass
+
+The drawing buffer is kept between frames. A frame whose only change is
+the picture on the panel draws just the glass stack — the screen and the
+layers lying on it, on camera layer 1 — scissored to the screen's own
+rectangle, without a clear. Anything that changes the room is still a full
+frame: the machine moving, a glow on a control, the palette, the backlight
+dipping, the power. On the test machine this took a game on the panel from
+42 to 55 frames a second.
+
+### Loading
+
+Shader programs were three and a half seconds of main thread on ANGLE,
+compiled one after another. `renderer.compileAsync` hands them to the
+driver's parallel compile, and the intro starts on the first real frame.
+Three.js and the core module it imports are `modulepreload`ed. The boot
+sequence waits for the machine to be on screen rather than playing behind
+WARMING UP.
+
+### What it remembers
+
+Three `localStorage` keys, all optional — a private window simply gets a
+first visit every time:
+
+| key | meaning |
+| --- | --- |
+| `irz.booted` | the long self test has been seen; later boots are short |
+| `irz.coach` | the visitor has learned the buttons; the machine stops lighting them |
+| `irz.visits` | how many sessions there have been, for `haunt.js` |
+
+### The part that is not well
+
+Everything unsettling lives in `assets/js/haunt.js`, which draws only
+through the api `console.js` hands it. A disturbance score rises slowly —
+with time on the page, much faster on the DREAD panel, with repeat visits,
+with the darker work and with power cycles — through five levels, and the
+effects escalate with it: a line of copy that says something else for a
+glance, a clock that is nearly always right, a second user, one dot that
+has stopped answering, a click that is answered twice, a figure in the
+glass at the end of a backlight dip, an afterimage when the power goes, a
+question if you leave the machine alone.
+
+The rules it keeps are written at the top of the file: it never takes a
+button away, never hides the portfolio for longer than a glance, never
+flashes, never imitates the browser; visual faults belong to DREAD, so the
+contrast dial is always a way out; under reduced motion only the words
+remain.
+
+`?haunt=0` to `?haunt=4` starts a page at a level, for tuning.
+
+There is also a DIAGNOSTICS screen with a live readout of the render —
+draw calls in the last frame, shader programs, the GPU, paint rate. It is
+behind the obvious code.
+
+
 ### It costs nothing while nobody is using it
 
 A handheld sitting still is a still image, so the scene is drawn only on
@@ -130,6 +217,12 @@ otherwise. Two details make that real rather than merely plausible:
 Measured with the WebGL draw calls hooked, after boot and intro settle:
 **zero draw calls over four seconds idle**, and about 33 for one keypress
 and the animation that follows it.
+
+Two things break that on purpose, both small. Until a first-time visitor
+has pressed anything, the selected menu row keeps a cursor blinking, which
+is two panel paints a second and stops at the first press. And the clock
+on the home screen repaints the panel every twenty seconds. A game on the
+panel is a paint every frame, but those frames draw the glass only.
 
 ### Lighting notes
 

@@ -62,7 +62,8 @@
     document.head.appendChild(Object.assign(document.createElement('script'), {
       type: 'importmap',
       textContent: JSON.stringify({ imports: {
-        './assets/js/content.js': './assets/js/content.js' + v
+        './assets/js/content.js': './assets/js/content.js' + v,
+        './assets/js/haunt.js': './assets/js/haunt.js' + v
       }})
     }));
 
