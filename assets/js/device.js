@@ -582,7 +582,7 @@ function glassSheen(){
 
 /* ── scene ────────────────────────────────────────────────────── */
 const canvas   = document.getElementById('gl');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true, powerPreference:'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true, powerPreference:'high-performance', preserveDrawingBuffer:true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.94;
@@ -853,8 +853,8 @@ glass.position.set(0, LC_Y, BZ_FRONT + 0.02); device.add(glass);
    that cost the thing it is laid over. */
 const reflection = new THREE.Mesh(
   new THREE.PlaneGeometry(LC_W + 0.14, LC_H + 0.14),
-  new THREE.MeshStandardMaterial({ color:0x000000, metalness:1, roughness:0.22,
-    transparent:true, opacity:0.55, blending:THREE.AdditiveBlending, depthWrite:false, envMapIntensity:1.0 })
+  new THREE.MeshStandardMaterial({ color:0x000000, metalness:1, roughness:0.48,
+    transparent:true, opacity:0.26, blending:THREE.AdditiveBlending, depthWrite:false, envMapIntensity:1.0 })
 );
 reflection.position.set(0, LC_Y, BZ_FRONT + 0.022); device.add(reflection);
 
@@ -891,6 +891,16 @@ function stepWatcher(dt){
 
 const screenLight = new THREE.PointLight(0x9BBC0F, 14, 11, 2);
 screenLight.position.set(0, LC_Y, BZ_FRONT + 1.3); device.add(screenLight);
+
+/* Layer 1 is the glass stack: the panel itself and the layers that sit
+   directly on it. A frame where only the picture changed draws layer 1
+   alone, into the screen's rectangle, over what is already there — see
+   the render loop. The bleed is deliberately not on it: it is additive
+   over the bezel, and drawn again without a clear it would brighten a
+   little more every frame. It only changes when the palette or the
+   backlight does, and those are full frames. */
+const GLASS_LAYER = 1;
+[screen, recess, glass, reflection, watcher.mesh].forEach(m => m.layers.enable(GLASS_LAYER));
 
 // battery lamp
 const lampMat = new THREE.MeshStandardMaterial({ color:0xE04038, emissive:0xE04038, emissiveIntensity:1.8, roughness:0.28 });
@@ -1321,7 +1331,8 @@ addEventListener('resize', fit);
 fit();
 
 let lastRev = -1, started = false;
-const t0 = performance.now();
+let lastGlow = null, lastDip = -1, lastOn = null, fullRender = true;
+let t0 = performance.now();
 
 /* ── Render on demand ────────────────────────────────────────────
    A handheld sitting still is a still image. Drawing it sixty times a
@@ -1330,7 +1341,40 @@ const t0 = performance.now();
    something has actually changed. Everything that can change calls
    invalidate(). */
 let needsRender = true;
-function invalidate(){ needsRender = true; }
+function invalidate(){ needsRender = true; fullRender = true; }
+
+/* ── only the glass, when only the glass changed ──────────────────
+   A game on the panel changes one rectangle of this frame sixty times a
+   second, and the whole lit scene was being redrawn for it: measured,
+   stubbing the render out took a game from 42 to 60 frames a second.
+   The drawing buffer is kept between frames, so when the only thing that
+   changed is the picture on the panel, the render is scissored to the
+   screen's own footprint — the panel, the glass over it and the few
+   millimetres of bezel its backlight bleeds onto. Everything else on
+   the frame is already correct from last time.
+
+   Anything that changes the room is still a full frame: the machine
+   moving, a glow on a control, the palette changing the light the panel
+   throws, the backlight dipping, the power going. */
+const rectV = new THREE.Vector3();
+const rectSize = new THREE.Vector2();
+function screenRect(){
+  const size = renderer.getSize(rectSize);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  /* Inside the panel's own edge, never past it: nothing is cleared in
+     these frames, so the rectangle must be covered completely by the
+     opaque screen plane or the previous frame would show at its rim. */
+  const hw = LC_W / 2, hh = LC_H / 2;
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]){
+    rectV.set(sx * hw, sy * hh, 0);
+    screen.localToWorld(rectV).project(camera);
+    const px = (rectV.x + 1) / 2 * size.x, py = (1 - rectV.y) / 2 * size.y;
+    x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+  }
+  x0 = Math.max(0, Math.ceil(x0) + 1); y0 = Math.max(0, Math.ceil(y0) + 1);
+  x1 = Math.min(size.x, Math.floor(x1) - 1); y1 = Math.min(size.y, Math.floor(y1) - 1);
+  return { x:x0, y:size.y - y1, w:x1 - x0, h:y1 - y0 };
+}
 addEventListener('resize', invalidate);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) invalidate(); });
 
@@ -1343,8 +1387,12 @@ function frame(now){
   if (rev !== lastRev){
     lastRev = rev;
     lcdTex.needsUpdate = true;
-    invalidate();
+    needsRender = true;
     const on = IRZ.powered();
+    const glowNow = IRZ.glow(), dipNow = IRZ.dip ? IRZ.dip() : 0;
+    if (glowNow !== lastGlow || dipNow !== lastDip || on !== lastOn){
+      fullRender = true; lastGlow = glowNow; lastDip = dipNow; lastOn = on;
+    }
     screenLight.color.set(IRZ.glow());
     bleedMat.color.set(IRZ.glow());
     haloTint.set(IRZ.glow()).lerp(WARM, 0.55);
@@ -1400,13 +1448,27 @@ function frame(now){
   const switchMoving = powerSwitch.position.x !== swTarget;
 
   const moving = introRunning || parallaxMoving || switchMoving || ctrlAwake;
-  if (moving || glowAwake || ghostAwake) needsRender = true;
+  if (moving || glowAwake){ needsRender = true; fullRender = true; }
+  else if (ghostAwake) needsRender = true;
 
   if (needsRender){
     needsRender = false;
     /* Re-shadow only when the geometry under the light actually moved. */
     if (moving) renderer.shadowMap.needsUpdate = true;
-    renderer.render(scene, camera);
+    if (fullRender){
+      fullRender = false;
+      renderer.render(scene, camera);
+    } else {
+      const r = screenRect();
+      renderer.setScissor(r.x, r.y, r.w, r.h);
+      renderer.setScissorTest(true);
+      renderer.autoClear = false;
+      camera.layers.set(GLASS_LAYER);
+      renderer.render(scene, camera);
+      camera.layers.set(0);
+      renderer.autoClear = true;
+      renderer.setScissorTest(false);
+    }
   }
 
   if (!started && t > 0.15){ started = true; IRZ.ready(); }
@@ -1415,5 +1477,16 @@ function frame(now){
    reach. Reading them costs nothing; nothing here writes through them. */
 window.__irzDevice = { renderer, lcdTex, scene, camera, invalidate };
 
-requestAnimationFrame(frame);
+/* Shader programs are the slowest thing this page does. Profiled from
+   navigation to the machine appearing, 3.4 seconds of main thread went to
+   one synchronous program link inside Three.js on ANGLE, against well
+   under a tenth of a second for every texture painted here. compileAsync
+   hands the programs to the driver's parallel compile where the extension
+   exists, so they build side by side instead of one after another. Where
+   it does not exist it is the same compile as before. The intro clock
+   starts when the first frame is actually drawn, so the settle still
+   plays instead of having finished behind WARMING UP. */
+const begin = () => { t0 = performance.now(); requestAnimationFrame(frame); };
+if (renderer.compileAsync) renderer.compileAsync(scene, camera).then(begin, begin);
+else begin();
 }
