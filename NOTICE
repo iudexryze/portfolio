@@ -1,0 +1,30 @@
+IudexRyze - the portfolio of Varun Saini
+Copyright 2026 Varun Saini
+
+The source code in this repository - the HTML, CSS and JavaScript, including
+the games under play/ - is licensed under the Apache License, Version 2.0.
+See LICENSE at the root of the repository, and the LICENSE file inside each
+game folder that has one.
+
+The following are NOT covered by that licence and remain all rights
+reserved. They may not be reused, redistributed or adapted without written
+permission from Varun Saini:
+
+  - The 3D renders and artwork in assets/art/.
+  - The portfolio's written content: the text in assets/js/content.js,
+    page.html and devlog/, including the biography, work history and
+    project descriptions.
+  - The names "IudexRyze" and "Varun Saini" and the IudexRyze wordmark.
+    As section 6 of the Apache License states, the licence grants no
+    permission to use trade names or marks.
+
+Third-party material, loaded at runtime and not included in this
+repository:
+
+  - Three.js, under the MIT License, served from cdnjs.
+  - IBM Plex, JetBrains Mono and Rubik Distressed, under the SIL Open Font
+    License, served from Google Fonts.
+
+BT-7274N is an unofficial fan project set in the Titanfall universe. It is
+not affiliated with or endorsed by Respawn Entertainment or Electronic Arts.
+Titanfall and related names are trademarks of their respective owners.

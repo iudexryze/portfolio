@@ -452,6 +452,11 @@ git subtree pull --prefix=play/drift-lander \
 
 ## Licence and attribution
 
+The code in this repository is licensed under the Apache License 2.0; see
+`LICENSE`. The renders in `assets/art/`, the portfolio's written content and
+the IudexRyze and Varun Saini names are all rights reserved and are not covered
+by that licence. `NOTICE` has the details and the third-party credits.
+
 BT-7274N is an unofficial fan project set in the Titanfall universe. It is not
 affiliated with or endorsed by Respawn Entertainment or EA. See
 `play/bt-7274n/LICENSE`.
